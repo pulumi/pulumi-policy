@@ -7,6 +7,12 @@
     "homepage": "https://pulumi.io",
     "repository": "https://github.com/pulumi/pulumi-policy",
     "dependencies": {
+        "google-protobuf": "^3.5.0",
+        "grpc": "^1.20.2",
+        "protobufjs": "^6.8.6"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "0.17.13"
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
@@ -15,5 +21,8 @@
         "mocha": "^3.5.0",
         "tslint": "^5.11.0",
         "typescript": "^3.0.0"
+    },
+    "resolutions": {
+        "grpc/node-pre-gyp": "^0.11.0"
     }
 }
