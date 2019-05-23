@@ -1,0 +1,19 @@
+{
+    "name": "@pulumi/policy",
+    "version": "${VERSION}",
+    "description": "A framework for writing policy as code",
+    "license": "Apache-2.0",
+    "keywords": ["pulumi", "policy"],
+    "homepage": "https://pulumi.io",
+    "repository": "https://github.com/pulumi/pulumi-policy",
+    "dependencies": {
+    },
+    "devDependencies": {
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^10.12.7",
+        "istanbul": "^0.4.5",
+        "mocha": "^3.5.0",
+        "tslint": "^5.11.0",
+        "typescript": "^3.0.0"
+    }
+}
