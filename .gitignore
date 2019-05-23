@@ -1,0 +1,7 @@
+.pulumi
+**/bin/
+**/node_modules/
+vendor/
+**/Pulumi.*.yaml
+**/yarn-error.log
+yarn.lock
