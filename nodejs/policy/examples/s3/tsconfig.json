@@ -17,8 +17,6 @@
     },
     "files": [
         "index.ts",
-        "server.ts",
-        "version.ts",
     ]
 }
 
