@@ -12,26 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Policy, serve } from "./server";
-
-const nameDelimiter = ":";
+import { serve } from "./server";
 
 export interface PolicyPackArgs {
-    policies: PolicyArgs[];
+    policies: Policy[];
 }
 
 export class PolicyPack {
     private readonly policies: Policy[];
+
     constructor(private name: string, args: PolicyPackArgs) {
-        this.policies = args.policies.map(({ name: policyName, ...policy }) => {
-            if (name.includes(nameDelimiter)) {
-                throw Error(
-                    `PolicyPack '${name}' has name with illegal '${nameDelimiter}' character`,
-                );
-            }
-            return { id: `${this.name}${nameDelimiter}${policyName}`, ...policy };
-        });
-        serve(process.argv, this.policies);
+        this.policies = args.policies;
+
+        //
+        // TODO: Wire up version information obtained from the service.
+        //
+        const version = "1";
+
+        serve(this.name, version, this.policies);
     }
 }
 
@@ -53,7 +51,7 @@ export type EnforcementLevel = "warning" | "mandatory";
  * public S3 buckets"), and a set of metadata useful for generating helpful messages when the policy
  * is violated.
  */
-export interface PolicyArgs {
+export interface Policy {
     /** An ID for the policy. Must be unique to the current policy set. */
     name: string;
 

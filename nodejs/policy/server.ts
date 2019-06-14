@@ -17,7 +17,7 @@ const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
-import { EnforcementLevel, Rule, Tag } from "./policy";
+import { EnforcementLevel, Policy, Tag } from "./policy";
 import { version } from "./version";
 
 // ------------------------------------------------------------------------------------------------
@@ -30,27 +30,17 @@ import { version } from "./version";
 
 let serving = false;
 
-export function serve(args: string[], policies: Policy[]): void {
+export function serve(policyPackName: string, policyPackVersion: string, policies: Policy[]): void {
     if (serving !== false) {
         throw Error("Only one policy gRPC server can run per process");
     }
 
     serving = true;
 
-    // The program requires a single argument: the address of the RPC endpoint for the engine.  It
-    // optionally also takes a second argument, a reference back to the engine, but this may be
-    // missing.
-    if (args.length === 0) {
-        console.error("fatal: Missing <engine> address");
-        process.exit(-1);
-        return;
-    }
-    const engineAddr: string = args[0];
-
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server();
     server.addService(analyzerrpc.AnalyzerService, {
-        analyze: makeAnalyzeRpcFun(policies),
+        analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policies),
         getPluginInfo: getPluginInfoRpc,
     });
     const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
@@ -69,7 +59,7 @@ async function getPluginInfoRpc(call: any, callback: any): Promise<void> {
 }
 
 // analyze is the RPC call that will analyze an individual resource, one at a time (i.e., check).
-function makeAnalyzeRpcFun(policies: Policy[]) {
+function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, policies: Policy[]) {
     return async function(call: any, callback: any): Promise<void> {
         // Prep to perform the analysis.
         const req = call.request;
@@ -81,8 +71,8 @@ function makeAnalyzeRpcFun(policies: Policy[]) {
                 const policyViolated = p.rule(req.getType(), req.getProperties());
                 if (policyViolated === true) {
                     // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
-                    const { rule, ...diag } = p;
-                    ds.push({ ...diag });
+                    const { rule, name, ...diag } = p;
+                    ds.push({ policyName: name, policyPackName, policyPackVersion, ...diag });
                 }
             }
         } catch (err) {
@@ -102,22 +92,19 @@ function makeAnalyzeRpcFun(policies: Policy[]) {
 
 // ------------------------------------------------------------------------------------------------
 
-export interface Policy {
-    id: string;
-    description: string;
-    message?: string;
-    tags?: Tag[];
-    enforcementLevel: EnforcementLevel;
-    rule: Rule;
-}
-
 /**
  * Diagnostic information and metadata that can be used to emit helpful error messages when a policy
  * is violated.
  */
 interface Diagnostic {
-    /** An ID for the policy. Must be unique to the current policy set. */
-    id: string;
+    /** Name of the policy that was violated. */
+    policyName: string;
+
+    /** Name of the policy pack that the violated policy was a part of. */
+    policyPackName: string;
+
+    /** Version of the policy pack. */
+    policyPackVersion: string;
 
     /**
      * A brief description of the policy rule. e.g., "S3 buckets should have default encryption
@@ -157,7 +144,9 @@ function createAnalyzeResponse(ds: Diagnostic[]) {
     const diagnostics = [];
     for (const d of ds) {
         const diagnostic = new analyzerproto.AnalyzeDiagnostic();
-        diagnostic.setId(d.id);
+        diagnostic.setPolicyname(d.policyName);
+        diagnostic.setPolicypackname(d.policyPackName);
+        diagnostic.setPolicypackversion(d.policyPackVersion);
         diagnostic.setDescription(d.description);
         diagnostic.setMessage(d.message);
         diagnostic.setTagsList(d.tags);
