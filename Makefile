@@ -2,10 +2,10 @@ PROJECT_NAME := policy
 SUB_PROJECTS := nodejs/policy
 include build/common.mk
 
-.PHONY: publish_packages
-publish_packages:
-	$(call STEP_MESSAGE)
-	./scripts/publish_packages.sh
+# .PHONY: publish_packages
+# publish_packages:
+# 	$(call STEP_MESSAGE)
+# 	./scripts/publish_packages.sh
 
 .PHONY: check_clean_worktree
 check_clean_worktree:
@@ -14,6 +14,6 @@ check_clean_worktree:
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
 travis_cron: all
-travis_push: only_build check_clean_worktree only_test publish_packages
+travis_push: only_build check_clean_worktree only_test # publish_packages
 travis_pull_request: only_build check_clean_worktree only_test_fast
 travis_api: all
