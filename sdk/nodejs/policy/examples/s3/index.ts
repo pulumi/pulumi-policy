@@ -23,12 +23,10 @@ const policies = new PolicyPack("aws-sec-rules", {
                 "Security team requires default encryption to be enabled for all S3 buckets. " +
                 "For remediation instructions see: https://docs.aws.amazon.com/AmazonS3/latest/dev/bucket-encryption.html",
             tags: ["security"],
-            enforcementLevel: "warning",
+            enforcementLevel: "mandatory",
             rule: (type, bucket) => {
-                return (
-                    type === "aws:s3:Bucket" &&
-                    bucket.serverSideEncryptionConfiguration !== undefined
-                );
+                // console.log(process.argv);
+                return type === "kubernetes:core/v1:Service" && true;
             },
         },
     ],

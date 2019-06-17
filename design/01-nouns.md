@@ -39,7 +39,7 @@ similar to "normal" Pulumi resources, in that we call `new PolicyPack` and provi
 `Policy` as argument:
 
 ```typescript
-// nodejs/policy/examples/s3/index.ts
+// sdk/nodejs/policy/examples/s3/index.ts
 import { PolicyPack } from "@pulumi/policy";
 
 const policies = new PolicyPack("aws-sec-rules", {
@@ -65,7 +65,7 @@ const policies = new PolicyPack("aws-sec-rules", {
 `@pulumi/policy`. It would exist in a plain-old-Node.js directory, like:
 
 ```
-nodejs/policy/examples/s3/
+sdk/nodejs/policy/examples/s3/
     index.ts
     package.json
     tsconfig.json
