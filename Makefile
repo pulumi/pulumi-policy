@@ -1,5 +1,5 @@
 PROJECT_NAME := policy
-SUB_PROJECTS := nodejs/policy
+SUB_PROJECTS := sdk/nodejs/policy
 include build/common.mk
 
 # .PHONY: publish_packages
