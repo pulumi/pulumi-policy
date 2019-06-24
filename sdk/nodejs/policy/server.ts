@@ -15,6 +15,7 @@
 const grpc = require("grpc");
 const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
+const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
 import { EnforcementLevel, Policy, Tag } from "./policy";
@@ -41,6 +42,7 @@ export function serve(policyPackName: string, policyPackVersion: string, policie
     const server = new grpc.Server();
     server.addService(analyzerrpc.AnalyzerService, {
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policies),
+        getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policies),
         getPluginInfo: getPluginInfoRpc,
     });
     const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
@@ -50,6 +52,34 @@ export function serve(policyPackName: string, policyPackVersion: string, policie
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the
     // message loop alive.
     console.log(port);
+}
+
+// analyze is the RPC call that will analyze an individual resource, one at a time (i.e., check).
+function makeGetAnalyzerInfoRpcFun(
+    policyPackName: string,
+    policyPackVersion: string,
+    policies: Policy[],
+) {
+    return async function(call: any, callback: any): Promise<void> {
+        const resp: any = new analyzerproto.AnalyzerInfo();
+        resp.setName(policyPackName);
+        // TODO: resp.setDisplayname(policyPackName);
+
+        const policyInfos: any[] = [];
+        for (const policy of policies) {
+            const policyInfo = new analyzerproto.PolicyInfo();
+            policyInfo.setName(policy.name);
+            // TODO: policyInfo.setDisplayname
+            policyInfo.setDescription(policy.description);
+            policyInfo.setEnforcementlevel(mapEnforcementLevel(policy.enforcementLevel));
+            policyInfo.setMessage(policy.message);
+
+            policyInfos.push(policyInfo);
+        }
+        resp.setPoliciesList(policyInfos);
+
+        callback(undefined, resp);
+    };
 }
 
 async function getPluginInfoRpc(call: any, callback: any): Promise<void> {
@@ -68,7 +98,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                const policyViolated = p.rule(req.getType(), req.getProperties());
+                const policyViolated = p.rule(req.getType(), req.getProperties().toJavaScript());
                 if (policyViolated === true) {
                     // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
                     const { rule, name, ...diag } = p;
@@ -161,10 +191,10 @@ function createAnalyzeResponse(ds: Diagnostic[]) {
 
 function mapEnforcementLevel(el: EnforcementLevel) {
     switch (el) {
-        case "warning":
-            return analyzerproto.AnalyzeDiagnostic.LogSeverity.WARNING;
+        case "advisory":
+            return analyzerproto.LogSeverity.ADVISORY;
         case "mandatory":
-            return analyzerproto.AnalyzeDiagnostic.LogSeverity.MANDATORY;
+            return analyzerproto.EnforcementLevel.MANDATORY;
         default:
             throw Error(`Unknown enforcement level type '${el}'`);
     }

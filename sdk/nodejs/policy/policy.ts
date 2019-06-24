@@ -44,7 +44,7 @@ export type Tag = string;
 /**
  * Indicates the impact of a policy violation.
  */
-export type EnforcementLevel = "warning" | "mandatory";
+export type EnforcementLevel = "advisory" | "mandatory";
 
 /**
  * A policy function that returns true if a resource definition violates some policy (e.g., "no
