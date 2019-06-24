@@ -1,4 +1,4 @@
-# Policy API by example
+# Policy validation API by example
 
 In this text, we'll talk generally about the sequence of API calls required to validate a resource
 against a bunch of policies, and to push information about validation failures to the Pulumi
