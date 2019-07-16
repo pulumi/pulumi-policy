@@ -1,5 +1,9 @@
 {
     "name": "example-policy-set",
+    "dependencies": {
+        "@pulumi/pulumi": "0.17.21",
+        "@pulumi/aws": "0.18.16"
+    },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
         "@types/node": "^10.12.7",

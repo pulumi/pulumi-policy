@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { PolicyPack } from "@pulumi/policy";
+import * as k8s from "@pulumi/kubernetes";
+import { PolicyPack, typedRule } from "@pulumi/policy";
 
-const policies = new PolicyPack("aws-sec-rules", {
+const policies = new PolicyPack("kubernetes", {
     policies: [
         {
-            name: "s3-default-encryption-enabled",
-            description: "S3 buckets should have default encryption enabled",
+            name: "no-public-services",
+            description: "Kubernetes Services should be cluster-private",
             message:
-                "Security team requires default encryption to be enabled for all S3 buckets. " +
-                "For remediation instructions see: https://docs.aws.amazon.com/AmazonS3/latest/dev/bucket-encryption.html",
+                `Kubernetes Services that have .type === "LoadBalancer" are exposed to anything ` +
+                `that can reach the Kubernetes cluster, likely including the public Internet. ` +
+                `The security team has disallowed this to prevent unauthorized access.`,
             tags: ["security"],
             enforcementLevel: "mandatory",
-            rule: (type, bucket) => {
-                // console.log(process.argv);
-                return type === "kubernetes:core/v1:Service" && true;
-            },
+            rule: typedRule(k8s.core.v1.Service.isInstance, svc => {
+                return svc.spec.type === "LoadBalancer";
+            }),
         },
     ],
 });
