@@ -98,11 +98,26 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                const policyViolated = p.rule(req.getType(), req.getProperties().toJavaScript());
-                if (policyViolated === true) {
-                    // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
-                    const { rule, name, ...diag } = p;
-                    ds.push({ policyName: name, policyPackName, policyPackVersion, ...diag });
+                let policyRules = [];
+                if (Array.isArray(p.rules)) {
+                    policyRules = p.rules;
+                } else {
+                    policyRules = [p.rules];
+                }
+
+                for (const rule of policyRules) {
+                    try {
+                        const policyViolated = rule(
+                            req.getType(),
+                            req.getProperties().toJavaScript(),
+                        );
+                    } catch (e) {
+                        // TODO: unpack error, put into policy here.
+
+                        // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
+                        const { rules, name, ...diag } = p;
+                        ds.push({ policyName: name, policyPackName, policyPackVersion, ...diag });
+                    }
                 }
             }
         } catch (err) {

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as pulumi from "@pulumi/pulumi";
+import { Resource } from "@pulumi/pulumi";
+import * as q from "@pulumi/pulumi/queryable";
 import { serve } from "./server";
 
 export interface PolicyPackArgs {
@@ -34,7 +37,20 @@ export class PolicyPack {
 }
 
 /** A function that returns true if a resource definition violates some policy. */
-export type Rule = (type: string, properties: any) => boolean;
+export type Rule = (type: string, properties: any) => void;
+
+export function typedRule<TResource extends pulumi.Resource>(
+    filter: (o: any) => o is TResource,
+    rule: (properties: q.ResolvedResource<TResource>) => void,
+): Rule {
+    return (type: string, properties: any) => {
+        properties.__pulumiType = type;
+        if (filter(properties) === false) {
+            return;
+        }
+        return rule(properties);
+    };
+}
 
 /**
  * A keyword or term to associate with a policy, such as "cost" or "security."
@@ -79,7 +95,16 @@ export interface Policy {
     enforcementLevel: EnforcementLevel;
 
     /**
-     * Returns true if a resource definition violates a policy (e.g., "S3 buckets can't be public").
+     * Chain of rules that return true if a resource definition violates a policy (e.g., "S3 buckets
+     * can't be public"). Rules are applied in the order they are declared.
      */
-    rule: Rule;
+    rules: Rule | Rule[];
+}
+
+export namespace assert {
+    export function isTrue(b: boolean, message?: string) {
+        if (b) {
+            throw new Error(message);
+        }
+    }
 }
