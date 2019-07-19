@@ -25,7 +25,7 @@ make
 #     export PATH="$PATH:/opt/pulumi/bin/"
 
 # Now, in `pulumi-policy/` directory.
-cd sdk/sdk/nodejs/policy/examples/s3
+cd sdk/sdk/nodejs/policy/examples/aws
 yarn install
 yarn link @pulumi/pulumi
 yarn link @pulumi/policy

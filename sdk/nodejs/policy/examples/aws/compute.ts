@@ -217,8 +217,8 @@ export function requireElbLogging(name: string, bucketName?: string): Policy {
         assert.isTrue(lb.accessLogs !== undefined && lb.accessLogs.enabled === true);
         assert.isTrue(
             bucketName !== undefined &&
-                lb.accessLogs !== undefined &&
-                bucketName === lb.accessLogs.bucket,
+            lb.accessLogs !== undefined &&
+            bucketName === lb.accessLogs.bucket,
         );
     };
 
@@ -251,8 +251,8 @@ export function requireElbLogging(name: string, bucketName?: string): Policy {
 // TODO: restricted-ssh
 // https://docs.aws.amazon.com/config/latest/developerguide/restricted-ssh.html
 
-function toStringSet(ss: string | Iterable<string>): Set<string>;
-function toStringSet(ss?: string | Iterable<string>): Set<string> | undefined;
-function toStringSet(ss: any): Set<string> | undefined {
+export function toStringSet(ss: string | Iterable<string>): Set<string>;
+export function toStringSet(ss?: string | Iterable<string>): Set<string> | undefined;
+export function toStringSet(ss: any): Set<string> | undefined {
     return ss === undefined ? undefined : typeof ss === "string" ? new Set([ss]) : new Set(...ss);
 }
