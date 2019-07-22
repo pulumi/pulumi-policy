@@ -1,8 +1,0 @@
-#!/bin/sh
-
-# node /Users/alex/src/pulumi/pulumi-policy/sdk/nodejs/policy/examples/s3/bin/index.js $@
-
-PULUMI_RUN_SCRIPT_PATH=$(node -e "console.log(require.resolve('@pulumi/pulumi/cmd/run-policy-pack'))")
-if [ ! -z "$PULUMI_RUN_SCRIPT_PATH" ]; then
-    node "$PULUMI_RUN_SCRIPT_PATH" $@
-fi
