@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import * as k8s from "@pulumi/kubernetes";
-import { PolicyPack, typedRule } from "@pulumi/policy";
+import { assert, PolicyPack, typedRule } from "@pulumi/policy";
 
 const policies = new PolicyPack("kubernetes", {
     policies: [
@@ -26,8 +26,8 @@ const policies = new PolicyPack("kubernetes", {
                 `The security team has disallowed this to prevent unauthorized access.`,
             tags: ["security"],
             enforcementLevel: "mandatory",
-            rule: typedRule(k8s.core.v1.Service.isInstance, svc => {
-                return svc.spec.type === "LoadBalancer";
+            rules: typedRule(k8s.core.v1.Service.isInstance, svc => {
+                assert.isTrue(svc.spec.type !== "LoadBalancer");
             }),
         },
     ],
