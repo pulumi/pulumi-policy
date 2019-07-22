@@ -103,7 +103,7 @@ export interface Policy {
 
 export namespace assert {
     export function isTrue(b: boolean, message?: string) {
-        if (b) {
+        if (b !== true) {
             throw new Error(message);
         }
     }
