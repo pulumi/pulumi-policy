@@ -25,7 +25,6 @@ export function requireApprovedAmisById(
     return {
         name: name,
         description: "Checks whether running instances are using specified AMIs.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: [
             typedRule(aws.ec2.Instance.isInstance, it => amis && assert.isTrue(amis.has(it.ami))),
@@ -50,7 +49,6 @@ export function requireHealthChecksOnAsgElb(name: string): Policy {
         description:
             "Checks whether your Auto Scaling groups that are associated with a load balancer " +
             "are using Elastic Load Balancing health checks.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: typedRule(aws.autoscaling.Group.isInstance, it => {
             const classicLbAttached = it.loadBalancers.length > 0;
@@ -77,7 +75,6 @@ export function requireInstanceTenancy(
             "Checks instances for specified tenancy. Specify AMI IDs to check instances that are " +
             "launched from those AMIs or specify host IDs to check whether instances are " +
             "launched on those Dedicated Hosts.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: [
             typedRule(aws.ec2.Instance.isInstance, it => {
@@ -105,7 +102,6 @@ export function requireInstanceType(
     return {
         name: name,
         description: "Checks whether your EC2 instances are of the specified instance types.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: [
             typedRule(aws.ec2.Instance.isInstance, it => assert.isTrue(types.has(it.instanceType))),
@@ -124,7 +120,6 @@ export function requireEbsOptimization(name: string): Policy {
     return {
         name: name,
         description: "Checks whether EBS optimization is enabled for all EC2 instances.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: typedRule(aws.ec2.Instance.isInstance, it =>
             assert.isTrue(it.ebsOptimized === true),
@@ -136,7 +131,6 @@ export function requireDetailedMonitoring(name: string): Policy {
     return {
         name: name,
         description: "Checks whether detailed monitoring is enabled for EC2 instances.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: typedRule(aws.ec2.Instance.isInstance, it => assert.isTrue(it.monitoring === true)),
     };
@@ -173,7 +167,6 @@ export function requireEbsVolumesOnEc2Instances(name: string): Policy {
         description:
             "Checks whether EBS volumes are attached to EC2 instances. Optionally checks if EBS " +
             "volumes are marked for deletion when an instance is terminated.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: typedRule(aws.ec2.Instance.isInstance, it =>
             assert.isTrue(it.ebsBlockDevices.length > 0),
@@ -188,7 +181,6 @@ export function requireEbsEncryption(name: string, kmsKeyId?: string): Policy {
     return {
         name: name,
         description: "Checks whether the EBS volumes are encrypted.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: typedRule(aws.ebs.Volume.isInstance, it => {
             assert.isTrue(it.encrypted);
@@ -227,7 +219,6 @@ export function requireElbLogging(name: string, bucketName?: string): Policy {
         description:
             "Checks whether the Application Load Balancers and the Classic Load Balancers have " +
             "logging enabled.",
-        tags: ["security"],
         enforcementLevel: "mandatory",
         rules: [
             typedRule(aws.elasticloadbalancing.LoadBalancer.isInstance, assertElbLogs),

@@ -24,7 +24,6 @@ const policies = new PolicyPack("kubernetes", {
                 `Kubernetes Services that have .type === "LoadBalancer" are exposed to anything ` +
                 `that can reach the Kubernetes cluster, likely including the public Internet. ` +
                 `The security team has disallowed this to prevent unauthorized access.`,
-            tags: ["security"],
             enforcementLevel: "mandatory",
             rules: typedRule(k8s.core.v1.Service.isInstance, svc => {
                 assert.isTrue(svc.spec.type !== "LoadBalancer");
