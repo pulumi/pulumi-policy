@@ -84,11 +84,6 @@ export interface Policy {
     message?: string;
 
     /**
-     * A keyword or term to associate with a policy, such as "cost" or "security."
-     */
-    tags?: Tag[];
-
-    /**
      * Indicates what to do on policy violation, e.g., block deployment but allow override with
      * proper permissions.
      */
