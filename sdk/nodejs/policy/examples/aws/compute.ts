@@ -245,5 +245,5 @@ export function requireElbLogging(name: string, bucketName?: string): Policy {
 function toStringSet(ss: string | Iterable<string>): Set<string>;
 function toStringSet(ss?: string | Iterable<string>): Set<string> | undefined;
 function toStringSet(ss: any): Set<string> | undefined {
-    return ss === undefined ? undefined : typeof ss === "string" ? new Set([ss]) : new Set(...ss);
+    return ss === undefined ? undefined : typeof ss === "string" ? new Set([ss]) : new Set(ss);
 }
