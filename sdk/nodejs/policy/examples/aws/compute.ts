@@ -54,7 +54,7 @@ export function requireHealthChecksOnAsgElb(name: string): Policy {
             const classicLbAttached = it.loadBalancers.length > 0;
             const albAttached = it.targetGroupArns.length > 0;
             if (classicLbAttached || albAttached) {
-                assert.isTrue(it.healthCheckType !== "ELB");
+                assert.isEqual("ELB", it.healthCheckType);
             }
         }),
     };
@@ -79,14 +79,14 @@ export function requireInstanceTenancy(
         rules: [
             typedRule(aws.ec2.Instance.isInstance, it => {
                 if (hosts !== undefined && hosts.has(it.hostId)) {
-                    assert.isTrue(it.tenancy === tenancy);
+                    assert.isEqual(tenancy, it.tenancy);
                 } else if (images !== undefined && images.has(it.ami)) {
-                    assert.isTrue(it.tenancy === tenancy);
+                    assert.isEqual(tenancy, it.tenancy);
                 }
             }),
             typedRule(aws.ec2.LaunchConfiguration.isInstance, it => {
                 if (images !== undefined && images.has(it.imageId)) {
-                    assert.isTrue(it.placementTenancy === tenancy);
+                    assert.isEqual(tenancy, it.placementTenancy);
                 }
             }),
         ],
@@ -185,7 +185,7 @@ export function requireEbsEncryption(name: string, kmsKeyId?: string): Policy {
         rules: typedRule(aws.ebs.Volume.isInstance, it => {
             assert.isTrue(it.encrypted);
             if (kmsKeyId !== undefined) {
-                assert.isTrue(it.kmsKeyId === kmsKeyId);
+                assert.isEqual(kmsKeyId, it.kmsKeyId);
             }
         }),
     };

@@ -20,13 +20,16 @@ const policies = new PolicyPack("kubernetes", {
         {
             name: "no-public-services",
             description: "Kubernetes Services should be cluster-private",
-            message:
-                `Kubernetes Services that have .type === "LoadBalancer" are exposed to anything ` +
-                `that can reach the Kubernetes cluster, likely including the public Internet. ` +
-                `The security team has disallowed this to prevent unauthorized access.`,
             enforcementLevel: "mandatory",
             rules: typedRule(k8s.core.v1.Service.isInstance, svc => {
-                assert.isTrue(svc.spec.type !== "LoadBalancer");
+                assert.isNotEqual(
+                    "LoadBalancer",
+                    svc.spec.type,
+                    `Kubernetes Services that have .type === "LoadBalancer" are exposed to ` +
+                        `anything that can reach the Kubernetes cluster, likely including the ` +
+                        `public Internet. The security team has disallowed this to prevent ` +
+                        `unauthorized access.`,
+                );
             }),
         },
     ],
