@@ -18,7 +18,7 @@ const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
-import { EnforcementLevel, Policy, Tag } from "./policy";
+import { AssertError, EnforcementLevel, Policy, Tag } from "./policy";
 import { version } from "./version";
 
 // ------------------------------------------------------------------------------------------------
@@ -72,7 +72,6 @@ function makeGetAnalyzerInfoRpcFun(
             // TODO: policyInfo.setDisplayname
             policyInfo.setDescription(policy.description);
             policyInfo.setEnforcementlevel(mapEnforcementLevel(policy.enforcementLevel));
-            policyInfo.setMessage(policy.message);
 
             policyInfos.push(policyInfo);
         }
@@ -112,11 +111,19 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                             req.getProperties().toJavaScript(),
                         );
                     } catch (e) {
-                        // TODO: unpack error, put into policy here.
-
-                        // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
-                        const { rules, name, ...diag } = p;
-                        ds.push({ policyName: name, policyPackName, policyPackVersion, ...diag });
+                        if (e instanceof AssertError) {
+                            // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
+                            const { rules, name, ...diag } = p;
+                            ds.push({
+                                policyName: name,
+                                policyPackName,
+                                policyPackVersion,
+                                message: e.message || diag.description,
+                                ...diag,
+                            });
+                        } else {
+                            throw e;
+                        }
                     }
                 }
             }
@@ -161,7 +168,7 @@ interface Diagnostic {
      * A detailed message to display on policy violation. Typically includes an explanation of the
      * policy, and steps to take to remediate.
      */
-    message?: string;
+    message: string;
 
     /**
      * A keyword or term to associate with a policy, such as "cost" or "security."

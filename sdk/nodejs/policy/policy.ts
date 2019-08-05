@@ -78,12 +78,6 @@ export interface Policy {
     description: string;
 
     /**
-     * A detailed message to display on policy violation. Typically includes an explanation of the
-     * policy, and steps to take to remediate.
-     */
-    message?: string;
-
-    /**
      * Indicates what to do on policy violation, e.g., block deployment but allow override with
      * proper permissions.
      */
@@ -96,10 +90,32 @@ export interface Policy {
     rules: Rule | Rule[];
 }
 
+export class AssertError extends Error {
+    constructor(public readonly message: string = "") {
+        super(message);
+    }
+}
+
 export namespace assert {
     export function isTrue(b: boolean, message?: string) {
         if (b !== true) {
-            throw new Error(message);
+            throw new AssertError(message);
+        }
+    }
+
+    export function isEqual(expected: any, actual: any, message?: string) {
+        if (expected !== actual) {
+            if (message === undefined) {
+                throw new AssertError(`Expected ${expected}, got ${actual}`);
+            } else {
+                throw new AssertError(`Expected ${expected}, got ${actual}: ${message}`);
+            }
+        }
+    }
+
+    export function isNotEqual(expected: any, actual: any, message?: string) {
+        if (expected === actual) {
+            throw new AssertError(message);
         }
     }
 }
