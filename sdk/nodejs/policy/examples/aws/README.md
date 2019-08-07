@@ -90,10 +90,6 @@ const disallowUnencrytpedS3 = {
 }
 ```
 
-> NOTE: in the current version of `@pulumi/policy`, any exception will trigger a rule failure. In
-> the next release of this package, only `assert.*` and `AssertFailure` will trigger a rule
-> failure—other exceptions will be reported as the rule failing to execute.
-
 Add `disallowUnencryptedS3` to the `policies` field of the `PolicyPack` in `index.ts`, and publish a
 new version of the policy pack:
 
