@@ -2,7 +2,12 @@
 
 ## Get access to the Pulumi Policy console UI
 
-Ask Chris or Cameron to give you permission.
+Ask Chris or Cameron to give you permission in your personal org. Once this is given, open the
+JavaScript REPL on pulumi.com and paste this code, which sets the PaC feature flag.
+
+```javascript
+localStorage.setItem("features.pac", true);
+```
 
 ## Build recent pulumi/pulumi
 
@@ -62,4 +67,37 @@ PULUMI_DEBUG_COMMANDS=true pulumi policy apply <org-name>/<policy-pack-name> <ve
 
 ```sh
 pulumi up # receive errors!
+```
+
+## Write your first policy!
+
+Let's write a policy that rejects unencrypted S3 buckets. The rule below uses
+`typedRule(aws.s3.Bucket.isInstance, it => ...)` to run the lambda `it => ...` only on S3 buckets.
+The rule itself uses `assert.isNotEqual` to make sure the `serverSideEncryptionConfiguration` field
+is defined in the resource definition.
+
+```typescript
+import * as aws from "@pulumi/aws";
+import { assert, Policy, typedRule } from "@pulumi/policy";
+
+const disallowUnencrytpedS3 = {
+    name: "disallow-unencrypted-s3",
+    description: "Checks whether S3 buckets have encryption turned on.",
+    enforcementLevel: "mandatory",
+    rules: typedRule(aws.s3.Bucket.isInstance, it => {
+        assert.isNotEqual(undefined, it.serverSideEncryptionConfiguration);
+    }),
+}
+```
+
+> NOTE: in the current version of `@pulumi/policy`, any exception will trigger a rule failure. In
+> the next release of this package, only `assert.*` and `AssertFailure` will trigger a rule
+> failure—other exceptions will be reported as the rule failing to execute.
+
+Add `disallowUnencryptedS3` to the `policies` field of the `PolicyPack` in `index.ts`, and publish a
+new version of the policy pack:
+
+```sh
+PULUMI_DEBUG_COMMANDS=true pulumi policy publish <org-name>/<policy-pack-name>
+PULUMI_DEBUG_COMMANDS=true pulumi policy apply <org-name>/<policy-pack-name> <version>
 ```
