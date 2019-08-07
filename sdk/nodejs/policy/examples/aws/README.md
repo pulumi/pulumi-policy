@@ -1,5 +1,9 @@
 # Kubernetes security rules
 
+## Get access to the Pulumi Policy console UI
+
+Ask Chris or Cameron to give you permission.
+
 ## Build recent pulumi/pulumi
 
 ```sh
@@ -25,13 +29,16 @@ make
 #     export PATH="$PATH:/opt/pulumi/bin/"
 
 # Now, in `pulumi-policy/` directory.
-cd sdk/sdk/nodejs/policy/examples/s3
+cd sdk/nodejs/policy/examples/s3
 yarn install
 yarn link @pulumi/pulumi
 yarn link @pulumi/policy
 ```
 
 ## Publish policy pack
+
+Service team gave your personal org access to the Pulumi policy UI, so `<org-name>` here should be
+your personal org. (_e.g._, `ekrengel`, `hausdorff`, _etc_.).
 
 ```sh
 # To start, `<org-name>` should be your Pulumi username and `<policy-pack-name>` should be
