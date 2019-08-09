@@ -122,7 +122,15 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                                 ...diag,
                             });
                         } else {
-                            throw e;
+                            if (e instanceof Error) {
+                                throw new Error(
+                                    `Error validating resource with policy ${p.name}:\n${e.stack}`,
+                                );
+                            } else {
+                                throw new Error(
+                                    `Error validating resource with policy ${p.name}:\n${e}`,
+                                );
+                            }
                         }
                     }
                 }
