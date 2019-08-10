@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import * as aws from "@pulumi/aws";
-import { assert, Policy, typedRule } from "@pulumi/policy";
-import { Resource } from "@pulumi/pulumi";
+import { Policy, typedRule } from "@pulumi/policy";
+import * as assert from "assert";
 
 export function requireApprovedAmisById(
     name: string,
@@ -24,17 +24,20 @@ export function requireApprovedAmisById(
 
     return {
         name: name,
-        description: "Checks whether running instances are using specified AMIs.",
+        description: "Instances should use approved AMIs",
         enforcementLevel: "mandatory",
         rules: [
-            typedRule(aws.ec2.Instance.isInstance, it => amis && assert.isTrue(amis.has(it.ami))),
+            typedRule(
+                aws.ec2.Instance.isInstance,
+                it => amis && assert.ok(amis.has(it.ami), "foo"),
+            ),
             typedRule(
                 aws.ec2.LaunchConfiguration.isInstance,
-                it => amis && assert.isTrue(amis.has(it.imageId)),
+                it => amis && assert.ok(amis.has(it.imageId)),
             ),
             typedRule(
                 aws.ec2.LaunchTemplate.isInstance,
-                it => amis && assert.isTrue(it.imageId === undefined || amis.has(it.imageId)),
+                it => amis && assert.ok(it.imageId === undefined || amis.has(it.imageId)),
             ),
         ],
     };
@@ -47,14 +50,14 @@ export function requireHealthChecksOnAsgElb(name: string): Policy {
     return {
         name: name,
         description:
-            "Checks whether your Auto Scaling groups that are associated with a load balancer " +
-            "are using Elastic Load Balancing health checks.",
+            "Auto Scaling groups that are associated with a load balancer should use Elastic " +
+            "Load Balancing health checks",
         enforcementLevel: "mandatory",
         rules: typedRule(aws.autoscaling.Group.isInstance, it => {
             const classicLbAttached = it.loadBalancers.length > 0;
             const albAttached = it.targetGroupArns.length > 0;
             if (classicLbAttached || albAttached) {
-                assert.isEqual("ELB", it.healthCheckType);
+                assert.strictEqual("ELB", it.healthCheckType);
             }
         }),
     };
@@ -71,22 +74,21 @@ export function requireInstanceTenancy(
 
     return {
         name: name,
-        description:
-            "Checks instances for specified tenancy. Specify AMI IDs to check instances that are " +
-            "launched from those AMIs or specify host IDs to check whether instances are " +
-            "launched on those Dedicated Hosts.",
+        description: `Instances with AMIs ${setToString(images)} or host IDs ${setToString(
+            hosts,
+        )} should use tenancy '${tenancy}'`,
         enforcementLevel: "mandatory",
         rules: [
             typedRule(aws.ec2.Instance.isInstance, it => {
                 if (hosts !== undefined && hosts.has(it.hostId)) {
-                    assert.isEqual(tenancy, it.tenancy);
+                    assert.strictEqual(it.tenancy, tenancy);
                 } else if (images !== undefined && images.has(it.ami)) {
-                    assert.isEqual(tenancy, it.tenancy);
+                    assert.strictEqual(it.tenancy, tenancy);
                 }
             }),
             typedRule(aws.ec2.LaunchConfiguration.isInstance, it => {
                 if (images !== undefined && images.has(it.imageId)) {
-                    assert.isEqual(tenancy, it.placementTenancy);
+                    assert.strictEqual(it.placementTenancy, tenancy);
                 }
             }),
         ],
@@ -101,15 +103,15 @@ export function requireInstanceType(
 
     return {
         name: name,
-        description: "Checks whether your EC2 instances are of the specified instance types.",
+        description: "EC2 instances should use approved instance types.",
         enforcementLevel: "mandatory",
         rules: [
-            typedRule(aws.ec2.Instance.isInstance, it => assert.isTrue(types.has(it.instanceType))),
+            typedRule(aws.ec2.Instance.isInstance, it => assert.ok(types.has(it.instanceType))),
             typedRule(aws.ec2.LaunchConfiguration.isInstance, it =>
-                assert.isTrue(types.has(it.instanceType)),
+                assert.ok(types.has(it.instanceType)),
             ),
             typedRule(aws.ec2.LaunchTemplate.isInstance, it =>
-                assert.isTrue(it.instanceType !== undefined && types.has(it.instanceType)),
+                assert.ok(it.instanceType !== undefined && types.has(it.instanceType)),
             ),
         ],
     };
@@ -119,20 +121,18 @@ export function requireEbsOptimization(name: string): Policy {
     // TODO: Enable optimization only for EC2 instances that can be optimized.
     return {
         name: name,
-        description: "Checks whether EBS optimization is enabled for all EC2 instances.",
+        description: "EBS optimization should be enabled for all EC2 instances",
         enforcementLevel: "mandatory",
-        rules: typedRule(aws.ec2.Instance.isInstance, it =>
-            assert.isTrue(it.ebsOptimized === true),
-        ),
+        rules: typedRule(aws.ec2.Instance.isInstance, it => assert.ok(it.ebsOptimized === true)),
     };
 }
 
 export function requireDetailedMonitoring(name: string): Policy {
     return {
         name: name,
-        description: "Checks whether detailed monitoring is enabled for EC2 instances.",
+        description: "Detailed monitoring should be enabled for all EC2 instances",
         enforcementLevel: "mandatory",
-        rules: typedRule(aws.ec2.Instance.isInstance, it => assert.isTrue(it.monitoring === true)),
+        rules: typedRule(aws.ec2.Instance.isInstance, it => assert.ok(it.monitoring === true)),
     };
 }
 
@@ -164,12 +164,10 @@ export function requireEbsVolumesOnEc2Instances(name: string): Policy {
     // TODO: Check if EBS volumes are marked for deletion.
     return {
         name: name,
-        description:
-            "Checks whether EBS volumes are attached to EC2 instances. Optionally checks if EBS " +
-            "volumes are marked for deletion when an instance is terminated.",
+        description: "EBS volumes should be attached to all EC2 instances",
         enforcementLevel: "mandatory",
         rules: typedRule(aws.ec2.Instance.isInstance, it =>
-            assert.isTrue(it.ebsBlockDevices.length > 0),
+            assert.ok(it.ebsBlockDevices === undefined || it.ebsBlockDevices.length > 0),
         ),
     };
 }
@@ -180,12 +178,12 @@ export function requireEbsVolumesOnEc2Instances(name: string): Policy {
 export function requireEbsEncryption(name: string, kmsKeyId?: string): Policy {
     return {
         name: name,
-        description: "Checks whether the EBS volumes are encrypted.",
+        description: "EBS volumes should be encrypted",
         enforcementLevel: "mandatory",
         rules: typedRule(aws.ebs.Volume.isInstance, it => {
-            assert.isTrue(it.encrypted);
+            assert.ok(it.encrypted);
             if (kmsKeyId !== undefined) {
-                assert.isEqual(kmsKeyId, it.kmsKeyId);
+                assert.strictEqual(it.kmsKeyId, kmsKeyId);
             }
         }),
     };
@@ -206,8 +204,8 @@ export function requireElbLogging(name: string, bucketName?: string): Policy {
             interval?: number;
         };
     }) => {
-        assert.isTrue(lb.accessLogs !== undefined && lb.accessLogs.enabled === true);
-        assert.isTrue(
+        assert.ok(lb.accessLogs !== undefined && lb.accessLogs.enabled === true);
+        assert.ok(
             bucketName !== undefined &&
                 lb.accessLogs !== undefined &&
                 bucketName === lb.accessLogs.bucket,
@@ -217,7 +215,7 @@ export function requireElbLogging(name: string, bucketName?: string): Policy {
     return {
         name: name,
         description:
-            "Checks whether the Application Load Balancers and the Classic Load Balancers have " +
+            "All Application Load Balancers and the Classic Load Balancers should have " +
             "logging enabled.",
         enforcementLevel: "mandatory",
         rules: [
@@ -246,4 +244,8 @@ function toStringSet(ss: string | Iterable<string>): Set<string>;
 function toStringSet(ss?: string | Iterable<string>): Set<string> | undefined;
 function toStringSet(ss: any): Set<string> | undefined {
     return ss === undefined ? undefined : typeof ss === "string" ? new Set([ss]) : new Set(ss);
+}
+
+function setToString(ss?: Set<string>): string {
+    return `{${[...(ss || [])].join(",")}}`;
 }

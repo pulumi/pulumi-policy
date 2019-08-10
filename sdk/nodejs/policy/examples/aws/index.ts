@@ -26,7 +26,7 @@ const policies = new PolicyPack("awsSecRules", {
         compute.requireInstanceTenancy(
             "dedicated-instance-tenancy",
             "DEDICATED",
-            /*amis:*/ [],
+            /*amis:*/ ["amzn-ami-2018.03.u-amazon-ecs-optimized"],
             /*host IDs:*/ [],
         ),
         compute.requireInstanceType("desired-instance-type", /*instanceTypes:*/ []),
