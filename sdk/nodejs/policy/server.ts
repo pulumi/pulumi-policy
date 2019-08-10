@@ -18,7 +18,9 @@ const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
-import { AssertError, EnforcementLevel, Policy, Tag } from "./policy";
+import { AssertionError } from "assert";
+
+import { EnforcementLevel, Policy, Tag } from "./policy";
 import { version } from "./version";
 
 // ------------------------------------------------------------------------------------------------
@@ -111,14 +113,25 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                             req.getProperties().toJavaScript(),
                         );
                     } catch (e) {
-                        if (e instanceof AssertError) {
+                        if (e instanceof AssertionError) {
                             // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
                             const { rules, name, ...diag } = p;
+
+                            let expectation = e.message;
+                            if (
+                                e.message !== "" ||
+                                e.message !== undefined ||
+                                (e.generatedMessage === true && e.message === "false == true")
+                            ) {
+                                expectation = `expected '${e.expected}', got '${e.actual}'`;
+                            }
+                            const message = `${name}\nDetails: ${diag.description}\n${expectation}`;
+
                             ds.push({
                                 policyName: name,
                                 policyPackName,
                                 policyPackVersion,
-                                message: e.message || diag.description,
+                                message: message,
                                 ...diag,
                             });
                         } else {
