@@ -235,7 +235,7 @@ function createAnalyzeResponse(ds: Diagnostic[]) {
 function mapEnforcementLevel(el: EnforcementLevel) {
     switch (el) {
         case "advisory":
-            return analyzerproto.LogSeverity.ADVISORY;
+            return analyzerproto.EnforcementLevel.ADVISORY;
         case "mandatory":
             return analyzerproto.EnforcementLevel.MANDATORY;
         default:
