@@ -19,6 +19,9 @@
         "index.ts",
         "server.ts",
         "version.ts",
+        "protoutil.ts",
+
+        "tests/pb.spec.ts"
     ]
 }
 

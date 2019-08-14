@@ -18,3 +18,12 @@ build::
 
 lint::
 	tslint -c ../tslint.json -p tsconfig.json
+
+istanbul_tests::
+	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+	istanbul report text-summary
+	istanbul report text
+
+test_fast:: istanbul_tests
+
+test_all:: istanbul_tests
