@@ -27,6 +27,7 @@ import {
     makeAnalyzerInfo,
     mapEnforcementLevel,
 } from "./protoutil";
+import { unknownCheckingProxy, UnknownValueError } from "./proxy";
 import { version } from "./version";
 
 // ------------------------------------------------------------------------------------------------
@@ -108,10 +109,22 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                     try {
                         const policyViolated = rule(
                             req.getType(),
-                            req.getProperties().toJavaScript(),
+                            unknownCheckingProxy(req.getProperties().toJavaScript()),
                         );
                     } catch (e) {
-                        if (e instanceof AssertionError) {
+                        if (e instanceof UnknownValueError) {
+                            // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
+                            const { rules, name, ...diag } = p;
+
+                            ds.push({
+                                policyName: name,
+                                policyPackName,
+                                policyPackVersion,
+                                message: `can't run policy '${name}' during preview: ${e.message}`,
+                                ...diag,
+                                enforcementLevel: "advisory",
+                            });
+                        } else if (e instanceof AssertionError) {
                             // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
                             const { rules, name, ...diag } = p;
 

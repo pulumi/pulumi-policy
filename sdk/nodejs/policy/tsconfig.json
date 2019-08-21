@@ -20,8 +20,10 @@
         "server.ts",
         "version.ts",
         "protoutil.ts",
+        "proxy.ts",
 
-        "tests/pb.spec.ts"
+        "tests/pb.spec.ts",
+        "tests/proxy.spec.ts"
     ]
 }
 
