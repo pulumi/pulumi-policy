@@ -2,21 +2,21 @@
     "compilerOptions": {
         "outDir": "bin",
         "target": "es6",
-        "lib": [
-            "es6"
-        ],
         "module": "commonjs",
         "moduleResolution": "node",
-        "sourceMap": true,
+        "declaration": true,
+        "sourceMap": false,
+        "stripInternal": true,
         "experimentalDecorators": true,
         "pretty": true,
         "noFallthroughCasesInSwitch": true,
-        "noImplicitAny": false,
+        "noImplicitAny": true,
         "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
-        "strictNullChecks": true
+        "strictNullChecks": true,
     },
     "files": [
-        "index.ts"
+        "index.ts",
     ]
 }
+
