@@ -38,6 +38,14 @@ const policies = new PolicyPack("aws", {
                 assert(publicInternetRules === undefined);
             }),
         },
+        {
+            name: "prohibited-elasticbeanstalk",
+            description: "Use of Elastic Beanstalk is prohibited.",
+            enforcementLevel: "mandatory",
+            rules: (type: string) => {
+                assert(type.startsWith("aws:elasticbeanstalk") === false);
+            },
+        },
     ],
 });
 
