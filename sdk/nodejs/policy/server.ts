@@ -130,7 +130,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
 
                             const [expect, op, actual] = [e.expected, e.operator, e.actual];
                             const expectation = `expected value '${expect}' to ${op} '${actual}'`;
-                            const message = `${name}\nDetails: ${diag.description}\n${expectation}`;
+                            const message = `[${name}] ${diag.description}\n${expectation}`;
 
                             ds.push({
                                 policyName: name,
