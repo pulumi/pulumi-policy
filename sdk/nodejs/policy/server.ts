@@ -128,14 +128,8 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                             // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.
                             const { rules, name, ...diag } = p;
 
-                            let expectation = e.message;
-                            if (
-                                e.message !== "" ||
-                                e.message !== undefined ||
-                                (e.generatedMessage === true && e.message === "false == true")
-                            ) {
-                                expectation = `expected '${e.expected}', got '${e.actual}'`;
-                            }
+                            const [expect, op, actual] = [e.expected, e.operator, e.actual];
+                            const expectation = `expected value '${expect}' to ${op} '${actual}'`;
                             const message = `${name}\nDetails: ${diag.description}\n${expectation}`;
 
                             ds.push({
