@@ -49,7 +49,8 @@ place of the `<path-to-aws-policies>` argument below.
 ```sh
 # In the directory of a Pulumi app. Make sure @pulumi/pulumi is `latest`!
 yarn upgrade @pulumi/pulumi
-pulumi up --policy-pack=<path-to-aws-policies>
+# The `--policy-pack` flag is currently behind the `DEBUG` flag.
+PULUMI_DEBUG_COMMANDS=true pulumi up --policy-pack=<path-to-aws-policies>
 ```
 
 ### Write your first policy!
@@ -76,5 +77,5 @@ const disallowUnencrytpedS3 = {
 
 Add `disallowUnencryptedS3` to the `policies` field of the `PolicyPack` in `index.ts`.
 
-When you run `pulumi up --policy-pack=<path>` on a stack with public S3 buckets, you'll get an error
+When you run `PULUMI_DEBUG_COMMANDS=true pulumi up --policy-pack=<path>` on a stack with public S3 buckets, you'll get an error
 if they don't have encryption enabled.
