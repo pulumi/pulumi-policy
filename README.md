@@ -69,7 +69,7 @@ const disallowUnencrytpedS3 = {
     description: "Checks whether S3 buckets have encryption turned on.",
     enforcementLevel: "mandatory",
     rules: typedRule(aws.s3.Bucket.isInstance, it => {
-        assert.notStrictEqual(undefined, it.serverSideEncryptionConfiguration);
+        assert.notStrictEqual(it.serverSideEncryptionConfiguration, undefined);
     }),
 }
 ```
