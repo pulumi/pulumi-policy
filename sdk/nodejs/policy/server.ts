@@ -19,6 +19,7 @@ const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
 import { AssertionError } from "assert";
 
+import { deserializeProperties } from "./deserialize";
 import { EnforcementLevel, Policy, Tag } from "./policy";
 import {
     asGrpcError,
@@ -107,10 +108,8 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
 
                 for (const rule of policyRules) {
                     try {
-                        const policyViolated = rule(
-                            req.getType(),
-                            unknownCheckingProxy(req.getProperties().toJavaScript()),
-                        );
+                        const deserd = deserializeProperties(req.getProperties());
+                        rule(req.getType(), unknownCheckingProxy(deserd));
                     } catch (e) {
                         if (e instanceof UnknownValueError) {
                             // `Diagnostic` is just an `AdmissionPolicy` without a `rule` field.

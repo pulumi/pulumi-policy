@@ -1,3 +1,10 @@
+## 0.1.2 (unreleased)
+
+### Bug fixes
+
+- Allow policies to deal with Pulumi secret values
+  (https://github.com/pulumi/pulumi-policy/pull/115).
+
 ## 0.1.1
 
 ### Improvements
