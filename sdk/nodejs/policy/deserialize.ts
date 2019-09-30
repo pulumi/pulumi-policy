@@ -58,8 +58,7 @@ function deserializeProperty(prop: any): any {
     } else if (prop instanceof Array) {
         const elems: any[] = [];
         for (const e of prop) {
-            prop = deserializeProperty(e);
-            elems.push(unwrapRpcSecret(prop));
+            elems.push(deserializeProperty(e));
         }
 
         return elems;
@@ -114,29 +113,9 @@ function deserializeProperty(prop: any): any {
 
         const obj: any = {};
         for (const k of Object.keys(prop)) {
-            const o = deserializeProperty(prop[k]);
-            obj[k] = unwrapRpcSecret(o);
+            obj[k] = deserializeProperty(prop[k]);
         }
 
         return obj;
     }
-}
-
-/**
- * isRpcSecret returns true if obj is a wrapped secret value (i.e. it's an object with the special
- * key set).
- */
-function isRpcSecret(obj: any): boolean {
-    return obj && obj[specialSigKey] === specialSecretSig;
-}
-
-/**
- * unwrapRpcSecret returns the underlying value for a secret, or the value itself if it was not a
- * secret.
- */
-function unwrapRpcSecret(obj: any): any {
-    if (!isRpcSecret(obj)) {
-        return obj;
-    }
-    return obj.value;
 }
