@@ -13,21 +13,22 @@
 // limitations under the License.
 
 const grpc = require("grpc");
+
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
 import { AssertionError } from "assert";
 
 import { deserializeProperties } from "./deserialize";
-import { EnforcementLevel, Policy, Tag } from "./policy";
+import { Policy } from "./policy";
+
 import {
     asGrpcError,
     Diagnostic,
     makeAnalyzeResponse,
     makeAnalyzerInfo,
-    mapEnforcementLevel,
 } from "./protoutil";
+
 import { unknownCheckingProxy, UnknownValueError } from "./proxy";
 import { version } from "./version";
 
@@ -39,8 +40,19 @@ import { version } from "./version";
 
 // ------------------------------------------------------------------------------------------------
 
+// Flag indicating whether or not a gRPC service is currently running for this process.
 let serving = false;
 
+/**
+ * Starts the gRPC server to communication with the Pulumi CLI client for analyzing resources.
+ *
+ * Only one gRPC server can be running at a time, and the port the server is running on will
+ * be written to STDOUT.
+ *
+ * @param policyPackName Friendly name of the policy pack.
+ * @param policyPackVersion Version of the policy pack SDK used.
+ * @param policies The policies to be served.
+ */
 export function serve(policyPackName: string, policyPackVersion: string, policies: Policy[]): void {
     if (serving !== false) {
         throw Error("Only one policy gRPC server can run per process");
@@ -141,7 +153,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                                 ...diag,
                             });
                         } else {
-                            throw asGrpcError(e, `Error validating resource with policy ${p.name}`);
+                            throw asGrpcError(e, `Error validating resource with policy '${p.name}'`);
                         }
                     }
                 }
