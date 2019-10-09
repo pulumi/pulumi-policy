@@ -5,7 +5,7 @@ This document defines the design of the Pulumi policy packages as of the MVP (Q2
 ## Introduction
 
 The Pulumi Policy Framework allows users to define resource policies in any of several high-level
-langauges. These policies intercept resource operations immediately prior their execution and decide
+languages. These policies intercept resource operations immediately prior their execution and decide
 whether the desired state declared by an app author violates some policy (e.g., "all S3 buckets must
 have default encryption enabled").
 
@@ -18,7 +18,7 @@ The policy SDKs defined in this repository thus each have two purposes:
    the Pulumi engine uses to validate resource definitions.
 
 This document will describe both, even though the policy protocol is defined in the `pulumi/pulumi`
-SDKs. The reson for this is to not make it _completely_ trivial for people to build their own policy
+SDKs. The reason for this is to not make it _completely_ trivial for people to build their own policy
 SDKs.
 
 ## Example
@@ -64,7 +64,7 @@ const policies = new PolicyPack("aws-sec-rules", {
 `index.ts` is **a normal TypeScript file**, which happens to take reference
 `@pulumi/policy`. It would exist in a plain-old-Node.js directory, like:
 
-```
+```text
 sdk/nodejs/policy/examples/s3/
     index.ts
     package.json

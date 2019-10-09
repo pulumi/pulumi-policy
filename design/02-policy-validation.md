@@ -45,7 +45,7 @@ const policies = new PolicyPack("k8s-sec-rules", {
 
 ### `Analyze(...)` is called
 
-When `RegisterResoruce` is called, the Pulumi engine will call the `Analyze(...)` RPC on each
+When `RegisterResource` is called, the Pulumi engine will call the `Analyze(...)` RPC on each
 analyzer -- in this case, there is just one analyzer, and it contains the `PolicyPack`.
 
 The raw RPC request (i.e., beneath all the sugar) will look something like this:
@@ -82,11 +82,10 @@ In the next section, we will see that the `StepGenerator` takes this diagnostic 
 marshals it into an _event_ representing a policy violation, which the Pulumi service can
 understand.
 
-
 ## Step 2: The Pulumi service events API
 
 As we mentioned in the previous section, when the `StepGenerator` calls `Analyze(...)` on a
-particular goal state, it receives back only enough information to know that tthe goal state is
+particular goal state, it receives back only enough information to know that the goal state is
 invalid. To make this useful to the Pulumi service, it must now convert this response into an
 _event_ that contains enough information that the Pulumi service can understand it.
 
