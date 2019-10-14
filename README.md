@@ -17,6 +17,11 @@ into a final report. During the update, the first policy violation will halt the
 Policy violations can have enforcement levels that are **advisory**, which results in a printed
 warning, or **mandatory**, which results in an error after `pulumi preview` or `pulumi up` complete.
 
+## Examples
+
+Looking for examples? The @pulumi/policy module is the core SDK for authoring new Pulumi policies using code. To
+find examples of existing policy packs, please refer to the [examples repo](https://github.com/pulumi/examples/policy-packs).
+
 ## Trying the Policy Framework
 
 In this guide, we'll show you how to install the required packages, and take a brief tour of the
