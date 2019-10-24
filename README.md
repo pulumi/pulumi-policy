@@ -80,7 +80,7 @@ new PolicyPack("policy-pack-typescript", {
 });
 ```
 
-You can find more example Policy Packs in the [examples repo](https://github.com/pulumi/examples/policy-packs). Best practices for writing a Policy Pack can be found [here](#Best-Practices-for-Writing-Policies).
+You can find more example Policy Packs in the [examples repo](https://github.com/pulumi/examples/tree/master/policy-packs). Best practices for writing a Policy Pack can be found [here](#Best-Practices-for-Writing-Policies).
 
 ### Test the new Policy Pack
 
