@@ -20,7 +20,7 @@ warning, or **mandatory**, which results in an error after `pulumi preview` or `
 ## Examples
 
 Looking for examples? The @pulumi/policy module is the core SDK for authoring new Pulumi policies using code. To
-find examples of existing policy packs, please refer to the [examples repo](https://github.com/pulumi/examples/policy-packs).
+find examples of existing policy packs, please refer to the [examples repo](https://github.com/pulumi/examples/tree/master/policy-packs).
 
 ## Trying the Policy Framework
 
