@@ -121,11 +121,11 @@ export interface ResourceValidationArgs {
 
 /**
  * A helper function that returns a strongly-typed resource validation function.
- * @param filter A type guard used to determine if the args are an instance of the resource.
+ * @param typeFilter A type guard used to determine if the args are an instance of the resource.
  * @param validate A callback function that validates if the resource definition violates a policy.
  */
 export function validateTypedResource<TResource extends Resource>(
-    filter: (o: any) => o is TResource,
+    typeFilter: (o: any) => o is TResource,
     validate: (
         resource: q.ResolvedResource<TResource>,
         args: ResourceValidationArgs,
@@ -133,7 +133,7 @@ export function validateTypedResource<TResource extends Resource>(
 ): ResourceValidation {
     return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
         args.props.__pulumiType = args.type;
-        if (filter(args.props)) {
+        if (typeFilter(args.props)) {
             return validate(args.props, args, reportViolation);
         }
     };
@@ -142,15 +142,15 @@ export function validateTypedResource<TResource extends Resource>(
 /**
  * A helper function that returns `props` as a strongly-typed resolved resource based
  * on the specified `type` when `filter` returns true, otherwise `undefined` is returned.
- * @param filter A type guard used to determine if the args are an instance of the resource.
+ * @param typeFilter A type guard used to determine if the args are an instance of the resource.
  * @param args Argument bag for specifying the `type` and `props`.
  */
 export function asTypedResource<TResource extends Resource>(
-    filter: (o: any) => o is TResource,
+    typeFilter: (o: any) => o is TResource,
     args: { type: string, props: Record<string, any> },
 ): q.ResolvedResource<TResource> | undefined {
     args.props.__pulumiType = args.type;
-    return filter(args.props) ? args.props : undefined;
+    return typeFilter(args.props) ? args.props : undefined;
 }
 
 /**
