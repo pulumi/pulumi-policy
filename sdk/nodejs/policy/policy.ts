@@ -133,9 +133,10 @@ export function validateTypedResource<TResource extends Resource>(
 ): ResourceValidation {
     return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
         args.props.__pulumiType = args.type;
-        if (typeFilter(args.props)) {
-            return validate(args.props, args, reportViolation);
+        if (typeFilter(args.props) === false) {
+            return;
         }
+        validate(args.props as q.ResolvedResource<TResource>, args, reportViolation);
     };
 }
 
@@ -150,7 +151,10 @@ export function asTypedResource<TResource extends Resource>(
     args: { type: string, props: Record<string, any> },
 ): q.ResolvedResource<TResource> | undefined {
     args.props.__pulumiType = args.type;
-    return typeFilter(args.props) ? args.props : undefined;
+    if (typeFilter(args.props) === false) {
+        return undefined;
+    }
+    return args.props as q.ResolvedResource<TResource>;
 }
 
 /**
