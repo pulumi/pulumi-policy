@@ -167,5 +167,17 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
 
 // Type guard used to determine if the `Policy` is a `ResourceValidationPolicy`.
 function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
-    return typeof (p as ResourceValidationPolicy).validateResource === "function";
+    const validation = (p as ResourceValidationPolicy).validateResource;
+    if (typeof validation === "function") {
+        return true;
+    }
+    if (Array.isArray(validation)) {
+        for (const v of validation) {
+            if (typeof v !== "function") {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
 }
