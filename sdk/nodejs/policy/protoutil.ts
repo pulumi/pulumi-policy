@@ -18,7 +18,7 @@ const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
-import { EnforcementLevel, Policy, Tag } from "./policy";
+import { EnforcementLevel, Policies } from "./policy";
 
 export function asGrpcError(e: any, message?: string) {
     if (message === undefined || message === "") {
@@ -72,11 +72,6 @@ export interface Diagnostic {
     message: string;
 
     /**
-     * A keyword or term to associate with a policy, such as "cost" or "security."
-     */
-    tags?: Tag[];
-
-    /**
      * Indicates what to do on policy violation, e.g., block deployment but allow override with
      * proper permissions.
      */
@@ -90,7 +85,7 @@ export interface Diagnostic {
 
 // ------------------------------------------------------------------------------------------------
 
-export function makeAnalyzerInfo(policyPackName: string, policies: Policy[]): any {
+export function makeAnalyzerInfo(policyPackName: string, policies: Policies): any {
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
 
@@ -120,7 +115,6 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
         diagnostic.setPolicypackversion(d.policyPackVersion);
         diagnostic.setDescription(d.description);
         diagnostic.setMessage(d.message);
-        diagnostic.setTagsList(d.tags);
         diagnostic.setEnforcementlevel(mapEnforcementLevel(d.enforcementLevel));
 
         diagnostics.push(diagnostic);

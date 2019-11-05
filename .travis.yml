@@ -10,6 +10,10 @@ before_install:
     - source ${GOPATH}/src/github.com/pulumi/scripts/ci/prepare-environment.sh
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:
+    # Install Pulumi 🍹
+    - curl -fsSL https://get.pulumi.com/ | bash
+    - export PATH="$HOME/.pulumi/bin:$PATH"
+    # Install other tools.
     - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
 before_script:
     - ${PULUMI_SCRIPTS}/ci/ensure-dependencies

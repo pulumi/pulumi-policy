@@ -12,17 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as pulumi from "@pulumi/pulumi";
 import { Resource } from "@pulumi/pulumi";
 import * as q from "@pulumi/pulumi/queryable";
 import { serve } from "./server";
 
+/**
+ * The set of arguments for constructing a PolicyPack.
+ */
 export interface PolicyPackArgs {
-    policies: Policy[];
+    /**
+     * The policies associated with a PolicyPack.
+     */
+    policies: Policies;
 }
 
+/**
+ * A PolicyPack contains one or more policies to enforce.
+ */
 export class PolicyPack {
-    private readonly policies: Policy[];
+    private readonly policies: Policies;
 
     constructor(private name: string, args: PolicyPackArgs) {
         this.policies = args.policies;
@@ -35,27 +43,6 @@ export class PolicyPack {
         serve(this.name, version, this.policies);
     }
 }
-
-/** A function that returns true if a resource definition violates some policy. */
-export type Rule = (type: string, properties: any) => void;
-
-export function typedRule<TResource extends pulumi.Resource>(
-    filter: (o: any) => o is TResource,
-    rule: (properties: q.ResolvedResource<TResource>) => void,
-): Rule {
-    return (type: string, properties: any) => {
-        properties.__pulumiType = type;
-        if (filter(properties) === false) {
-            return;
-        }
-        return rule(properties);
-    };
-}
-
-/**
- * A keyword or term to associate with a policy, such as "cost" or "security."
- */
-export type Tag = string;
 
 /**
  * Indicates the impact of a policy violation.
@@ -82,10 +69,146 @@ export interface Policy {
      * proper permissions.
      */
     enforcementLevel: EnforcementLevel;
+}
+
+/**
+ * An array of Policies.
+ */
+export type Policies = (ResourceValidationPolicy | StackValidationPolicy)[];
+
+/**
+ * ResourceValidationPolicy is a policy that validates a resource definition.
+ */
+export interface ResourceValidationPolicy extends Policy {
+    /**
+     * A callback function that validates if a resource definition violates a policy (e.g. "S3 buckets
+     * can't be public"). A single callback function can be specified, or multiple functions, which are
+     * called in order.
+     */
+    validateResource: ResourceValidation | ResourceValidation[];
+}
+
+/**
+ * ResourceValidation is the callback signature for a `ResourceValidationPolicy`. A resource validation
+ * is passed `args` with more information about the resource and a `reportViolation` callback that can be
+ * used to report a policy violation. `reportViolation` can be called multiple times to report multiple
+ * violations against the same resource. `reportViolation` must be passed a message about the violation.
+ * The `reportViolation` signature accepts an optional `urn` argument, which is ignored when validating
+ * resources (the `urn` of the resource being validated is always used).
+ */
+export type ResourceValidation = (args: ResourceValidationArgs, reportViolation: ReportViolation) => Promise<void> | void;
+
+/**
+ * ResourceValidationArgs is the argument bag passed to a resource validation.
+ */
+export interface ResourceValidationArgs {
+    /**
+     * The type of the Resource.
+     */
+    type: string;
 
     /**
-     * Chain of rules that return true if a resource definition violates a policy (e.g., "S3 buckets
-     * can't be public"). Rules are applied in the order they are declared.
+     * The properties of the Resource.
      */
-    rules: Rule | Rule[];
+    props: Record<string, any>;
+
+    // TODO: Add support for the following:
+    //
+    // urn: string;
+    // name: string;
+    // opts: PolicyResourceOptions;
 }
+
+/**
+ * A helper function that returns a strongly-typed resource validation function.
+ * @param typeFilter A type guard used to determine if the args are an instance of the resource.
+ * @param validate A callback function that validates if the resource definition violates a policy.
+ */
+export function validateTypedResource<TResource extends Resource>(
+    typeFilter: (o: any) => o is TResource,
+    validate: (
+        resource: q.ResolvedResource<TResource>,
+        args: ResourceValidationArgs,
+        reportViolation: ReportViolation) => Promise<void> | void,
+): ResourceValidation {
+    return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
+        args.props.__pulumiType = args.type;
+        if (typeFilter(args.props) === false) {
+            return;
+        }
+        validate(args.props as q.ResolvedResource<TResource>, args, reportViolation);
+    };
+}
+
+/**
+ * A helper function that returns `props` as a strongly-typed resolved resource based
+ * on the specified `type` when `filter` returns true, otherwise `undefined` is returned.
+ * @param typeFilter A type guard used to determine if the args are an instance of the resource.
+ * @param args Argument bag for specifying the `type` and `props`.
+ */
+export function asTypedResource<TResource extends Resource>(
+    typeFilter: (o: any) => o is TResource,
+    args: { type: string, props: Record<string, any> },
+): q.ResolvedResource<TResource> | undefined {
+    args.props.__pulumiType = args.type;
+    if (typeFilter(args.props) === false) {
+        return undefined;
+    }
+    return args.props as q.ResolvedResource<TResource>;
+}
+
+/**
+ * StackValidationPolicy is a policy that validates a stack.
+ */
+export interface StackValidationPolicy extends Policy {
+    /**
+     * A callback function that validates if a stack violates a policy.
+     */
+    validateStack: StackValidation;
+}
+
+/**
+ * StackValidation is the callback signature for a `StackValidationPolicy`. A stack validation is passed
+ * `args` with more information about the stack and a `reportViolation` callback that can be used to
+ * report a policy violation. `reportViolation` can be called multiple times to report multiple violations
+ * against the stack. `reportViolation` must be passed a message about the violation, and an optional `urn`
+ * to a resource in the stack that's in violation of the policy. Not specifying a `urn` indicates the
+ * overall stack is in violation of the policy.
+ */
+export type StackValidation = (args: StackValidationArgs, reportViolation: ReportViolation) => Promise<void> | void;
+
+/**
+ * StackValidationArgs is the argument bag passed to a resource validation.
+ */
+export interface StackValidationArgs {
+    /**
+     * The resources in the stack.
+     */
+    resources: PolicyResource[];
+}
+
+/**
+ * PolicyResource represents a resource in the stack.
+ */
+export interface PolicyResource {
+    /**
+     * The type of the Resource.
+     */
+    type: string;
+
+    /**
+     * The outputs of the Resource.
+     */
+    props: Record<string, any>;
+
+    // TODO: Add support for the following:
+    //
+    // urn: string;
+    // name: string;
+    // opts: PolicyResourceOptions;
+}
+
+/**
+ * ReportViolation is the callback signature used to report policy violations.
+ */
+export type ReportViolation = (message: string, urn?: string) => void;
