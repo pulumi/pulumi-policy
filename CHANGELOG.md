@@ -1,4 +1,6 @@
-## 0.1.2 (unreleased)
+## HEAD (Unreleased)
+
+## 0.2.0 (2019-11-13)
 
 ### Improvements
 
@@ -9,8 +11,8 @@
   - `typedRule` is now `validateTypedResource`.
   - Policy violations are now reported through a `reportViolation` callback, rather than using asserts.
   - A new `StackValidationPolicy` policy type is available for defining policies that check all resources
-    in a stack (the API definition is available, but such policies are not enabled yet).
-  - Validation functions can now return `Promise<void>`.
+    in a stack.
+  - Validation functions can now be async and return `Promise<void>`.
 
   Example:
 
