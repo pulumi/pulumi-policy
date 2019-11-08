@@ -189,3 +189,29 @@ func TestValidateResource(t *testing.T) {
 		},
 	})
 }
+
+// Test basic stack validation.
+func TestValidateStack(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "validate_stack", nil, []policyTestScenario{
+		// Test scenario 1: no resources.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 2: no violations.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 3: violates the first policy.
+		{
+			WantErrors: []string{
+				"  mandatory: 'state' must not have the value 1.",
+			},
+		},
+		// Test scenario 4: violates the second policy.
+		{
+			WantErrors: []string{
+				"  mandatory: 'state' must not have the value 2.",
+			},
+		},
+	})
+}
