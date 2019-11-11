@@ -39,6 +39,15 @@ switch (testScenario) {
 
     case 7:
         // Violates the fourth policy.
-        const r = new random.RandomUuid("random");
+        const r1 = new random.RandomUuid("random");
+        break;
+
+    case 8:
+        // Doesn't violate the fourth policy.
+        const r2 = new random.RandomUuid("random", {
+            keepers: {
+                foo: "bar",
+            },
+        });
         break;
 }

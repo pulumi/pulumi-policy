@@ -57,7 +57,7 @@ new PolicyPack("validate-resource-test-policy", {
             name: "randomuuid-no-keepers",
             description: "Prohibits creating a RandomUuid without any 'keepers'.",
             enforcementLevel: "mandatory",
-            validateResource: validateTypedResource(random.RandomUuid.isInstance, (it, args, reportViolation) => {
+            validateResource: validateTypedResource(random.RandomUuid, (it, args, reportViolation) => {
                 if (!it.keepers || Object.keys(it.keepers).length === 0) {
                     reportViolation("RandomUuid must not have an empty 'keepers'.")
                 }
