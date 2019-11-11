@@ -145,22 +145,6 @@ export function validateTypedResource<TResource extends Resource, TArgs>(
 }
 
 /**
- * A helper function that returns `props` as a strongly-typed resolved resource based
- * on the specified `type` when `filter` returns true, otherwise `undefined` is returned.
- * @param typeFilter A type guard used to determine if the args are an instance of the resource.
- * @param args Argument bag for specifying the `type` and `props`.
- */
-export function asTypedResource<TResource extends Resource>(
-    typeFilter: (o: any) => o is TResource,
-    args: { type: string, props: Record<string, any> },
-): q.ResolvedResource<TResource> | undefined {
-    if (typeFilter({ __pulumiType: args.type }) !== true) {
-        return undefined;
-    }
-    return args.props as q.ResolvedResource<TResource>;
-}
-
-/**
  * StackValidationPolicy is a policy that validates a stack.
  */
 export interface StackValidationPolicy extends Policy {
