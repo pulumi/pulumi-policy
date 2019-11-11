@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Resource } from "@pulumi/pulumi";
+import { Resource, Unwrap } from "@pulumi/pulumi";
 import * as q from "@pulumi/pulumi/queryable";
 import { serve } from "./server";
 
@@ -121,22 +121,26 @@ export interface ResourceValidationArgs {
 
 /**
  * A helper function that returns a strongly-typed resource validation function.
- * @param typeFilter A type guard used to determine if the args are an instance of the resource.
+ * @param resourceClass A resource class used to filter this check to only resources of the specified class and
+ * determine the appropriate strongly-typed `TArg` type to use for the resource.
  * @param validate A callback function that validates if the resource definition violates a policy.
  */
-export function validateTypedResource<TResource extends Resource>(
-    typeFilter: (o: any) => o is TResource,
+export function validateTypedResource<TResource extends Resource, TArgs>(
+    resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     validate: (
-        resource: q.ResolvedResource<TResource>,
+        props: NonNullable<Unwrap<TArgs>>,
         args: ResourceValidationArgs,
         reportViolation: ReportViolation) => Promise<void> | void,
 ): ResourceValidation {
     return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
-        args.props.__pulumiType = args.type;
-        if (typeFilter(args.props) === false) {
+        const isInstance = (<any>resourceClass).isInstance;
+        if (!isInstance || typeof isInstance !== "function") {
             return;
         }
-        validate(args.props as q.ResolvedResource<TResource>, args, reportViolation);
+        if (isInstance({ __pulumiType: args.type }) !== true) {
+            return;
+        }
+        validate(args.props as NonNullable<Unwrap<TArgs>>, args, reportViolation);
     };
 }
 
@@ -150,8 +154,7 @@ export function asTypedResource<TResource extends Resource>(
     typeFilter: (o: any) => o is TResource,
     args: { type: string, props: Record<string, any> },
 ): q.ResolvedResource<TResource> | undefined {
-    args.props.__pulumiType = args.type;
-    if (typeFilter(args.props) === false) {
+    if (typeFilter({ __pulumiType: args.type }) !== true) {
         return undefined;
     }
     return args.props as q.ResolvedResource<TResource>;
