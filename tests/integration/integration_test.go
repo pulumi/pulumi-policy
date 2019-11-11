@@ -187,6 +187,10 @@ func TestValidateResource(t *testing.T) {
 				"  mandatory: RandomUuid must not have an empty 'keepers'.",
 			},
 		},
+		// Test scenario 8: no violations.
+		{
+			WantErrors: nil,
+		},
 	})
 }
 
