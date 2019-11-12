@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import { Resource, Unwrap } from "@pulumi/pulumi";
-import * as q from "@pulumi/pulumi/queryable";
 import { serve } from "./server";
 
 /**
@@ -120,15 +119,47 @@ export interface ResourceValidationArgs {
 }
 
 /**
+ * Represents a Resource class.
+ */
+export type ResourceConstructor<TResource extends Resource, TResourceArgs> =
+    // The vast majority of resources have constructors with parameters in this order, allowing the compiler to infer
+    // `TResourceArgs` automatically from the following succinct syntax:
+    //
+    //     validateTypedResource(aws.s3.Bucket, (b, args, report) => { ... })
+    //                                           ^-- `b` is inferred as `NonNullable<Unwrap<aws.s3.BucketArgs>>`.
+    //
+    { new(name: string, args: TResourceArgs, ...rest: any[]): TResource } |
+    // Otherwise, this catchall will allow any other resource whose constructor parameters don't follow the typical
+    // order or number of parameters. For such resources, `TResource` and `TResourceArgs` would need to be specified
+    // explicitly:
+    //
+    //     validateTypedResource<awsx.ec2.Subnet, awsx.ec2.SubnetArgs>(awsx.ec2.Subnet, (s, args, report) => { ... })
+    //
+    { new(...rest: any[]): TResource };
+
+/**
  * A helper function that returns a strongly-typed resource validation function.
- * @param resourceClass A resource class used to filter this check to only resources of the specified class and
- * determine the appropriate strongly-typed `TArg` type to use for the resource.
+ *
+ * For example:
+ *
+ * ```typescript
+ * import * as aws as "@pulumi/aws";
+ *
+ * validateTypedResource(aws.s3.Bucket, (bucket, args, reportViolation) => {
+ *     if (bucket.acl === "public-read" || bucket.acl === "public-read-write") {
+ *         reportViolation("You cannot set public-read or public-read-write on an S3 bucket.");
+ *     }
+ * });
+ * ```
+ *
+ * @param resourceClass A resource class used to filter this check to only resources of the specified type and indicate
+ * the `TResourceArgs` type representing the resource's inputs.
  * @param validate A callback function that validates if the resource definition violates a policy.
  */
-export function validateTypedResource<TResource extends Resource, TArgs>(
-    resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+export function validateTypedResource<TResource extends Resource, TResourceArgs>(
+    resourceClass: ResourceConstructor<TResource, TResourceArgs>,
     validate: (
-        props: NonNullable<Unwrap<TArgs>>,
+        props: NonNullable<Unwrap<TResourceArgs>>,
         args: ResourceValidationArgs,
         reportViolation: ReportViolation) => Promise<void> | void,
 ): ResourceValidation {
@@ -140,7 +171,7 @@ export function validateTypedResource<TResource extends Resource, TArgs>(
         if (isInstance({ __pulumiType: args.type }) !== true) {
             return;
         }
-        validate(args.props as NonNullable<Unwrap<TArgs>>, args, reportViolation);
+        validate(args.props as NonNullable<Unwrap<TResourceArgs>>, args, reportViolation);
     };
 }
 
