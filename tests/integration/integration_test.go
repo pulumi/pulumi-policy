@@ -156,35 +156,40 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (a):",
-				"  mandatory: 'state' must not have the value 1.",
+				"  mandatory: [dynamic-no-state-with-value-1] Prohibits setting state to 1 on dynamic resources.",
+				"  'state' must not have the value 1.",
 			},
 		},
 		// Test scenario 4: violates the second policy.
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (b):",
-				"  mandatory: 'state' must not have the value 2.",
+				"  mandatory: [dynamic-no-state-with-value-2] Prohibits setting state to 2 on dynamic resources.",
+				"  'state' must not have the value 2.",
 			},
 		},
 		// Test scenario 5: violates the first validation function of the third policy.
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (c):",
-				"  mandatory: 'state' must not have the value 3.",
+				"  mandatory: [dynamic-no-state-with-value-3-or-4] Prohibits setting state to 3 or 4 on dynamic resources.",
+				"  'state' must not have the value 3.",
 			},
 		},
 		// Test scenario 6: violates the second validation function of the third policy.
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (d):",
-				"  mandatory: 'state' must not have the value 4.",
+				"  mandatory: [dynamic-no-state-with-value-3-or-4] Prohibits setting state to 3 or 4 on dynamic resources.",
+				"  'state' must not have the value 4.",
 			},
 		},
 		// Test scenario 7: violates the fourth policy.
 		{
 			WantErrors: []string{
 				"random:index:RandomUuid (random):",
-				"  mandatory: RandomUuid must not have an empty 'keepers'.",
+				"  mandatory: [randomuuid-no-keepers] Prohibits creating a RandomUuid without any 'keepers'.",
+				"  RandomUuid must not have an empty 'keepers'.",
 			},
 		},
 		// Test scenario 8: no violations.
@@ -208,13 +213,15 @@ func TestValidateStack(t *testing.T) {
 		// Test scenario 3: violates the first policy.
 		{
 			WantErrors: []string{
-				"  mandatory: 'state' must not have the value 1.",
+				"  mandatory: [dynamic-no-state-with-value-1] Prohibits setting state to 1 on dynamic resources.",
+				"  'state' must not have the value 1.",
 			},
 		},
 		// Test scenario 4: violates the second policy.
 		{
 			WantErrors: []string{
-				"  mandatory: 'state' must not have the value 2.",
+				"  mandatory: [dynamic-no-state-with-value-2] Prohibits setting state to 2 on dynamic resources.",
+				"  'state' must not have the value 2.",
 			},
 		},
 	})

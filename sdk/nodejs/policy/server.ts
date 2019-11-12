@@ -120,7 +120,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                         policyName: name,
                         policyPackName,
                         policyPackVersion,
-                        message: message,
+                        message: `[${name}] ${diag.description}\n${message}`,
                         ...diag,
                     });
                 };
@@ -191,7 +191,7 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                         policyName: name,
                         policyPackName,
                         policyPackVersion,
-                        message: message,
+                        message: `[${name}] ${diag.description}\n${message}`,
                         ...diag,
                     });
                 };
