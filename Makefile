@@ -16,9 +16,9 @@ publish_packages:
 check_clean_worktree:
 	$$(go env GOPATH)/src/github.com/pulumi/scripts/ci/check-worktree-is-clean.sh
 
-.PHONY: test
-test:
-	go test .tests/integration -v -timeout 30m
+.PHONY: test_all
+test_all::
+	go test ./tests/integration -v -timeout 30m
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
