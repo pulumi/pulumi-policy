@@ -116,11 +116,16 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                 const reportViolation: ReportViolation = (message, urn) => {
                     const { validateResource, name, ...diag } = p;
 
+                    let reportedMessage = `${diag.description}\n${message}`;
+                    if (!message) {
+                        reportedMessage = diag.description;
+                    }
+
                     ds.push({
                         policyName: name,
                         policyPackName,
                         policyPackVersion,
-                        message: `[${name}] ${diag.description}\n${message}`,
+                        message: reportedMessage,
                         ...diag,
                     });
                 };
@@ -187,11 +192,16 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                 const reportViolation: ReportViolation = (message, urn) => {
                     const { validateStack, name, ...diag } = p;
 
+                    let reportedMessage = `${diag.description}\n${message}`;
+                    if (!message) {
+                        reportedMessage = diag.description;
+                    }
+
                     ds.push({
                         policyName: name,
                         policyPackName,
                         policyPackVersion,
-                        message: `[${name}] ${diag.description}\n${message}`,
+                        message: reportedMessage,
                         ...diag,
                     });
                 };
