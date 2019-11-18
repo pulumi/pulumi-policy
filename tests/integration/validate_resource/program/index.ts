@@ -5,7 +5,7 @@ import * as random from "@pulumi/random";
 import { Resource } from "./resource";
 
 const config = new pulumi.Config();
-const testScenario = config.getNumber("scenario");
+const testScenario = config.requireNumber("scenario");
 
 switch (testScenario) {
     case 1:
@@ -39,12 +39,12 @@ switch (testScenario) {
 
     case 7:
         // Violates the fourth policy.
-        const r1 = new random.RandomUuid("random");
+        const r1 = new random.RandomUuid("r1");
         break;
 
     case 8:
         // Doesn't violate the fourth policy.
-        const r2 = new random.RandomUuid("random", {
+        const r2 = new random.RandomUuid("r2", {
             keepers: {
                 foo: "bar",
             },
