@@ -35,11 +35,8 @@ export class PolicyPack {
     constructor(private name: string, args: PolicyPackArgs) {
         this.policies = args.policies;
 
-        //
         // TODO: Wire up version information obtained from the service.
-        //
         const version = "1";
-
         serve(this.name, version, this.policies);
     }
 }
@@ -55,7 +52,7 @@ export type EnforcementLevel = "advisory" | "mandatory";
  * is violated.
  */
 export interface Policy {
-    /** An ID for the policy. Must be unique to the current policy set. */
+    /** An ID for the policy. Must be unique within the current policy set. */
     name: string;
 
     /**
