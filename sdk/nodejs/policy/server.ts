@@ -49,6 +49,9 @@ import * as process from "process";
 // Name of the policy pack currently being served, if applicable.
 let servingPolicyPack: string | undefined = undefined;
 
+// Regular expression for the policy pack name.
+const packNameRE = "^[a-zA-Z0-9-_.]{1,100}$";
+
 /**
   * Starts the gRPC server to communicate with the Pulumi CLI client for analyzing resources.
   *
@@ -61,6 +64,11 @@ let servingPolicyPack: string | undefined = undefined;
   * @internal
   */
 export function serve(policyPackName: string, policyPackVersion: string, policies: Policies): void {
+    if (!policyPackName || !policyPackName.match(packNameRE)) {
+        console.error(`Invalids policy pack name "${policyPackName}". Policy pack names may only contain alphanumerics, hyphens, underscores, or periods.`);
+        process.exit(1);
+    }
+
     if (servingPolicyPack) {
         // We only support running one gRPC instance at a time. (Since the Pulumi CLI is looking for a single
         // PID to be written to STDOUT.) So we just print an error and kill the process if a second policy pack
@@ -130,11 +138,16 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                 const reportViolation: ReportViolation = (message, urn) => {
                     const { validateResource, name, ...diag } = p;
 
+                    let violationMessage = diag.description;
+                    if (message) {
+                        violationMessage += `\n${message}`;
+                    }
+
                     ds.push({
                         policyName: name,
                         policyPackName,
                         policyPackVersion,
-                        message: `[${name}] ${diag.description}\n${message}`,
+                        message: violationMessage,
                         urn: urn,
                         ...diag,
                     });
@@ -204,11 +217,16 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                 const reportViolation: ReportViolation = (message, urn) => {
                     const { validateStack, name, ...diag } = p;
 
+                    let violationMessage = diag.description;
+                    if (message) {
+                        violationMessage += `\n${message}`;
+                    }
+
                     ds.push({
                         policyName: name,
                         policyPackName,
                         policyPackVersion,
-                        message: `[${name}] ${diag.description}\n${message}`,
+                        message: violationMessage,
                         urn: urn,
                         ...diag,
                     });
