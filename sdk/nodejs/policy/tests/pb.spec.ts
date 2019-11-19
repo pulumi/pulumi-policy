@@ -97,6 +97,19 @@ describe("makeAnalyzeResponse", () => {
                 },
             ]);
         });
+        assert.doesNotThrow(() => {
+            makeAnalyzeResponse([
+                {
+                    policyName: "approved-amis-by-id",
+                    policyPackName: "awsSecRules",
+                    policyPackVersion: "1",
+                    description: "Instances should use approved AMIs",
+                    message: "Did not use approved AMI",
+                    enforcementLevel: "mandatory",
+                    urn: "foo",
+                },
+            ]);
+        });
     });
 
     it("throws for disabled or invalid enforcementLevel", () => {

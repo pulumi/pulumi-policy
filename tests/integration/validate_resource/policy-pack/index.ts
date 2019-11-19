@@ -63,5 +63,18 @@ new PolicyPack("validate-resource-test-policy", {
                 }
             }),
         },
+        // Specifying a URN explicitly has no affect for validateResource.
+        {
+            name: "dynamic-no-state-with-value-5",
+            description: "Prohibits setting state to 5 on dynamic resources.",
+            enforcementLevel: "mandatory",
+            validateResource: (args, reportViolation) => {
+                if (args.type === "pulumi-nodejs:dynamic:Resource") {
+                    if (args.props.state === 5) {
+                        reportViolation("'state' must not have the value 5.", "some-urn")
+                    }
+                }
+            },
+        },
     ],
 });
