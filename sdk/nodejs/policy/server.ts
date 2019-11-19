@@ -14,10 +14,7 @@
 
 const grpc = require("grpc");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
-
-import { AssertionError } from "assert";
 
 import { deserializeProperties } from "./deserialize";
 import {
@@ -35,10 +32,11 @@ import {
     Diagnostic,
     makeAnalyzeResponse,
     makeAnalyzerInfo,
-    mapEnforcementLevel,
 } from "./protoutil";
 import { unknownCheckingProxy, UnknownValueError } from "./proxy";
 import { version } from "./version";
+
+import * as process from "process";
 
 // ------------------------------------------------------------------------------------------------
 
@@ -48,14 +46,18 @@ import { version } from "./version";
 
 // ------------------------------------------------------------------------------------------------
 
-let serving = false;
+// Name of the policy pack currently being served, if applicable.
+let servingPolicyPack: string | undefined = undefined;
 
 export function serve(policyPackName: string, policyPackVersion: string, policies: Policies): void {
-    if (serving !== false) {
-        throw Error("Only one policy gRPC server can run per process");
+    if (servingPolicyPack) {
+        // We only support running one gRPC instance at a time. (Since the Pulumi CLI is looking for a single
+        // PID to be written to STDOUT.) So we just print an error and kill the process if a second policy pack
+        // is about to be served.
+        console.error(`Already serving policy pack '${servingPolicyPack}'. Only one policy pack may be defined per-process.`);
+        process.exit(1);
     }
-
-    serving = true;
+    servingPolicyPack = policyPackName;
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server();
