@@ -26,6 +26,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type Runtime int
+
+const (
+	NodeJS Runtime = iota
+	Python
+)
+
 func abortIfFailed(t *testing.T) {
 	if t.Failed() {
 		t.Fatal("Aborting test as a result of unrecoverable error.")
@@ -42,7 +49,7 @@ type policyTestScenario struct {
 // a sequence of test scenarios where a configuration value is set and then
 // the stack is updated or previewed, confirming the expected result.
 func runPolicyPackIntegrationTest(
-	t *testing.T, testDirName string,
+	t *testing.T, testDirName string, runtime Runtime,
 	initialConfig map[string]string, scenarios []policyTestScenario) {
 	t.Logf("Running Policy Pack Integration Test from directory %q", testDirName)
 
@@ -88,8 +95,18 @@ func runPolicyPackIntegrationTest(
 	abortIfFailed(t)
 
 	// Get dependencies.
-	e.RunCommand("yarn", "install")
-	abortIfFailed(t)
+	switch runtime {
+	case NodeJS:
+		e.RunCommand("yarn", "install")
+		abortIfFailed(t)
+	case Python:
+		e.RunCommand("pipenv", "--python", "3")
+		abortIfFailed(t)
+		e.RunCommand("pipenv", "run", "pip", "install", "-r", "requirements.txt")
+		abortIfFailed(t)
+	default:
+		t.Fatalf("Unexpected runtime value.")
+	}
 
 	// Initial configuration.
 	for k, v := range initialConfig {
@@ -114,11 +131,18 @@ func runPolicyPackIntegrationTest(
 
 			e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
 
+			cmd := "pulumi"
+			args := []string{"up", "--policy-pack", packDir}
+			if runtime == Python {
+				cmd = "pipenv"
+				args = append([]string{"run", "pulumi"}, args...)
+			}
+
 			if len(scenario.WantErrors) == 0 {
 				t.Log("No errors are expected.")
-				e.RunCommand("pulumi", "up", "--policy-pack", packDir)
+				e.RunCommand(cmd, args...)
 			} else {
-				stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--policy-pack", packDir)
+				stdout, stderr := e.RunCommandExpectError(cmd, args...)
 
 				for _, wantErr := range scenario.WantErrors {
 					inSTDOUT := strings.Contains(stdout, wantErr)
@@ -143,7 +167,7 @@ func runPolicyPackIntegrationTest(
 
 // Test basic resource validation.
 func TestValidateResource(t *testing.T) {
-	runPolicyPackIntegrationTest(t, "validate_resource", nil, []policyTestScenario{
+	runPolicyPackIntegrationTest(t, "validate_resource", NodeJS, nil, []policyTestScenario{
 		// Test scenario 1: no resources.
 		{
 			WantErrors: nil,
@@ -187,7 +211,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 7: violates the fourth policy.
 		{
 			WantErrors: []string{
-				"random:index:RandomUuid (random):",
+				"random:index:RandomUuid (r1):",
 				"  mandatory: [randomuuid-no-keepers] Prohibits creating a RandomUuid without any 'keepers'.",
 				"  RandomUuid must not have an empty 'keepers'.",
 			},
@@ -199,9 +223,27 @@ func TestValidateResource(t *testing.T) {
 	})
 }
 
+// Test basic resource validation of a Python program.
+func TestValidatePythonResource(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "validate_python_resource", Python, nil, []policyTestScenario{
+		// Test scenario 1: violates the policy.
+		{
+			WantErrors: []string{
+				"random:index:RandomUuid (r1):",
+				"  mandatory: [randomuuid-no-keepers] Prohibits creating a RandomUuid without any 'keepers'.",
+				"  RandomUuid must not have an empty 'keepers'.",
+			},
+		},
+		// Test scenario 2: no violations.
+		{
+			WantErrors: nil,
+		},
+	})
+}
+
 // Test basic stack validation.
 func TestValidateStack(t *testing.T) {
-	runPolicyPackIntegrationTest(t, "validate_stack", nil, []policyTestScenario{
+	runPolicyPackIntegrationTest(t, "validate_stack", NodeJS, nil, []policyTestScenario{
 		// Test scenario 1: no resources.
 		{
 			WantErrors: nil,
