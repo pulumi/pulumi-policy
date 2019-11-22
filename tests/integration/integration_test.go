@@ -72,7 +72,8 @@ func runPolicyPackIntegrationTest(
 	e.ImportDirectory(rootDir)
 
 	// Change to the Policy Pack directory.
-	packDir := path.Join(e.RootPath, "policy-pack")
+	const packDirName = "policy-pack"
+	packDir := path.Join(e.RootPath, packDirName)
 	e.CWD = packDir
 
 	// Get dependencies.
@@ -126,13 +127,21 @@ func runPolicyPackIntegrationTest(
 		// Create a sub-test so go test will output data incrementally, which will let
 		// a CI system like Travis know not to kill the job if no output is sent after 10m.
 		// idx+1 to make it 1-indexed.
-		t.Run(fmt.Sprintf("Scenario_%d", idx+1), func(t *testing.T) {
+		scenarioNum := idx + 1
+		t.Run(fmt.Sprintf("Scenario_%d", scenarioNum), func(t *testing.T) {
 			e.T = t
 
-			e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
+			e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", scenarioNum))
+
+			// For even numbered scenarios, pass a relative path to --policy-pack, to get some
+			// coverage of passing relative paths.
+			policyPackArg := packDir
+			if scenarioNum%2 == 0 {
+				policyPackArg = path.Join("..", packDirName)
+			}
 
 			cmd := "pulumi"
-			args := []string{"up", "--policy-pack", packDir}
+			args := []string{"up", "--policy-pack", policyPackArg}
 			if runtime == Python {
 				cmd = "pipenv"
 				args = append([]string{"run", "pulumi"}, args...)
