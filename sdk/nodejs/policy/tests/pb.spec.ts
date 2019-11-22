@@ -36,6 +36,7 @@ describe("mapEnforcementLevel", () => {
             mapEnforcementLevel("mandatory"),
             analyzerproto.EnforcementLevel.MANDATORY,
         );
+        assert.throws(() => mapEnforcementLevel("disabled"));
         assert.throws(() => mapEnforcementLevel(<any>"invalidEnforcementLevel"));
     });
 });
@@ -55,7 +56,17 @@ describe("makeAnalyzerInfo", () => {
         });
     });
 
-    it("throws for invalid enforcementLevel", () => {
+    it("throws for disabled or invalid enforcementLevel", () => {
+        assert.throws(() => {
+            makeAnalyzerInfo("testRules", [
+                {
+                    name: "approved-amis-by-id",
+                    description: "Instances should use approved AMIs",
+                    enforcementLevel: "disabled",
+                    validateResource: (args, reportViolation) => { return; },
+                },
+            ]);
+        });
         assert.throws(() => {
             makeAnalyzerInfo("testRules", [
                 {
@@ -88,7 +99,19 @@ describe("makeAnalyzeResponse", () => {
         });
     });
 
-    it("throws for invalid enforcementLevel", () => {
+    it("throws for disabled or invalid enforcementLevel", () => {
+        assert.throws(() => {
+            makeAnalyzeResponse([
+                {
+                    policyName: "approved-amis-by-id",
+                    policyPackName: "awsSecRules",
+                    policyPackVersion: "1",
+                    description: "Instances should use approved AMIs",
+                    message: "Did not use approved AMI",
+                    enforcementLevel: "disabled",
+                },
+            ]);
+        });
         assert.throws(() => {
             makeAnalyzeResponse([
                 {

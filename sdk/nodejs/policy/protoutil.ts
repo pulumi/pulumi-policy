@@ -130,7 +130,17 @@ export function mapEnforcementLevel(el: EnforcementLevel) {
             return analyzerproto.EnforcementLevel.ADVISORY;
         case "mandatory":
             return analyzerproto.EnforcementLevel.MANDATORY;
+        // Disabled is treated as if the policy was not defined, so the value should not escape over GRPC.
+        case "disabled":
+            throw new Error("'disabled' should not escape the GRPC boundary");
         default:
-            throw Error(`Unknown enforcement level type '${el}'`);
+            throw new UnknownEnforcementLevelError(el);
+    }
+}
+
+// Ensures all possible values are covered in the switch.
+class UnknownEnforcementLevelError extends Error {
+    constructor(el: never) {
+        super(`Unknown enforcement level type '${el}'`);
     }
 }

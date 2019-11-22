@@ -83,7 +83,8 @@ function makeGetAnalyzerInfoRpcFun(
 ) {
     return async function(call: any, callback: any): Promise<void> {
         try {
-            callback(undefined, makeAnalyzerInfo(policyPackName, policies));
+            const enabledPolicies = (policies || []).filter(p => p.enforcementLevel !== "disabled");
+            callback(undefined, makeAnalyzerInfo(policyPackName, enabledPolicies));
         } catch (e) {
             callback(asGrpcError(e), undefined);
         }
@@ -111,7 +112,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                if (!isResourcePolicy(p)) {
+                if (p.enforcementLevel === "disabled" || !isResourcePolicy(p)) {
                     continue;
                 }
 
@@ -182,7 +183,7 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                if (!isStackPolicy(p)) {
+                if (p.enforcementLevel === "disabled" || !isStackPolicy(p)) {
                     continue;
                 }
 
