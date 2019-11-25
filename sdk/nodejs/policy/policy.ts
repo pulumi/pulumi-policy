@@ -47,7 +47,7 @@ export class PolicyPack {
 /**
  * Indicates the impact of a policy violation.
  */
-export type EnforcementLevel = "advisory" | "mandatory";
+export type EnforcementLevel = "advisory" | "mandatory" | "disabled";
 
 /**
  * A policy function that returns true if a resource definition violates some policy (e.g., "no
