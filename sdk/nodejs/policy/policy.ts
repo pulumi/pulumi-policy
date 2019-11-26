@@ -128,7 +128,7 @@ export interface ResourceValidationArgs {
 export function validateTypedResource<TResource extends Resource, TArgs>(
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     validate: (
-        props: NonNullable<Unwrap<TArgs>>,
+        props: Unwrap<NonNullable<TArgs>>,
         args: ResourceValidationArgs,
         reportViolation: ReportViolation) => Promise<void> | void,
 ): ResourceValidation {
@@ -140,7 +140,7 @@ export function validateTypedResource<TResource extends Resource, TArgs>(
         if (isInstance({ __pulumiType: args.type }) !== true) {
             return;
         }
-        validate(args.props as NonNullable<Unwrap<TArgs>>, args, reportViolation);
+        validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
     };
 }
 
