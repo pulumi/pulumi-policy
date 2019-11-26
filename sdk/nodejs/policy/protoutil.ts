@@ -20,6 +20,7 @@ const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
 import { EnforcementLevel, Policies } from "./policy";
 
+/** @internal */
 export function asGrpcError(e: any, message?: string) {
     if (message === undefined || message === "") {
         message = "";
@@ -48,6 +49,7 @@ export function asGrpcError(e: any, message?: string) {
 /**
  * Diagnostic information and metadata that can be used to emit helpful error messages when a policy
  * is violated.
+ * @internal
  */
 export interface Diagnostic {
     /** Name of the policy that was violated. */
@@ -85,6 +87,7 @@ export interface Diagnostic {
 
 // ------------------------------------------------------------------------------------------------
 
+/** @internal */
 export function makeAnalyzerInfo(policyPackName: string, policies: Policies): any {
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
@@ -103,7 +106,10 @@ export function makeAnalyzerInfo(policyPackName: string, policies: Policies): an
     return ai;
 }
 
-// makeAnalyzeResponse creates a protobuf encoding the given list of diagnostics.
+/**
+ * makeAnalyzeResponse creates a protobuf encoding the given list of diagnostics.
+ * @internal
+ */
 export function makeAnalyzeResponse(ds: Diagnostic[]) {
     const resp = new analyzerproto.AnalyzeResponse();
 
@@ -124,6 +130,7 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
     return resp;
 }
 
+/** @internal */
 export function mapEnforcementLevel(el: EnforcementLevel) {
     switch (el) {
         case "advisory":

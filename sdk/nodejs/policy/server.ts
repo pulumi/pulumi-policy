@@ -49,6 +49,17 @@ import * as process from "process";
 // Name of the policy pack currently being served, if applicable.
 let servingPolicyPack: string | undefined = undefined;
 
+/**
+  * Starts the gRPC server to communicate with the Pulumi CLI client for analyzing resources.
+  *
+  * Only one gRPC server can be running at a time, and the port the server is running on will
+  * be written to STDOUT.
+  *
+  * @param policyPackName Friendly name of the policy pack.
+  * @param policyPackVersion Version of the policy pack SDK used.
+  * @param policies The policies to be served.
+  * @internal
+  */
 export function serve(policyPackName: string, policyPackVersion: string, policies: Policies): void {
     if (servingPolicyPack) {
         // We only support running one gRPC instance at a time. (Since the Pulumi CLI is looking for a single
