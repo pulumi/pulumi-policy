@@ -22,6 +22,7 @@ import {
 
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
+ * @internal
  */
 export function deserializeProperties(outputsStruct: any): any {
     const props: any = {};

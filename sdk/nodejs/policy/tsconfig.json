@@ -16,15 +16,16 @@
         "strictNullChecks": true,
     },
     "files": [
+        "deserialize.ts",
         "index.ts",
-        "server.ts",
-        "version.ts",
+        "policy.ts",
         "protoutil.ts",
         "proxy.ts",
+        "server.ts",
+        "version.ts",
 
         "tests/deserialize.spec.ts",
         "tests/pb.spec.ts",
         "tests/proxy.spec.ts"
     ]
 }
-

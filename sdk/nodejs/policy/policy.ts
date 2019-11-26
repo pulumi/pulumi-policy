@@ -28,6 +28,26 @@ export interface PolicyPackArgs {
 
 /**
  * A PolicyPack contains one or more policies to enforce.
+ *
+ * For example:
+ *
+ * ```typescript
+ * import * as aws from "@pulumi/aws";
+ * import { PolicyPack, validateTypedResource } from "@pulumi/policy";
+ *
+ * new PolicyPack("aws-typescript", {
+ *     policies: [{
+ *         name: "s3-no-public-read",
+ *         description: "Prohibits setting the publicRead or publicReadWrite permission on AWS S3 buckets.",
+ *         enforcementLevel: "mandatory",
+ *         validateResource: validateTypedResource(aws.s3.Bucket, (bucket, args, reportViolation) => {
+ *             if (bucket.acl === "public-read" || bucket.acl === "public-read-write") {
+ *                 reportViolation("You cannot set public-read or public-read-write on an S3 bucket.");
+ *             }
+ *         }),
+ *     }],
+ * });
+ * ```
  */
 export class PolicyPack {
     private readonly policies: Policies;
@@ -35,11 +55,8 @@ export class PolicyPack {
     constructor(private name: string, args: PolicyPackArgs) {
         this.policies = args.policies;
 
-        //
         // TODO: Wire up version information obtained from the service.
-        //
         const version = "1";
-
         serve(this.name, version, this.policies);
     }
 }
@@ -55,7 +72,7 @@ export type EnforcementLevel = "advisory" | "mandatory" | "disabled";
  * is violated.
  */
 export interface Policy {
-    /** An ID for the policy. Must be unique to the current policy set. */
+    /** An ID for the policy. Must be unique within the current policy set. */
     name: string;
 
     /**
@@ -78,6 +95,24 @@ export type Policies = (ResourceValidationPolicy | StackValidationPolicy)[];
 
 /**
  * ResourceValidationPolicy is a policy that validates a resource definition.
+ *
+ * For example:
+ *
+ * ```typescript
+ * import * as aws from "@pulumi/aws";
+ * import { validateTypedResource } from "@pulumi/policy";
+ *
+ * const s3NoPublicReadPolicy: ResourceValidationPolicy = {
+ *     name: "s3-no-public-read",
+ *     description: "Prohibits setting the publicRead or publicReadWrite permission on AWS S3 buckets.",
+ *     enforcementLevel: "mandatory",
+ *     validateResource: validateTypedResource(aws.s3.Bucket, (bucket, args, reportViolation) => {
+ *         if (bucket.acl === "public-read" || bucket.acl === "public-read-write") {
+ *             reportViolation("You cannot set public-read or public-read-write on an S3 bucket.");
+ *         }
+ *     }),
+ * };
+ * ```
  */
 export interface ResourceValidationPolicy extends Policy {
     /**
