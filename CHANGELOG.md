@@ -2,6 +2,8 @@
 
 ## 0.3.0 (2019-11-26)
 
+### Improvements
+
 - Add `"disabled"` to `EnforcementLevel` to disable policies
   (https://github.com/pulumi/pulumi-policy/pull/156).
 - Add resource `urn` and `name` properties along with support for reporting the URN associated with
