@@ -135,6 +135,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                         policyPackName,
                         policyPackVersion,
                         message: `[${name}] ${diag.description}\n${message}`,
+                        urn: urn,
                         ...diag,
                     });
                 };
@@ -149,6 +150,8 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                         const args: ResourceValidationArgs = {
                             type: req.getType(),
                             props: unknownCheckingProxy(deserd),
+                            urn: req.getUrn(),
+                            name: req.getName(),
                         };
 
                         // Pass the result of the validate call to Promise.resolve.
@@ -206,6 +209,7 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                         policyPackName,
                         policyPackVersion,
                         message: `[${name}] ${diag.description}\n${message}`,
+                        urn: urn,
                         ...diag,
                     });
                 };
@@ -216,6 +220,8 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                         resources.push({
                             type: r.getType(),
                             props: r.getProperties().toJavaScript(),
+                            urn: r.getUrn(),
+                            name: r.getName(),
                         });
                     }
 

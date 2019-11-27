@@ -220,6 +220,14 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: nil,
 		},
+		// Test scenario 9: violates the fifth policy.
+		{
+			WantErrors: []string{
+				"pulumi-nodejs:dynamic:Resource (e):",
+				"  mandatory: [dynamic-no-state-with-value-5] Prohibits setting state to 5 on dynamic resources.",
+				"  'state' must not have the value 5.",
+			},
+		},
 	})
 }
 
@@ -264,6 +272,14 @@ func TestValidateStack(t *testing.T) {
 			WantErrors: []string{
 				"  mandatory: [dynamic-no-state-with-value-2] Prohibits setting state to 2 on dynamic resources.",
 				"  'state' must not have the value 2.",
+			},
+		},
+		// Test scenario 5: violates the third policy.
+		{
+			WantErrors: []string{
+				"pulumi-nodejs:dynamic:Resource (c):",
+				"  mandatory: [dynamic-no-state-with-value-3] Prohibits setting state to 3 on dynamic resources.",
+				"  'state' must not have the value 3.",
 			},
 		},
 	})

@@ -138,19 +138,27 @@ export type ResourceValidation = (args: ResourceValidationArgs, reportViolation:
  */
 export interface ResourceValidationArgs {
     /**
-     * The type of the Resource.
+     * The type of the resource.
      */
     type: string;
 
     /**
-     * The properties of the Resource.
+     * The properties of the resource.
      */
     props: Record<string, any>;
 
+    /**
+     * The URN of the resource.
+     */
+    urn: string;
+
+    /**
+     * The name of the resource.
+     */
+    name: string;
+
     // TODO: Add support for the following:
     //
-    // urn: string;
-    // name: string;
     // opts: PolicyResourceOptions;
 }
 
@@ -214,19 +222,27 @@ export interface StackValidationArgs {
  */
 export interface PolicyResource {
     /**
-     * The type of the Resource.
+     * The type of the resource.
      */
     type: string;
 
     /**
-     * The outputs of the Resource.
+     * The outputs of the resource.
      */
     props: Record<string, any>;
 
+    /**
+     * The URN of the resource.
+     */
+    urn: string;
+
+    /**
+     * The name of the resource.
+     */
+    name: string;
+
     // TODO: Add support for the following:
     //
-    // urn: string;
-    // name: string;
     // opts: PolicyResourceOptions;
 }
 

@@ -78,6 +78,11 @@ export interface Diagnostic {
      * proper permissions.
      */
     enforcementLevel: EnforcementLevel;
+
+    /**
+     * The URN of the resource that has the policy violation.
+     */
+    urn?: string;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -122,6 +127,7 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
         diagnostic.setDescription(d.description);
         diagnostic.setMessage(d.message);
         diagnostic.setEnforcementlevel(mapEnforcementLevel(d.enforcementLevel));
+        diagnostic.setUrn(d.urn);
 
         diagnostics.push(diagnostic);
     }

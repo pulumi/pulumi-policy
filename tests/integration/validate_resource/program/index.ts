@@ -50,4 +50,9 @@ switch (testScenario) {
             },
         });
         break;
+
+    case 9:
+        // Violates the fifth policy.
+        const e = new Resource("e", { state: 5 });
+        break;
 }

@@ -56,5 +56,26 @@ new PolicyPack("validate-stack-test-policy", {
                 }
             },
         },
+        // Policy that specifies the URN of the resource violating the policy.
+        {
+            name: "dynamic-no-state-with-value-3",
+            description: "Prohibits setting state to 3 on dynamic resources.",
+            enforcementLevel: "mandatory",
+            validateStack: (args, reportViolation) => {
+                for (const r of args.resources) {
+                    // FIXME: We don't have any outputs during previews and aren't merging
+                    // inputs, so just skip for now if we have an empty props.
+                    if (Object.keys(r.props).length === 0) {
+                        continue;
+                    }
+
+                    if (r.type === "pulumi-nodejs:dynamic:Resource") {
+                        if (r.props.state === 3) {
+                            reportViolation("'state' must not have the value 3.", r.urn);
+                        }
+                    }
+                }
+            },
+        },
     ],
 });

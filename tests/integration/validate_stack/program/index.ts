@@ -25,4 +25,9 @@ switch (testScenario) {
         // Violates the second policy.
         const b = new Resource("b", { state: 2 });
         break;
+
+    case 5:
+        // Violates the third policy.
+        const c = new Resource("c", { state: 3 });
+        break;
 }
