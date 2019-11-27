@@ -1,5 +1,12 @@
 ## HEAD (Unreleased)
 
+## 0.3.0 (2019-11-26)
+
+- Add `"disabled"` to `EnforcementLevel` to disable policies
+  (https://github.com/pulumi/pulumi-policy/pull/156).
+- Add resource `urn` and `name` properties along with support for reporting the URN associated with
+  a stack validation policy violation (https://github.com/pulumi/pulumi-policy/pull/151).
+
 ## 0.2.0 (2019-11-13)
 
 ### Improvements
