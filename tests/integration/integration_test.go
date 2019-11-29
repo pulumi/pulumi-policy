@@ -180,7 +180,7 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (a):",
-				"  mandatory: [dynamic-no-state-with-value-1] Prohibits setting state to 1 on dynamic resources.",
+				"  mandatory: Prohibits setting state to 1 on dynamic resources.",
 				"  'state' must not have the value 1.",
 			},
 		},
@@ -188,7 +188,7 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (b):",
-				"  mandatory: [dynamic-no-state-with-value-2] Prohibits setting state to 2 on dynamic resources.",
+				"  mandatory: Prohibits setting state to 2 on dynamic resources.",
 				"  'state' must not have the value 2.",
 			},
 		},
@@ -196,7 +196,7 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (c):",
-				"  mandatory: [dynamic-no-state-with-value-3-or-4] Prohibits setting state to 3 or 4 on dynamic resources.",
+				"  mandatory: Prohibits setting state to 3 or 4 on dynamic resources.",
 				"  'state' must not have the value 3.",
 			},
 		},
@@ -204,7 +204,7 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (d):",
-				"  mandatory: [dynamic-no-state-with-value-3-or-4] Prohibits setting state to 3 or 4 on dynamic resources.",
+				"  mandatory: Prohibits setting state to 3 or 4 on dynamic resources.",
 				"  'state' must not have the value 4.",
 			},
 		},
@@ -212,7 +212,7 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: []string{
 				"random:index:RandomUuid (r1):",
-				"  mandatory: [randomuuid-no-keepers] Prohibits creating a RandomUuid without any 'keepers'.",
+				"  mandatory: Prohibits creating a RandomUuid without any 'keepers'.",
 				"  RandomUuid must not have an empty 'keepers'.",
 			},
 		},
@@ -224,7 +224,7 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (e):",
-				"  mandatory: [dynamic-no-state-with-value-5] Prohibits setting state to 5 on dynamic resources.",
+				"  mandatory: Prohibits setting state to 5 on dynamic resources.",
 				"  'state' must not have the value 5.",
 			},
 		},
@@ -238,7 +238,7 @@ func TestValidatePythonResource(t *testing.T) {
 		{
 			WantErrors: []string{
 				"random:index:RandomUuid (r1):",
-				"  mandatory: [randomuuid-no-keepers] Prohibits creating a RandomUuid without any 'keepers'.",
+				"  mandatory: Prohibits creating a RandomUuid without any 'keepers'.",
 				"  RandomUuid must not have an empty 'keepers'.",
 			},
 		},
@@ -263,14 +263,14 @@ func TestValidateStack(t *testing.T) {
 		// Test scenario 3: violates the first policy.
 		{
 			WantErrors: []string{
-				"  mandatory: [dynamic-no-state-with-value-1] Prohibits setting state to 1 on dynamic resources.",
+				"  mandatory: Prohibits setting state to 1 on dynamic resources.",
 				"  'state' must not have the value 1.",
 			},
 		},
 		// Test scenario 4: violates the second policy.
 		{
 			WantErrors: []string{
-				"  mandatory: [dynamic-no-state-with-value-2] Prohibits setting state to 2 on dynamic resources.",
+				"  mandatory: Prohibits setting state to 2 on dynamic resources.",
 				"  'state' must not have the value 2.",
 			},
 		},
@@ -278,7 +278,7 @@ func TestValidateStack(t *testing.T) {
 		{
 			WantErrors: []string{
 				"pulumi-nodejs:dynamic:Resource (c):",
-				"  mandatory: [dynamic-no-state-with-value-3] Prohibits setting state to 3 on dynamic resources.",
+				"  mandatory: Prohibits setting state to 3 on dynamic resources.",
 				"  'state' must not have the value 3.",
 			},
 		},
