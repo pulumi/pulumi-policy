@@ -2,7 +2,7 @@
 
 # Pulumi Policy Framework
 
-Status: **beta release.**
+Status: **preview release**
 
 ## Overview
 
@@ -19,7 +19,7 @@ warning, or **mandatory**, which results in an error after `pulumi preview` or `
 
 ## Examples
 
-Looking for examples? The @pulumi/policy module is the core SDK for authoring new Pulumi policies using code. To
+Looking for examples? The `@pulumi/policy` module is the core SDK for authoring new Pulumi policies using code. To
 find examples of existing policy packs, please refer to the [examples repo](https://github.com/pulumi/examples/tree/master/policy-packs).
 
 ## Trying the Policy Framework
@@ -29,13 +29,16 @@ Policy SDK.
 
 This beta feature is also available via the Pulumi Console. To get this feature enabled for your Pulumi organization, you can reach out to us via email or this [Contact Us form](https://www.pulumi.com/contact/).
 
+### Prerequisites
+
+- [Install Pulumi](https://www.pulumi.com/docs/get-started/install/)
+- [Install Node.js version 8 or later](https://nodejs.org/en/download/)
+
 ### Verify your version of the Pulumi CLI
 
 ```sh
-pulumi version # should be v1.5.2 or later
+pulumi version # should be v1.6.1 or later
 ```
-
-If you need to upgrade your Pulumi CLI, you can find instructions [here](https://www.pulumi.com/docs/get-started/install/).
 
 ### Authoring a Policy Pack
 
@@ -45,10 +48,28 @@ If you need to upgrade your Pulumi CLI, you can find instructions [here](https:/
     mkdir policypack && cd policypack
     ```
 
-1. Run the `pulumi policy new` command. Since Policy as Code is a beta feature, you will need to set `PULUMI_DEBUG_COMMANDS=true` as an environment variable or simply pre-append it to your commands as shown.
+1. Run the `pulumi policy new` command. Since Policy as Code is in preview, you will need to set `PULUMI_EXPERIMENTAL=true` as an environment variable.
+
+    **macOS or Linux:** You can run `export PULUMI_EXPERIMENTAL=true` or simply prepend it to your commands as shown.
 
     ```sh
-    PULUMI_DEBUG_COMMANDS=true pulumi policy new aws-typescript
+    PULUMI_EXPERIMENTAL=true pulumi policy new aws-typescript
+    ```
+
+    On Windows, you must first set the environment variable before running the command.
+
+    **Windows cmd.exe**
+
+    ```sh
+    set PULUMI_EXPERIMENTAL=true
+    pulumi policy new aws-typescript
+    ```
+
+    **Windows PowerShell**
+
+    ```sh
+    $env:PULUMI_EXPERIMENTAL = 'true'
+    pulumi policy new aws-typescript
     ```
 
 1. Tweak the Policy Pack in the `index.ts` file as desired. The existing policy in the template (which is annotated below) mandates that an AWS S3 bucket not have public read or write permissions enabled. Each Policy must have a unique name, an enforcement level, and a validation function. Here we use `validateTypedResource` that allows us to validate S3 Bucket resources.
@@ -95,14 +116,29 @@ Policy Packs can be tested on a user's local workstation to facilitate rapid dev
 
     In the Pulumi project's directory run:
 
+    **macOS or Linux**:
+
     ```sh
     PULUMI_DEBUG_COMMANDS=true pulumi preview --policy-pack <path-to-policy-pack-directory>
     ```
 
-    If the stack is in compliance, we expect the output to simply tell us which Policy Packs were run.
+    **Windows cmd.exe**
 
     ```sh
-    PULUMI_DEBUG_COMMANDS=true pulumi preview --policy-pack policy-pack-typescript
+    set PULUMI_EXPERIMENTAL=true
+    pulumi preview --policy-pack <path-to-policy-pack-directory>
+    ```
+
+    **Windows PowerShell**
+
+    ```sh
+    $env:PULUMI_EXPERIMENTAL = 'true'
+    pulumi preview --policy-pack <path-to-policy-pack-directory>
+    ```
+
+    If the stack is in compliance, we expect the output to simply tell us which Policy Packs were run.
+
+    ```
     Previewing update (dev):
 
         Type                 Name          Plan
@@ -111,9 +147,6 @@ Policy Packs can be tested on a user's local workstation to facilitate rapid dev
 
     Resources:
         + 2 to create
-
-    Permalink:
-    ...
     ```
 
 1. We can then edit the stack code to specify the ACL to be public-read.
@@ -126,8 +159,7 @@ Policy Packs can be tested on a user's local workstation to facilitate rapid dev
 
 1. We then run the `pulumi preview` command again and this time get an error message indicating we failed the preview because of a policy violation.
 
-    ```sh
-    PULUMI_DEBUG_COMMANDS=true pulumi preview --policy-pack ~/policy-pack-typescript
+    ```
     Previewing update (dev):
 
         Type                 Name          Plan       Info
@@ -141,9 +173,6 @@ Policy Packs can be tested on a user's local workstation to facilitate rapid dev
     aws:s3:Bucket (my-bucket):
         mandatory: [s3-no-public-read] Prohibits setting the publicRead or publicReadWrite permission on AWS S3 buckets.
         You cannot set public-read or public-read-write on an S3 bucket. Read more about ACLs here: https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html
-
-    Permalink:
-    ...
     ```
 
 ## Best Practices for Writing Policies
