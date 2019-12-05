@@ -60,7 +60,11 @@ func runPolicyPackIntegrationTest(
 	}
 	rootDir := path.Join(cwd, testDirName)
 
+	// The Pulumi project name matches the test dir name in these tests.
+	os.Setenv("PULUMI_TEST_PROJECT", testDirName)
+
 	stackName := fmt.Sprintf("%s-%d", testDirName, time.Now().Unix()%100000)
+	os.Setenv("PULUMI_TEST_STACK", stackName)
 
 	// Copy the root directory to /tmp and run various operations within that directory.
 	e := ptesting.NewEnvironment(t)
@@ -99,6 +103,7 @@ func runPolicyPackIntegrationTest(
 	case NodeJS:
 		e.RunCommand("yarn", "install")
 		abortIfFailed(t)
+
 	case Python:
 		e.RunCommand("pipenv", "--python", "3")
 		abortIfFailed(t)
@@ -132,7 +137,7 @@ func runPolicyPackIntegrationTest(
 			e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
 
 			cmd := "pulumi"
-			args := []string{"up", "--policy-pack", packDir}
+			args := []string{"up", "--yes", "--policy-pack", packDir}
 			if runtime == Python {
 				cmd = "pipenv"
 				args = append([]string{"run", "pulumi"}, args...)
@@ -283,4 +288,12 @@ func TestValidateStack(t *testing.T) {
 			},
 		},
 	})
+}
+
+// Test runtime data (Config, getStack, getProject, and isDryRun) is available to the Policy Pack.
+func TestRuntimeData(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "runtime_data", NodeJS, map[string]string{
+		"aConfigValue": "this value is a value",
+		"aws:region":   "us-west-2",
+	}, []policyTestScenario{{WantErrors: nil}})
 }
