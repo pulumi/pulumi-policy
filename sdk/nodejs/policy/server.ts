@@ -20,7 +20,9 @@ import { deserializeProperties } from "./deserialize";
 import {
     Policies,
     Policy,
+    PolicyCustomTimeouts,
     PolicyResource,
+    PolicyResourceOptions,
     ReportViolation,
     ResourceValidationArgs,
     ResourceValidationPolicy,
@@ -165,6 +167,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                             props: unknownCheckingProxy(deserd),
                             urn: req.getUrn(),
                             name: req.getName(),
+                            opts: getResourceOptions(req),
                         };
 
                         // Pass the result of the validate call to Promise.resolve.
@@ -240,6 +243,7 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                             props: r.getProperties().toJavaScript(),
                             urn: r.getUrn(),
                             name: r.getName(),
+                            opts: getResourceOptions(r),
                         });
                     }
 
@@ -276,6 +280,49 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
         // Now marshal the results into a resulting diagnostics list, and invoke the callback to finish.
         callback(undefined, makeAnalyzeResponse(ds));
     };
+}
+
+// Creates a PolicyResourceOptions object from the GRPC request.
+function getResourceOptions(r: any): PolicyResourceOptions {
+    const opts = r.getOptions();
+    // If the result of `getOptions` is undefined, an older version of the CLI is being used.
+    // Provide a nicer error message to the user.
+    if (!opts) {
+        throw new Error("A more recent version of the Pulumi CLI is required. " +
+            "To upgrade, see https://www.pulumi.com/docs/get-started/install/");
+    }
+    const result: PolicyResourceOptions = {
+        protect: opts.getProtect(),
+        dependencies: opts.getDependenciesList().sort(),
+        provider: opts.getProvider(),
+        aliases: opts.getAliasesList().sort(),
+        additionalSecretOutputs: opts.getAdditionalsecretoutputsList().sort(),
+    };
+    const parent = opts.getParent();
+    const customTimeouts = getCustomTimeouts(opts);
+    // Add only truthy members.
+    if (parent) { result.parent = parent; }
+    if (customTimeouts) { result.customTimeouts = customTimeouts; }
+    return result;
+}
+
+// Creates a CustomTimeouts object from the GRPC request.
+function getCustomTimeouts(opts: any): PolicyCustomTimeouts | undefined {
+    const timeouts = opts.getCustomtimeouts();
+    if (timeouts) {
+        const createVal = timeouts.getCreate();
+        const updateVal = timeouts.getUpdate();
+        const deleteVal = timeouts.getDelete();
+        if (createVal || updateVal || deleteVal) {
+            const result: PolicyCustomTimeouts = {};
+            // Add only truthy members.
+            if (createVal) { result.create = createVal; }
+            if (updateVal) { result.update = updateVal; }
+            if (deleteVal) { result.delete = deleteVal; }
+            return result;
+        }
+    }
+    return undefined;
 }
 
 // Type guard used to determine if the `Policy` is a `ResourceValidationPolicy`.

@@ -297,3 +297,13 @@ func TestRuntimeData(t *testing.T) {
 		"aws:region":   "us-west-2",
 	}, []policyTestScenario{{WantErrors: nil}})
 }
+
+// Test resource options.
+func TestResourceOptions(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "resource_options", NodeJS, nil, []policyTestScenario{
+		// Test scenario 1: test resource options.
+		{WantErrors: nil},
+		// Test scenario 2: prepare for destroying the stack (unprotect protected resources).
+		{WantErrors: nil},
+	})
+}

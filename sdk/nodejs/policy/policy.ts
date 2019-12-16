@@ -157,9 +157,68 @@ export interface ResourceValidationArgs {
      */
     name: string;
 
-    // TODO: Add support for the following:
-    //
-    // opts: PolicyResourceOptions;
+    /**
+     * The options of the resource.
+     */
+    opts: PolicyResourceOptions;
+}
+
+/**
+ * PolicyResourceOptions is the bag of settings that control a resource's behavior.
+ */
+export interface PolicyResourceOptions {
+    /**
+     * An optional parent resource to which this resource belongs.
+     */
+    parent?: string;
+
+    /**
+     * When set to true, protect ensures this resource cannot be deleted.
+     */
+    protect: boolean;
+
+    /**
+     * Dependencies of this resource.
+     */
+    dependencies: string[];
+
+    /**
+     * The provider to use for this resource.
+     */
+    provider: string;
+
+    /**
+     * Additional URNs that should be aliased to this resource.
+     */
+    aliases: string[];
+
+    /**
+     * An optional customTimeouts configuration block.
+     */
+    customTimeouts?: PolicyCustomTimeouts;
+
+    /**
+     * Outputs that should always be treated as secrets.
+     */
+    additionalSecretOutputs: string[];
+}
+
+/**
+ * Optional custom timeout options.
+ */
+export interface PolicyCustomTimeouts {
+    /**
+     * The optional create timeout in seconds.
+     */
+    create?: number;
+    /**
+     * The optional update timeout in seconds.
+     */
+    update?: number;
+    /**
+     * The optional delete timeout in seconds.
+     */
+    delete?: number;
 }
 
 /**
@@ -241,9 +300,10 @@ export interface PolicyResource {
      */
     name: string;
 
-    // TODO: Add support for the following:
-    //
-    // opts: PolicyResourceOptions;
+    /**
+     * The options of the resource.
+     */
+    opts: PolicyResourceOptions;
 }
 
 /**
