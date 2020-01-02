@@ -1,0 +1,5 @@
+name: runtime_data
+runtime: nodejs
+description: >
+    A test program that creates a dynamic resource that passes along runtime data (as inputs & outputs) that the Policy
+    Pack will use to confirm it sees the same runtime data.

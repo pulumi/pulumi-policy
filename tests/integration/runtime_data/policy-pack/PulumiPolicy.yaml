@@ -1,0 +1,2 @@
+description: A Policy Pack to test that runtime data (Config, getStack, getProject, and isDryRun) is available to Policy Packs.
+runtime: nodejs
