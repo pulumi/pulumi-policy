@@ -3,7 +3,9 @@
 ### Improvements
 
 - Add support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs
-  via upgraded dependency on `@pulumi/pulumi` v1.8.0 (requires v1.8.0 of the Pulumi SDK).
+  via upgraded dependency on `@pulumi/pulumi` v1.8.0 (requires v1.8.0 or later of the Pulumi SDK) (https://github.com/pulumi/pulumi-policy/pull/169).
+
+- Expose resource options (https://github.com/pulumi/pulumi-policy/pull/172).
 
 ## 0.3.0 (2019-11-26)
 
