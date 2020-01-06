@@ -1,6 +1,7 @@
 // Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
 import { Resource } from "./resource";
 
 const config = new pulumi.Config();
@@ -30,4 +31,23 @@ switch (testScenario) {
         // Violates the third policy.
         const c = new Resource("c", { state: 3 });
         break;
+
+    case 6:
+        // Violates the fourth policy.
+        const r1 = new random.RandomUuid("r1");
+        break;
+
+    case 7:
+        // Violates the fifth policy.
+        const r2 = new random.RandomString("r2", {
+            length: 10,
+        });
+        break;
+
+    case 8:
+        // Create a resource to test some of the strongly-typed helpers.
+        const r3 = new random.RandomPassword("r3", {
+            length: 42,
+        });
+        break
 }

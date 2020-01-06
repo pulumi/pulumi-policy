@@ -247,6 +247,72 @@ export interface PolicyResource {
 }
 
 /**
+ * A helper function that returns a strongly-typed stack validation function.
+ * @param resourceClass A resource class used to filter this check to only resources of the specified class.
+ * @param validate A callback function that validates if a stack violates a policy.
+ */
+export function validateTypedResources<TResource extends Resource>(
+    resourceClass: { new(...rest: any[]): TResource },
+    validate: (
+        resources: q.ResolvedResource<TResource>[],
+        args: StackValidationArgs,
+        reportViolation: ReportViolation) => Promise<void> | void,
+): StackValidation {
+    return (args: StackValidationArgs, reportViolation: ReportViolation) => {
+        const resources = filterTypedResources(resourceClass, args.resources);
+        if (resources.length > 0) {
+            validate(resources, args, reportViolation);
+        }
+    };
+}
+
+/**
+ * A helper function used to determine if a resource is of the particular resource type.
+ * @param resourceClass The resource class representing the desired resource type.
+ * @param resource The resource to check.
+ * @returns `true` if `resource` is a `resourceClass`.
+ */
+export function isTypedResource<TResource extends Resource>(
+    resourceClass: { new(...rest: any[]): TResource },
+    resource: PolicyResource,
+): boolean {
+    return asTypedResource(resourceClass, resource) !== undefined;
+}
+
+/**
+ * A helper function used to convert a resource to a strongly-typed resource object.
+ * @param resourceClass The resource class representing the desired resource type.
+ * @param resource The resource to convert.
+ * @returns a strongly-typed resource if `resource` is a `resourceClass`, otherwise `undefined`.
+ */
+export function asTypedResource<TResource extends Resource>(
+    resourceClass: { new(...rest: any[]): TResource },
+    resource: PolicyResource,
+): q.ResolvedResource<TResource> | undefined {
+    const resources = filterTypedResources(resourceClass, [resource]);
+    return resources.length > 0 ? resources[0] : undefined;
+}
+
+/**
+ * A helper function used to filter resources to those matching the provided type.
+ * @param resourceClass A resource class used to filter to only resources of the specified class.
+ * @param resources The resources to filter.
+ * @returns an array of strongly-typed resources matching the provided type, or an empty array.
+ */
+export function filterTypedResources<TResource extends Resource>(
+    resourceClass: { new(...rest: any[]): TResource },
+    resources: PolicyResource[],
+): q.ResolvedResource<TResource>[] {
+    const isInstance = (<any>resourceClass).isInstance;
+    if (!isInstance || typeof isInstance !== "function") {
+        return [];
+    }
+    return resources
+        .filter(r => isInstance({ __pulumiType: r.type }) === true)
+        .map(r => r.props as q.ResolvedResource<TResource>);
+}
+
+/**
  * ReportViolation is the callback signature used to report policy violations.
  */
 export type ReportViolation = (message: string, urn?: string) => void;

@@ -1,6 +1,14 @@
 // Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
 
-import { PolicyPack } from "@pulumi/policy";
+import {
+    asTypedResource,
+    filterTypedResources,
+    isTypedResource,
+    PolicyPack,
+    validateTypedResources,
+} from "@pulumi/policy";
+
+import * as random from "@pulumi/random";
 
 new PolicyPack("validate-stack-test-policy", {
     policies: [
@@ -73,6 +81,54 @@ new PolicyPack("validate-stack-test-policy", {
                         if (r.props.state === 3) {
                             reportViolation("'state' must not have the value 3.", r.urn);
                         }
+                    }
+                }
+            },
+        },
+        // Strongly-typed.
+        {
+            name: "randomuuid-no-keepers",
+            description: "Prohibits creating a RandomUuid without any 'keepers'.",
+            enforcementLevel: "mandatory",
+            validateStack: validateTypedResources(random.RandomUuid, (resources, args, reportViolation) => {
+                for (const r of resources) {
+                    if (!r.keepers || Object.keys(r.keepers).length === 0) {
+                        reportViolation("RandomUuid must not have an empty 'keepers'.")
+                    }
+                }
+            }),
+        },
+        // Manual strongly-typed.
+        {
+            name: "no-randomstrings",
+            description: "Prohibits RandomString resources.",
+            enforcementLevel: "mandatory",
+            validateStack: (args, reportViolation) => {
+                const resources = filterTypedResources(random.RandomString, args.resources);
+                if (resources.length > 0) {
+                    reportViolation("RandomString resources are not allowed.")
+                }
+            },
+        },
+        // Validate other type checks work as expected.
+        {
+            name: "test-type-checks",
+            description: "Policy used to test type checks.",
+            enforcementLevel: "mandatory",
+            validateStack: (args, reportViolation) => {
+                for (const r of args.resources) {
+                    if (r.type !== "random:index/randomPassword:RandomPassword") {
+                        continue;
+                    }
+                    if (!isTypedResource(random.RandomPassword, r)) {
+                        throw new Error("`isTypedResource` not returning the expected value.");
+                    }
+                    const randomPassword = asTypedResource(random.RandomPassword, r);
+                    if (!randomPassword) {
+                        throw new Error("`asTypedResource` is not returning the expected value.")
+                    }
+                    if (randomPassword.length !== 42) {
+                        throw new Error("`randomPassword.length` is not returning the expected value.")
                     }
                 }
             },

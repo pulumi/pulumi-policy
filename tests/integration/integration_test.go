@@ -287,6 +287,24 @@ func TestValidateStack(t *testing.T) {
 				"  'state' must not have the value 3.",
 			},
 		},
+		// Test scenario 6: violates the fourth policy.
+		{
+			WantErrors: []string{
+				"  mandatory: Prohibits creating a RandomUuid without any 'keepers'.",
+				"  RandomUuid must not have an empty 'keepers'.",
+			},
+		},
+		// Test scenario 7: violates the fifth policy.
+		{
+			WantErrors: []string{
+				"  mandatory: Prohibits RandomString resources.",
+				"  RandomString resources are not allowed.",
+			},
+		},
+		// Test scenario 8: no violations.
+		{
+			WantErrors: nil,
+		},
 	})
 }
 
