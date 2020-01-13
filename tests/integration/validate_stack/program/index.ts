@@ -49,5 +49,13 @@ switch (testScenario) {
         const r3 = new random.RandomPassword("r3", {
             length: 42,
         });
-        break
+        break;
+
+    case 9:
+        // Create several resources of the same type to validate
+        // resource filtering by type.
+        const x = new random.RandomInteger("x", { min: 0, max: 10 });
+        const y = new random.RandomInteger("y", { min: 0, max: 10 });
+        const z = new random.RandomInteger("z", { min: 0, max: 10 });
+        break;
 }

@@ -305,6 +305,10 @@ func TestValidateStack(t *testing.T) {
 		{
 			WantErrors: nil,
 		},
+		// Test scenario 9: no violations.
+		{
+			WantErrors: nil,
+		},
 	})
 }
 

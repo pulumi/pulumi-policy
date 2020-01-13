@@ -133,5 +133,21 @@ new PolicyPack("validate-stack-test-policy", {
                 }
             },
         },
+        // Validate that `args.resources` is filtered and matches the resources in `resources`.
+        {
+            name: "test-args-filtering",
+            description: "Policy used to test that `args.resources` is filtered and matches the resources in `resources`.",
+            enforcementLevel: "mandatory",
+            validateStack: validateTypedResources(random.RandomInteger, (resources, args, reportViolation) => {
+                if (resources.length !== args.resources.length) {
+                    throw new Error("`args.resources.length` does not match `resources.length`.");
+                }
+                for (let i = 0; i < resources.length; i++) {
+                    if (resources[i].id !== args.resources[i].props.id) {
+                        throw new Error("`resources[i].id` does not match `args.resources[i].props.id`.");
+                    }
+                }
+            }),
+        },
     ],
 });

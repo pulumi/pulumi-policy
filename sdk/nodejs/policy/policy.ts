@@ -259,9 +259,15 @@ export function validateTypedResources<TResource extends Resource>(
         reportViolation: ReportViolation) => Promise<void> | void,
 ): StackValidation {
     return (args: StackValidationArgs, reportViolation: ReportViolation) => {
-        const resources = filterTypedResources(resourceClass, args.resources);
-        if (resources.length > 0) {
-            validate(resources, args, reportViolation);
+        const isInstance = (<any>resourceClass).isInstance;
+        if (!isInstance || typeof isInstance !== "function") {
+            return;
+        }
+        const filtered = args.resources.filter(r => isInstance({ __pulumiType: r.type }) === true);
+        if (filtered.length > 0) {
+            const filteredTyped = filtered.map(r => r.props as q.ResolvedResource<TResource>);
+            const filteredArgs = { resources: filtered };
+            validate(filteredTyped, filteredArgs, reportViolation);
         }
     };
 }
