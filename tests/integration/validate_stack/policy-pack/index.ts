@@ -1,6 +1,6 @@
 // Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
 
-import { PolicyPack, validateTypedResources } from "@pulumi/policy";
+import { PolicyPack, validateStackResourcesOfType } from "@pulumi/policy";
 
 import * as random from "@pulumi/random";
 
@@ -84,7 +84,7 @@ new PolicyPack("validate-stack-test-policy", {
             name: "randomuuid-no-keepers",
             description: "Prohibits creating a RandomUuid without any 'keepers'.",
             enforcementLevel: "mandatory",
-            validateStack: validateTypedResources(random.RandomUuid, (resources, args, reportViolation) => {
+            validateStack: validateStackResourcesOfType(random.RandomUuid, (resources, args, reportViolation) => {
                 for (const r of resources) {
                     if (!r.keepers || Object.keys(r.keepers).length === 0) {
                         reportViolation("RandomUuid must not have an empty 'keepers'.");
@@ -134,7 +134,7 @@ new PolicyPack("validate-stack-test-policy", {
             name: "test-args-filtering",
             description: "Policy used to test that `args.resources` is filtered and matches the resources in `resources`.",
             enforcementLevel: "mandatory",
-            validateStack: validateTypedResources(random.RandomInteger, (resources, args, reportViolation) => {
+            validateStack: validateStackResourcesOfType(random.RandomInteger, (resources, args, reportViolation) => {
                 if (resources.length !== args.resources.length) {
                     throw new Error("`args.resources.length` does not match `resources.length`.");
                 }
