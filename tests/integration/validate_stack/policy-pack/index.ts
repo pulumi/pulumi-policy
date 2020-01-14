@@ -1,12 +1,6 @@
 // Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
 
-import {
-    asTypedResource,
-    filterTypedResources,
-    isTypedResource,
-    PolicyPack,
-    validateTypedResources,
-} from "@pulumi/policy";
+import { PolicyPack, validateTypedResources } from "@pulumi/policy";
 
 import * as random from "@pulumi/random";
 
@@ -37,7 +31,7 @@ new PolicyPack("validate-stack-test-policy", {
 
                     if (r.type === "pulumi-nodejs:dynamic:Resource") {
                         if (r.props.state === 1) {
-                            reportViolation("'state' must not have the value 1.")
+                            reportViolation("'state' must not have the value 1.");
                         }
                     }
                 }
@@ -58,7 +52,7 @@ new PolicyPack("validate-stack-test-policy", {
 
                     if (r.type === "pulumi-nodejs:dynamic:Resource") {
                         if (r.props.state === 2) {
-                            reportViolation("'state' must not have the value 2.")
+                            reportViolation("'state' must not have the value 2.");
                         }
                     }
                 }
@@ -93,7 +87,7 @@ new PolicyPack("validate-stack-test-policy", {
             validateStack: validateTypedResources(random.RandomUuid, (resources, args, reportViolation) => {
                 for (const r of resources) {
                     if (!r.keepers || Object.keys(r.keepers).length === 0) {
-                        reportViolation("RandomUuid must not have an empty 'keepers'.")
+                        reportViolation("RandomUuid must not have an empty 'keepers'.");
                     }
                 }
             }),
@@ -104,9 +98,11 @@ new PolicyPack("validate-stack-test-policy", {
             description: "Prohibits RandomString resources.",
             enforcementLevel: "mandatory",
             validateStack: (args, reportViolation) => {
-                const resources = filterTypedResources(random.RandomString, args.resources);
+                const resources = args.resources
+                    .map(r => r.isType(random.RandomString))
+                    .filter(r => r);
                 if (resources.length > 0) {
-                    reportViolation("RandomString resources are not allowed.")
+                    reportViolation("RandomString resources are not allowed.");
                 }
             },
         },
@@ -120,15 +116,15 @@ new PolicyPack("validate-stack-test-policy", {
                     if (r.type !== "random:index/randomPassword:RandomPassword") {
                         continue;
                     }
-                    if (!isTypedResource(random.RandomPassword, r)) {
-                        throw new Error("`isTypedResource` not returning the expected value.");
+                    if (!r.isType(random.RandomPassword)) {
+                        throw new Error("`isType` did not return the expected value.");
                     }
-                    const randomPassword = asTypedResource(random.RandomPassword, r);
+                    const randomPassword = r.asType(random.RandomPassword);
                     if (!randomPassword) {
-                        throw new Error("`asTypedResource` is not returning the expected value.")
+                        throw new Error("`asType` did not return the expected value.");
                     }
                     if (randomPassword.length !== 42) {
-                        throw new Error("`randomPassword.length` is not returning the expected value.")
+                        throw new Error("`randomPassword.length` did not return the expected value.");
                     }
                 }
             },

@@ -160,6 +160,38 @@ export interface ResourceValidationArgs {
     // TODO: Add support for the following:
     //
     // opts: PolicyResourceOptions;
+
+    /**
+     * Returns true if the type of this resource is the same as `resourceClass`.
+     *
+     * For example:
+     *
+     * ```typescript
+     * if (args.isType(aws.s3.Bucket)) {
+     *     // ...
+     * }
+     * ```
+     */
+    isType<TResource extends Resource>(
+        resourceClass: { new(...rest: any[]): TResource },
+    ): boolean;
+
+    /**
+     * Returns the resource args for `resourceClass` if the type of this resource is the same as `resourceClass`,
+     * otherwise `undefined`.
+     *
+     * For example:
+     *
+     * ```typescript
+     * const bucketArgs = args.AsType(aws.s3.Bucket);
+     * if (bucketArgs) {
+     *     // ...
+     * }
+     * ```
+     */
+    asType<TResource extends Resource, TArgs>(
+        resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+    ): Unwrap<NonNullable<TArgs>> | undefined;
 }
 
 /**
@@ -176,14 +208,9 @@ export function validateTypedResource<TResource extends Resource, TArgs>(
         reportViolation: ReportViolation) => Promise<void> | void,
 ): ResourceValidation {
     return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
-        const isInstance = (<any>resourceClass).isInstance;
-        if (!isInstance || typeof isInstance !== "function") {
-            return;
+        if (args.isType(resourceClass)) {
+            validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
         }
-        if (isInstance({ __pulumiType: args.type }) !== true) {
-            return;
-        }
-        validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
     };
 }
 
@@ -244,6 +271,42 @@ export interface PolicyResource {
     // TODO: Add support for the following:
     //
     // opts: PolicyResourceOptions;
+
+    /**
+     * Returns true if the type of this resource is the same as `resourceClass`.
+     *
+     * For example:
+     *
+     * ```typescript
+     * for (const resource of args.resources) {
+     *     if (resource.isType(aws.s3.Bucket)) {
+     *         // ...
+     *     }
+     * }
+     * ```
+     */
+    isType<TResource extends Resource>(
+        resourceClass: { new(...rest: any[]): TResource },
+    ): boolean;
+
+    /**
+     * Returns the resource if the type of this resource is the same as `resourceClass`,
+     * otherwise `undefined`.
+     *
+     * For example:
+     *
+     * ```typescript
+     * const buckets = args.resources
+     *     .map(r = r.asType(aws.s3.Bucket))
+     *     .filter(b => b);
+     * for (const bucket of buckets) {
+     *     // ...
+     * }
+     * ```
+     */
+    asType<TResource extends Resource>(
+        resourceClass: { new(...rest: any[]): TResource },
+    ): q.ResolvedResource<TResource> | undefined;
 }
 
 /**
@@ -259,63 +322,13 @@ export function validateTypedResources<TResource extends Resource>(
         reportViolation: ReportViolation) => Promise<void> | void,
 ): StackValidation {
     return (args: StackValidationArgs, reportViolation: ReportViolation) => {
-        const isInstance = (<any>resourceClass).isInstance;
-        if (!isInstance || typeof isInstance !== "function") {
-            return;
-        }
-        const filtered = args.resources.filter(r => isInstance({ __pulumiType: r.type }) === true);
+        const filtered = args.resources.filter(r => r.isType(resourceClass));
         if (filtered.length > 0) {
             const filteredTyped = filtered.map(r => r.props as q.ResolvedResource<TResource>);
             const filteredArgs = { resources: filtered };
             validate(filteredTyped, filteredArgs, reportViolation);
         }
     };
-}
-
-/**
- * A helper function used to determine if a resource is of the particular resource type.
- * @param resourceClass The resource class representing the desired resource type.
- * @param resource The resource to check.
- * @returns `true` if `resource` is a `resourceClass`.
- */
-export function isTypedResource<TResource extends Resource>(
-    resourceClass: { new(...rest: any[]): TResource },
-    resource: PolicyResource,
-): boolean {
-    return asTypedResource(resourceClass, resource) !== undefined;
-}
-
-/**
- * A helper function used to convert a resource to a strongly-typed resource object.
- * @param resourceClass The resource class representing the desired resource type.
- * @param resource The resource to convert.
- * @returns a strongly-typed resource if `resource` is a `resourceClass`, otherwise `undefined`.
- */
-export function asTypedResource<TResource extends Resource>(
-    resourceClass: { new(...rest: any[]): TResource },
-    resource: PolicyResource,
-): q.ResolvedResource<TResource> | undefined {
-    const resources = filterTypedResources(resourceClass, [resource]);
-    return resources.length > 0 ? resources[0] : undefined;
-}
-
-/**
- * A helper function used to filter resources to those matching the provided type.
- * @param resourceClass A resource class used to filter to only resources of the specified class.
- * @param resources The resources to filter.
- * @returns an array of strongly-typed resources matching the provided type, or an empty array.
- */
-export function filterTypedResources<TResource extends Resource>(
-    resourceClass: { new(...rest: any[]): TResource },
-    resources: PolicyResource[],
-): q.ResolvedResource<TResource>[] {
-    const isInstance = (<any>resourceClass).isInstance;
-    if (!isInstance || typeof isInstance !== "function") {
-        return [];
-    }
-    return resources
-        .filter(r => isInstance({ __pulumiType: r.type }) === true)
-        .map(r => r.props as q.ResolvedResource<TResource>);
 }
 
 /**

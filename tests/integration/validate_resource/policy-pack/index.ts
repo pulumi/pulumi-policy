@@ -76,5 +76,26 @@ new PolicyPack("validate-resource-test-policy", {
                 }
             },
         },
+        // Validate other type checks work as expected.
+        {
+            name: "test-type-checks",
+            description: "Policy used to test type checks.",
+            enforcementLevel: "mandatory",
+            validateResource: (args, reportViolation) => {
+                if (args.type !== "random:index/randomPassword:RandomPassword") {
+                    return;
+                }
+                if (!args.isType(random.RandomPassword)) {
+                    throw new Error("`isType` did not return the expected value.");
+                }
+                const randomPassword = args.asType(random.RandomPassword);
+                if (!randomPassword) {
+                    throw new Error("`asType` did not return the expected value.");
+                }
+                if (randomPassword.length !== 42) {
+                    throw new Error("`randomPassword.length` did not return the expected value.");
+                }
+            },
+        },
     ],
 });

@@ -233,6 +233,10 @@ func TestValidateResource(t *testing.T) {
 				"  'state' must not have the value 5.",
 			},
 		},
+		// Test scenario 10: no violations.
+		{
+			WantErrors: nil,
+		},
 	})
 }
 

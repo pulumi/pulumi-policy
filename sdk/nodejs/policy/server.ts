@@ -16,6 +16,9 @@ const grpc = require("grpc");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
+import { Resource, Unwrap } from "@pulumi/pulumi";
+import * as q from "@pulumi/pulumi/queryable";
+
 import { deserializeProperties } from "./deserialize";
 import {
     Policies,
@@ -159,12 +162,28 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
 
                 for (const validation of validations) {
                     try {
+                        const type = req.getType();
                         const deserd = deserializeProperties(req.getProperties());
+                        const props = unknownCheckingProxy(deserd);
                         const args: ResourceValidationArgs = {
-                            type: req.getType(),
-                            props: unknownCheckingProxy(deserd),
+                            type: type,
+                            props: props,
                             urn: req.getUrn(),
                             name: req.getName(),
+
+                            isType: function<TResource extends Resource>(
+                                resourceClass: { new(...rest: any[]): TResource },
+                            ): boolean {
+                                return isTypeOf(type, resourceClass);
+                            },
+
+                            asType: function<TResource extends Resource, TArgs>(
+                                resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+                            ): Unwrap<NonNullable<TArgs>> | undefined {
+                                return isTypeOf(type, resourceClass)
+                                    ? props as Unwrap<NonNullable<TArgs>>
+                                    : undefined;
+                            },
                         };
 
                         // Pass the result of the validate call to Promise.resolve.
@@ -235,11 +254,27 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                 try {
                     const resources: PolicyResource[] = [];
                     for (const r of req.getResourcesList()) {
+                        const type = r.getType();
+                        const props = r.getProperties().toJavaScript();
                         resources.push({
-                            type: r.getType(),
-                            props: r.getProperties().toJavaScript(),
+                            type: type,
+                            props: props,
                             urn: r.getUrn(),
                             name: r.getName(),
+
+                            isType: function<TResource extends Resource>(
+                                resourceClass: { new(...rest: any[]): TResource },
+                            ): boolean {
+                                return isTypeOf(type, resourceClass);
+                            },
+
+                            asType: function<TResource extends Resource>(
+                                resourceClass: { new(...rest: any[]): TResource },
+                            ): q.ResolvedResource<TResource> | undefined {
+                                return isTypeOf(type, resourceClass)
+                                    ? props as q.ResolvedResource<TResource>
+                                    : undefined;
+                            },
                         });
                     }
 
@@ -298,4 +333,15 @@ function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
 // Type guard used to determine if the `Policy` is a `StackValidationPolicy`.
 function isStackPolicy(p: Policy): p is StackValidationPolicy {
     return typeof (p as StackValidationPolicy).validateStack === "function";
+}
+
+// Helper to check if `type` is the type of `resourceClass`.
+function isTypeOf<TResource extends Resource>(
+    type: string,
+    resourceClass: { new(...rest: any[]): TResource },
+): boolean {
+    const isInstance = (<any>resourceClass).isInstance;
+    return isInstance &&
+        typeof isInstance === "function" &&
+        isInstance({ __pulumiType: type }) === true;
 }

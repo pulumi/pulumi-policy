@@ -45,7 +45,7 @@ switch (testScenario) {
         break;
 
     case 8:
-        // Create a resource to test some of the strongly-typed helpers.
+        // Create a resource to test the strongly-typed helpers.
         const r3 = new random.RandomPassword("r3", {
             length: 42,
         });
