@@ -33,14 +33,14 @@ export interface PolicyPackArgs {
  *
  * ```typescript
  * import * as aws from "@pulumi/aws";
- * import { PolicyPack, validateTypedResource } from "@pulumi/policy";
+ * import { PolicyPack, validateResourceOfType } from "@pulumi/policy";
  *
  * new PolicyPack("aws-typescript", {
  *     policies: [{
  *         name: "s3-no-public-read",
  *         description: "Prohibits setting the publicRead or publicReadWrite permission on AWS S3 buckets.",
  *         enforcementLevel: "mandatory",
- *         validateResource: validateTypedResource(aws.s3.Bucket, (bucket, args, reportViolation) => {
+ *         validateResource: validateResourceOfType(aws.s3.Bucket, (bucket, args, reportViolation) => {
  *             if (bucket.acl === "public-read" || bucket.acl === "public-read-write") {
  *                 reportViolation("You cannot set public-read or public-read-write on an S3 bucket.");
  *             }
@@ -100,13 +100,13 @@ export type Policies = (ResourceValidationPolicy | StackValidationPolicy)[];
  *
  * ```typescript
  * import * as aws from "@pulumi/aws";
- * import { validateTypedResource } from "@pulumi/policy";
+ * import { validateResourceOfType } from "@pulumi/policy";
  *
  * const s3NoPublicReadPolicy: ResourceValidationPolicy = {
  *     name: "s3-no-public-read",
  *     description: "Prohibits setting the publicRead or publicReadWrite permission on AWS S3 buckets.",
  *     enforcementLevel: "mandatory",
- *     validateResource: validateTypedResource(aws.s3.Bucket, (bucket, args, reportViolation) => {
+ *     validateResource: validateResourceOfType(aws.s3.Bucket, (bucket, args, reportViolation) => {
  *         if (bucket.acl === "public-read" || bucket.acl === "public-read-write") {
  *             reportViolation("You cannot set public-read or public-read-write on an S3 bucket.");
  *         }
@@ -160,13 +160,79 @@ export interface ResourceValidationArgs {
     // TODO: Add support for the following:
     //
     // opts: PolicyResourceOptions;
+
+    /**
+     * Returns true if the type of this resource is the same as `resourceClass`.
+     *
+     * For example:
+     *
+     * ```typescript
+     * if (args.isType(aws.s3.Bucket)) {
+     *     // ...
+     * }
+     * ```
+     */
+    isType<TResource extends Resource>(
+        resourceClass: { new(...rest: any[]): TResource },
+    ): boolean;
+
+    /**
+     * Returns the resource args for `resourceClass` if the type of this resource is the same as `resourceClass`,
+     * otherwise `undefined`.
+     *
+     * For example:
+     *
+     * ```typescript
+     * const bucketArgs = args.AsType(aws.s3.Bucket);
+     * if (bucketArgs) {
+     *     // ...
+     * }
+     * ```
+     */
+    asType<TResource extends Resource, TArgs>(
+        resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+    ): Unwrap<NonNullable<TArgs>> | undefined;
 }
 
 /**
- * A helper function that returns a strongly-typed resource validation function.
- * @param resourceClass A resource class used to filter this check to only resources of the specified class and
- * determine the appropriate strongly-typed `TArg` type to use for the resource.
+ * A helper function that returns a strongly-typed resource validation function, used to check only resources of the
+ * specified resource class.
+ *
+ * For example:
+ *
+ * ```typescript
+ * validateResource: validateResourceOfType(aws.s3.Bucket, (bucket, args, reportViolation) => {
+ *     for (const bucket of buckets) {
+ *         // ...
+ *     }
+ * }),
+ * ```
+ *
+ * @param resourceClass Used to filter this check to only resources of the specified resource class.
  * @param validate A callback function that validates if the resource definition violates a policy.
+ */
+export function validateResourceOfType<TResource extends Resource, TArgs>(
+    resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+    validate: (
+        props: Unwrap<NonNullable<TArgs>>,
+        args: ResourceValidationArgs,
+        reportViolation: ReportViolation) => Promise<void> | void,
+): ResourceValidation {
+    return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
+        if (args.isType(resourceClass)) {
+            validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
+        }
+    };
+}
+
+/**
+ * A helper function that returns a strongly-typed resource validation function, used to check only resources of the
+ * specified resource class.
+ *
+ * @param resourceClass Used to filter this check to only resources of the specified resource class.
+ * @param validate A callback function that validates if the resource definition violates a policy.
+ *
+ * @deprecated This is deprecated and will be removed in a future version. Use `validateResourceOfType` instead.
  */
 export function validateTypedResource<TResource extends Resource, TArgs>(
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
@@ -175,16 +241,7 @@ export function validateTypedResource<TResource extends Resource, TArgs>(
         args: ResourceValidationArgs,
         reportViolation: ReportViolation) => Promise<void> | void,
 ): ResourceValidation {
-    return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
-        const isInstance = (<any>resourceClass).isInstance;
-        if (!isInstance || typeof isInstance !== "function") {
-            return;
-        }
-        if (isInstance({ __pulumiType: args.type }) !== true) {
-            return;
-        }
-        validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
-    };
+    return validateResourceOfType(resourceClass, validate);
 }
 
 /**
@@ -244,6 +301,76 @@ export interface PolicyResource {
     // TODO: Add support for the following:
     //
     // opts: PolicyResourceOptions;
+
+    /**
+     * Returns true if the type of this resource is the same as `resourceClass`.
+     *
+     * For example:
+     *
+     * ```typescript
+     * for (const resource of args.resources) {
+     *     if (resource.isType(aws.s3.Bucket)) {
+     *         // ...
+     *     }
+     * }
+     * ```
+     */
+    isType<TResource extends Resource>(
+        resourceClass: { new(...rest: any[]): TResource },
+    ): boolean;
+
+    /**
+     * Returns the resource if the type of this resource is the same as `resourceClass`,
+     * otherwise `undefined`.
+     *
+     * For example:
+     *
+     * ```typescript
+     * const buckets = args.resources
+     *     .map(r = r.asType(aws.s3.Bucket))
+     *     .filter(b => b);
+     * for (const bucket of buckets) {
+     *     // ...
+     * }
+     * ```
+     */
+    asType<TResource extends Resource>(
+        resourceClass: { new(...rest: any[]): TResource },
+    ): q.ResolvedResource<TResource> | undefined;
+}
+
+/**
+ * A helper function that returns a strongly-typed stack validation function, used to check only resources of the
+ * specified resource class.
+ *
+ * For example:
+ *
+ * ```typescript
+ * validateStack: validateStackResourcesOfType(aws.s3.Bucket, (buckets, args, reportViolation) => {
+ *     for (const bucket of buckets) {
+ *         // ...
+ *     }
+ * }),
+ * ```
+ *
+ * @param resourceClass Used to filter this check to only resources of the specified resource class.
+ * @param validate A callback function that validates if a stack violates a policy.
+ */
+export function validateStackResourcesOfType<TResource extends Resource>(
+    resourceClass: { new(...rest: any[]): TResource },
+    validate: (
+        resources: q.ResolvedResource<TResource>[],
+        args: StackValidationArgs,
+        reportViolation: ReportViolation) => Promise<void> | void,
+): StackValidation {
+    return (args: StackValidationArgs, reportViolation: ReportViolation) => {
+        const filtered = args.resources.filter(r => r.isType(resourceClass));
+        if (filtered.length > 0) {
+            const filteredTyped = filtered.map(r => r.props as q.ResolvedResource<TResource>);
+            const filteredArgs = { resources: filtered };
+            validate(filteredTyped, filteredArgs, reportViolation);
+        }
+    };
 }
 
 /**

@@ -5,6 +5,24 @@
 - Add support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs
   via upgraded dependency on `@pulumi/pulumi` v1.8.0 (requires v1.8.0 of the Pulumi SDK).
 
+- Provide easier type checking for `validateStack`, along with `isType` and `asType` helper functions
+  (https://github.com/pulumi/pulumi-policy/pull/173).
+
+  Example:
+
+  ```typescript
+  {
+      validateStack: validateStackResourcesOfType(aws.s3.Bucket, (buckets, args, reportViolation) => {
+          for (const bucket of buckets) {
+              // ...
+          }
+      }),
+  }
+  ```
+
+- `validateTypedResource` is now deprecated in favor of `validateResourceOfType`. `validateTypedResource`
+  will be removed in an upcoming version. (https://github.com/pulumi/pulumi-policy/pull/173).
+
 ## 0.3.0 (2019-11-26)
 
 ### Improvements

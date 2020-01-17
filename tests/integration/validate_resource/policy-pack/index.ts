@@ -1,6 +1,6 @@
 // Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
 
-import { PolicyPack, validateTypedResource } from "@pulumi/policy";
+import { PolicyPack, validateResourceOfType } from "@pulumi/policy";
 import * as random from "@pulumi/random";
 
 new PolicyPack("validate-resource-test-policy", {
@@ -57,7 +57,7 @@ new PolicyPack("validate-resource-test-policy", {
             name: "randomuuid-no-keepers",
             description: "Prohibits creating a RandomUuid without any 'keepers'.",
             enforcementLevel: "mandatory",
-            validateResource: validateTypedResource(random.RandomUuid, (it, args, reportViolation) => {
+            validateResource: validateResourceOfType(random.RandomUuid, (it, args, reportViolation) => {
                 if (!it.keepers || Object.keys(it.keepers).length === 0) {
                     reportViolation("RandomUuid must not have an empty 'keepers'.")
                 }
@@ -73,6 +73,27 @@ new PolicyPack("validate-resource-test-policy", {
                     if (args.props.state === 5) {
                         reportViolation("'state' must not have the value 5.", "some-urn")
                     }
+                }
+            },
+        },
+        // Validate other type checks work as expected.
+        {
+            name: "test-type-checks",
+            description: "Policy used to test type checks.",
+            enforcementLevel: "mandatory",
+            validateResource: (args, reportViolation) => {
+                if (args.type !== "random:index/randomPassword:RandomPassword") {
+                    return;
+                }
+                if (!args.isType(random.RandomPassword)) {
+                    throw new Error("`isType` did not return the expected value.");
+                }
+                const randomPassword = args.asType(random.RandomPassword);
+                if (!randomPassword) {
+                    throw new Error("`asType` did not return the expected value.");
+                }
+                if (randomPassword.length !== 42) {
+                    throw new Error("`randomPassword.length` did not return the expected value.");
                 }
             },
         },

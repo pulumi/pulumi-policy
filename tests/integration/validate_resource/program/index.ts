@@ -55,4 +55,11 @@ switch (testScenario) {
         // Violates the fifth policy.
         const e = new Resource("e", { state: 5 });
         break;
+
+    case 10:
+        // Create a resource to test the strongly-typed helpers.
+        const pass = new random.RandomPassword("pass", {
+            length: 42,
+        });
+        break;
 }
