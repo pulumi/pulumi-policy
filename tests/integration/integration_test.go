@@ -43,7 +43,7 @@ func abortIfFailed(t *testing.T) {
 type policyTestScenario struct {
 	// WantErrors is the error message we expect to see in the command's output.
 	WantErrors []string
-	// Whether the error messages are advisory, and don't actually fail the command.
+	// Whether the error messages are advisory, and don't actually fail the operation.
 	Advisory bool
 }
 
