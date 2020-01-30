@@ -1,5 +1,7 @@
 ## HEAD (Unreleased)
 
+## 0.4.0 (2020-01-30)
+
 ### Improvements
 
 - Add support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs
