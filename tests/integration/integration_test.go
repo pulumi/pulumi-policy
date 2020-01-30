@@ -43,6 +43,8 @@ func abortIfFailed(t *testing.T) {
 type policyTestScenario struct {
 	// WantErrors is the error message we expect to see in the command's output.
 	WantErrors []string
+	// Whether the error messages are advisory, and don't actually fail the operation.
+	Advisory bool
 }
 
 // runPolicyPackIntegrationTest creates a new Pulumi stack and then runs through
@@ -147,7 +149,12 @@ func runPolicyPackIntegrationTest(
 				t.Log("No errors are expected.")
 				e.RunCommand(cmd, args...)
 			} else {
-				stdout, stderr := e.RunCommandExpectError(cmd, args...)
+				var stdout, stderr string
+				if scenario.Advisory {
+					stdout, stderr = e.RunCommand(cmd, args...)
+				} else {
+					stdout, stderr = e.RunCommandExpectError(cmd, args...)
+				}
 
 				for _, wantErr := range scenario.WantErrors {
 					inSTDOUT := strings.Contains(stdout, wantErr)
@@ -312,6 +319,22 @@ func TestValidateStack(t *testing.T) {
 		// Test scenario 9: no violations.
 		{
 			WantErrors: nil,
+		},
+	})
+}
+
+// Test that accessing unknown values returns an error during previews.
+func TestUnknownValues(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "unknown_values", NodeJS, map[string]string{
+		"aws:region": "us-west-2",
+	}, []policyTestScenario{
+		{
+			WantErrors: []string{
+				"  advisory: can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
+				"random:index:RandomPet (pet):",
+				"advisory: can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
+			},
+			Advisory: true,
 		},
 	})
 }

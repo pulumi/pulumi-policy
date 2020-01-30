@@ -255,7 +255,8 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                     const resources: PolicyResource[] = [];
                     for (const r of req.getResourcesList()) {
                         const type = r.getType();
-                        const props = r.getProperties().toJavaScript();
+                        const deserd = deserializeProperties(r.getProperties());
+                        const props = unknownCheckingProxy(deserd);
                         resources.push({
                             type: type,
                             props: props,

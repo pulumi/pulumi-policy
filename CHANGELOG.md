@@ -23,6 +23,10 @@
 - `validateTypedResource` is now deprecated in favor of `validateResourceOfType`. `validateTypedResource`
   will be removed in an upcoming version. (https://github.com/pulumi/pulumi-policy/pull/173).
 
+- Attempting to access an unknown property value during previews from a stack validation callback now results
+  in an advisory violation like what happens when doing the same from a resource validation callback
+  (https://github.com/pulumi/pulumi-policy/pull/180).
+
 ## 0.3.0 (2019-11-26)
 
 ### Improvements
