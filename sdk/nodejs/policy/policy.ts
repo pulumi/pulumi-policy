@@ -143,7 +143,7 @@ export interface ResourceValidationArgs {
     type: string;
 
     /**
-     * The properties of the resource.
+     * The inputs of the resource.
      */
     props: Record<string, any>;
 
@@ -157,9 +157,15 @@ export interface ResourceValidationArgs {
      */
     name: string;
 
-    // TODO: Add support for the following:
-    //
-    // opts: PolicyResourceOptions;
+    /**
+     * The options of the resource.
+     */
+    opts: PolicyResourceOptions;
+
+    /**
+     * The provider of the resource.
+     */
+    provider?: PolicyProviderResource;
 
     /**
      * Returns true if the type of this resource is the same as `resourceClass`.
@@ -192,6 +198,85 @@ export interface ResourceValidationArgs {
     asType<TResource extends Resource, TArgs>(
         resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     ): Unwrap<NonNullable<TArgs>> | undefined;
+}
+
+/**
+ * PolicyResourceOptions is the bag of settings that control a resource's behavior.
+ */
+export interface PolicyResourceOptions {
+    /**
+     * When set to true, protect ensures this resource cannot be deleted.
+     */
+    protect: boolean;
+
+    /**
+     * Ignore changes to any of the specified properties.
+     */
+    ignoreChanges: string[];
+
+    /**
+     * When set to true, indicates that this resource should be deleted before
+     * its replacement is created when replacement is necessary.
+     */
+    deleteBeforeReplace?: boolean;
+
+    /**
+     * Additional URNs that should be aliased to this resource.
+     */
+    aliases: string[];
+
+    /**
+     * Custom timeouts for resource create, update, and delete operations.
+     */
+    customTimeouts: PolicyCustomTimeouts;
+
+    /**
+     * Outputs that should always be treated as secrets.
+     */
+    additionalSecretOutputs: string[];
+}
+
+/**
+ * Custom timeout options.
+ */
+export interface PolicyCustomTimeouts {
+    /**
+     * The create resource timeout.
+     */
+    createSeconds: number;
+    /**
+     * The update resource timeout.
+     */
+    updateSeconds: number;
+    /**
+     * The delete resource timeout.
+     */
+    deleteSeconds: number;
+}
+
+/**
+ * Information about the provider.
+ */
+export interface PolicyProviderResource {
+    /**
+     * The type of the resource provider.
+     */
+    type: string;
+
+    /**
+     * The properties of the resource provider.
+     */
+    props: Record<string, any>;
+
+    /**
+     * The URN of the resource provider.
+     */
+    urn: string;
+
+    /**
+     * The name of the resource provider.
+     */
+    name: string;
 }
 
 /**
@@ -298,9 +383,30 @@ export interface PolicyResource {
      */
     name: string;
 
-    // TODO: Add support for the following:
-    //
-    // opts: PolicyResourceOptions;
+    /**
+     * The options of the resource.
+     */
+    opts: PolicyResourceOptions;
+
+    /**
+     * The provider of the resource.
+     */
+    provider?: PolicyProviderResource;
+
+    /**
+     * An optional parent that this resource belongs to.
+     */
+    parent?: PolicyResource;
+
+    /**
+     * The dependencies of the resource.
+     */
+    dependencies: PolicyResource[];
+
+    /**
+     * The set of dependencies that affect each property.
+     */
+    propertyDependencies: Record<string, PolicyResource[]>;
 
     /**
      * Returns true if the type of this resource is the same as `resourceClass`.
