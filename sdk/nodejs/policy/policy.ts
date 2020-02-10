@@ -102,7 +102,66 @@ export interface Policy {
      * proper permissions.
      */
     enforcementLevel?: EnforcementLevel;
+
+    /**
+     * Configuration schema.
+     */
+    config?: PolicyConfigSchema;
 }
+
+export interface PolicyConfigSchema {
+    properties: Record<string, PolicyConfigPropertySchema>;
+    required?: string[];
+}
+
+export type PolicyConfigPropertySchemaDefinition = PolicyConfigPropertySchema | boolean;
+export interface PolicyConfigPropertySchema {
+    type?: PolicyConfigPropertySchemaTypeName | PolicyConfigPropertySchemaTypeName[];
+    enum?: PolicyConfigPropertySchemaType[];
+    const?: PolicyConfigPropertySchemaType;
+
+    multipleOf?: number;
+    maximum?: number;
+    exclusiveMaximum?: number;
+    minimum?: number;
+    exclusiveMinimum?: number;
+
+    maxLength?: number;
+    minLength?: number;
+    pattern?: string;
+
+    items?: PolicyConfigPropertySchemaDefinition | PolicyConfigPropertySchemaDefinition[];
+    additionalItems?: PolicyConfigPropertySchemaDefinition;
+    maxItems?: number;
+    minItems?: number;
+    uniqueItems?: boolean;
+    contains?: PolicyConfigPropertySchema;
+
+    maxProperties?: number;
+    minProperties?: number;
+    required?: string[];
+    properties?: {
+        [key: string]: PolicyConfigPropertySchemaDefinition;
+    };
+    patternProperties?: {
+        [key: string]: PolicyConfigPropertySchemaDefinition;
+    };
+    additionalProperties?: PolicyConfigPropertySchemaDefinition;
+    dependencies?: {
+        [key: string]: PolicyConfigPropertySchemaDefinition | string[];
+    };
+    propertyNames?: PolicyConfigPropertySchemaDefinition;
+
+    description?: string;
+    default?: PolicyConfigPropertySchemaType;
+    readOnly?: boolean;
+    writeOnly?: boolean;
+}
+
+export type PolicyConfigPropertySchemaTypeName =
+    "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
+
+export type PolicyConfigPropertySchemaType = PolicyConfigPropertySchemaType[] | boolean | number | null | object | string;
 
 /**
  * An array of Policies.
