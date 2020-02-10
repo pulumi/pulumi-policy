@@ -110,6 +110,13 @@ export function makeAnalyzerInfo(
         policyInfo.setDescription(policy.description);
         policyInfo.setEnforcementlevel(mapEnforcementLevel(policy.enforcementLevel || policyPackEnforcementLevel));
 
+        if (policy.config) {
+            const schema = new analyzerproto.PolicyConfigSchema();
+            schema.setProperties(structproto.Struct.fromJavaScript(policy.config.properties));
+            schema.setRequiredList(policy.config.required);
+            policyInfo.setConfigschema(schema);
+        }
+
         policyInfos.push(policyInfo);
     }
     ai.setPoliciesList(policyInfos);

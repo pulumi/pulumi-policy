@@ -54,6 +54,21 @@ describe("makeAnalyzerInfo", () => {
                 },
             ]);
         });
+        assert.doesNotThrow(() => {
+            makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
+                {
+                    name: "approved-amis-by-id",
+                    description: "Instances should use approved AMIs",
+                    enforcementLevel: "mandatory",
+                    config: {
+                        properties: {
+                            foo: { type: "string" },
+                        },
+                    },
+                    validateResource: (args, reportViolation) => { return; },
+                },
+            ]);
+        });
     });
 
     it("throws for disabled or invalid enforcementLevel", () => {
