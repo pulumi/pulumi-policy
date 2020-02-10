@@ -93,17 +93,22 @@ export interface Diagnostic {
 // ------------------------------------------------------------------------------------------------
 
 /** @internal */
-export function makeAnalyzerInfo(policyPackName: string, version: string, policies: Policies): any {
+export function makeAnalyzerInfo(
+    policyPackName: string,
+    policyPackVersion: string,
+    policyPackEnforcementLevel: EnforcementLevel,
+    policies: Policies,
+): any {
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
-    ai.setVersion(version);
+    ai.setVersion(policyPackVersion);
 
     const policyInfos: any[] = [];
     for (const policy of policies) {
         const policyInfo = new analyzerproto.PolicyInfo();
         policyInfo.setName(policy.name);
         policyInfo.setDescription(policy.description);
-        policyInfo.setEnforcementlevel(mapEnforcementLevel(policy.enforcementLevel));
+        policyInfo.setEnforcementlevel(mapEnforcementLevel(policy.enforcementLevel || policyPackEnforcementLevel));
 
         policyInfos.push(policyInfo);
     }

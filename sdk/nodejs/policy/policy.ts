@@ -16,6 +16,8 @@ import { Resource, Unwrap } from "@pulumi/pulumi";
 import * as q from "@pulumi/pulumi/queryable";
 import { serve } from "./server";
 
+const defaultEnforcementLevel: EnforcementLevel = "advisory";
+
 /**
  * The set of arguments for constructing a PolicyPack.
  */
@@ -24,6 +26,13 @@ export interface PolicyPackArgs {
      * The policies associated with a PolicyPack.
      */
     policies: Policies;
+
+    /**
+     * Indicates what to do on policy violation, e.g., block deployment but allow override with
+     * proper permissions. Default for all policies in the PolicyPack. Individual policies can
+     * override.
+     */
+    enforcementLevel?: EnforcementLevel;
 }
 
 /**
@@ -63,7 +72,8 @@ export class PolicyPack {
             throw new Error("Version must be defined in the package.json file.");
         }
 
-        serve(this.name, version, this.policies);
+        const enforcementLevel = args.enforcementLevel || defaultEnforcementLevel;
+        serve(this.name, version, enforcementLevel, this.policies);
     }
 }
 
@@ -91,7 +101,7 @@ export interface Policy {
      * Indicates what to do on policy violation, e.g., block deployment but allow override with
      * proper permissions.
      */
-    enforcementLevel: EnforcementLevel;
+    enforcementLevel?: EnforcementLevel;
 }
 
 /**

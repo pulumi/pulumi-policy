@@ -43,9 +43,9 @@ describe("mapEnforcementLevel", () => {
 
 describe("makeAnalyzerInfo", () => {
     it("does not throw for reasonable policy packs", () => {
-        assert.doesNotThrow(() => makeAnalyzerInfo("testRules", "1.0.0", []));
+        assert.doesNotThrow(() => makeAnalyzerInfo("testRules", "1.0.0", "advisory", []));
         assert.doesNotThrow(() => {
-            makeAnalyzerInfo("testRules", "1.0.0", [
+            makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
@@ -58,7 +58,7 @@ describe("makeAnalyzerInfo", () => {
 
     it("throws for disabled or invalid enforcementLevel", () => {
         assert.throws(() => {
-            makeAnalyzerInfo("testRules", "1.0.0", [
+            makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
@@ -68,7 +68,7 @@ describe("makeAnalyzerInfo", () => {
             ]);
         });
         assert.throws(() => {
-            makeAnalyzerInfo("testRules", "1.0.0", [
+            makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
