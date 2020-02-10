@@ -1,0 +1,3 @@
+name: resource_options
+runtime: nodejs
+description: A program that creates some resources for testing resource options.

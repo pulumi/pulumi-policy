@@ -1,0 +1,3 @@
+name: parent_dependencies
+runtime: nodejs
+description: A program that creates some resources for testing a resource's parent and dependencies.

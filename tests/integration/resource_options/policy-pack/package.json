@@ -1,0 +1,11 @@
+{
+    "name": "resource-options-policy-pack",
+    "version": "0.0.1",
+    "dependencies": {
+        "@pulumi/policy": "latest",
+        "@pulumi/pulumi": "^1.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^8.0.0"
+    }
+}

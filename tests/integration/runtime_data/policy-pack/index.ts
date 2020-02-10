@@ -4,7 +4,7 @@ import * as assert from "assert";
 
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { PolicyPack, PolicyResource } from "@pulumi/policy";
+import { PolicyPack, PolicyResource, ResourceValidationArgs } from "@pulumi/policy";
 
 new PolicyPack("runtime-data-policy", {
     policies: [
@@ -29,7 +29,7 @@ new PolicyPack("runtime-data-policy", {
     ],
 });
 
-function verifyData(r: PolicyResource) {
+function verifyData(r: PolicyResource | ResourceValidationArgs) {
     if (r.type !== "pulumi-nodejs:dynamic:Resource") {
         return;
     }

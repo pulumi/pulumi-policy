@@ -23,7 +23,10 @@ import { deserializeProperties } from "./deserialize";
 import {
     Policies,
     Policy,
+    PolicyCustomTimeouts,
+    PolicyProviderResource,
     PolicyResource,
+    PolicyResourceOptions,
     ReportViolation,
     ResourceValidationArgs,
     ResourceValidationPolicy,
@@ -151,7 +154,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                         policyPackName,
                         policyPackVersion,
                         message: violationMessage,
-                        urn: urn,
+                        urn,
                         ...diag,
                     });
                 };
@@ -166,10 +169,11 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                         const deserd = deserializeProperties(req.getProperties());
                         const props = unknownCheckingProxy(deserd);
                         const args: ResourceValidationArgs = {
-                            type: type,
-                            props: props,
+                            type,
+                            props,
                             urn: req.getUrn(),
                             name: req.getName(),
+                            opts: getResourceOptions(req),
 
                             isType: function<TResource extends Resource>(
                                 resourceClass: { new(...rest: any[]): TResource },
@@ -185,6 +189,10 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                                     : undefined;
                             },
                         };
+                        const provider = getProviderResource(req);
+                        if (provider) {
+                            args.provider = provider;
+                        }
 
                         // Pass the result of the validate call to Promise.resolve.
                         // If the value is a promise, that promise is returned; otherwise
@@ -218,6 +226,21 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
     };
 }
 
+/**
+ * Used internally to create an initial resource instance that will be modified to include its
+ * parent and dependencies before being passed to the policy validation handler.
+ */
+interface IntermediateStackResource {
+    /** The resource object that will be passed to the policy for analysis. */
+    resource: PolicyResource;
+    /** The resource's parent URN (if it has one). */
+    parent?: string;
+    /** The resource's dependencies as URNs. */
+    dependencies: string[];
+    /** The set of dependencies (URNs) that affect each property. */
+    propertyDependencies: Record<string, string[]>;
+}
+
 // analyzeStack is the RPC call that will analyze all resources within a stack, at the end of a successful
 // preview or update. The provided resources are the "outputs", after any mutations have taken place.
 function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: string, policies: Policies) {
@@ -246,22 +269,27 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                         policyPackName,
                         policyPackVersion,
                         message: violationMessage,
-                        urn: urn,
+                        urn,
                         ...diag,
                     });
                 };
 
                 try {
-                    const resources: PolicyResource[] = [];
+                    const intermediates: IntermediateStackResource[] = [];
                     for (const r of req.getResourcesList()) {
                         const type = r.getType();
                         const deserd = deserializeProperties(r.getProperties());
                         const props = unknownCheckingProxy(deserd);
-                        resources.push({
-                            type: type,
-                            props: props,
+                        const resource: PolicyResource = {
+                            type,
+                            props,
                             urn: r.getUrn(),
                             name: r.getName(),
+                            opts: getResourceOptions(r),
+
+                            // We will go back and fill in the dependencies and optional parent.
+                            dependencies: [],
+                            propertyDependencies: {},
 
                             isType: function<TResource extends Resource>(
                                 resourceClass: { new(...rest: any[]): TResource },
@@ -276,11 +304,52 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                                     ? props as q.ResolvedResource<TResource>
                                     : undefined;
                             },
+                        };
+                        const provider = getProviderResource(r);
+                        if (provider) {
+                            resource.provider = provider;
+                        }
+                        intermediates.push({
+                            resource,
+                            parent: r.getParent(),
+                            dependencies: r.getDependenciesList(),
+                            propertyDependencies: getPropertyDependencies(r),
                         });
                     }
 
+                    // Create a map of URNs to resources, used to fill in the parent and dependencies
+                    // with references to the actual resource objects.
+                    const urnsToResources = new Map<string, PolicyResource>();
+                    for (const i of intermediates) {
+                        urnsToResources.set(i.resource.urn, i.resource);
+                    }
+
+                    // Go through each intermediate result and set the parent and dependencies.
+                    for (const i of intermediates) {
+                        // If the resource has a parent, lookup and set it to the actual resource object.
+                        if (i.parent) {
+                            const parent = urnsToResources.get(i.parent);
+                            if (parent) {
+                                i.resource.parent = parent;
+                            }
+                        }
+
+                        // Set dependencies to actual resource objects.
+                        i.resource.dependencies = i.dependencies
+                            .map(d => urnsToResources.get(d))
+                            .filter(d => d) as PolicyResource[];
+
+                        // Set propertyDependencies to actual resource objects.
+                        for (const k of Object.keys(i.propertyDependencies)) {
+                            const v = i.propertyDependencies[k];
+                            i.resource.propertyDependencies[k] = v
+                                .map(d => urnsToResources.get(d))
+                                .filter(d => d) as PolicyResource[];
+                        }
+                    }
+
                     const args: StackValidationArgs = {
-                        resources: resources,
+                        resources: intermediates.map(r => r.resource),
                     };
 
                     // Pass the result of the validate call to Promise.resolve.
@@ -312,6 +381,67 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
         // Now marshal the results into a resulting diagnostics list, and invoke the callback to finish.
         callback(undefined, makeAnalyzeResponse(ds));
     };
+}
+
+// Creates a PolicyResourceOptions object from the GRPC request.
+function getResourceOptions(r: any): PolicyResourceOptions {
+    const opts = r.getOptions();
+    // If the result of `getOptions` is undefined, an older version of the CLI is being used.
+    // Provide a nicer error message to the user.
+    if (!opts) {
+        throw new Error("A more recent version of the Pulumi CLI is required. " +
+            "To upgrade, see https://www.pulumi.com/docs/get-started/install/");
+    }
+    const result: PolicyResourceOptions = {
+        protect: opts.getProtect(),
+        ignoreChanges: opts.getIgnorechangesList(),
+        aliases: opts.getAliasesList(),
+        customTimeouts: getCustomTimeouts(opts),
+        additionalSecretOutputs: opts.getAdditionalsecretoutputsList(),
+    };
+    if (opts.getDeletebeforereplacedefined()) {
+        result.deleteBeforeReplace = opts.getDeletebeforereplace();
+    }
+    return result;
+}
+
+// Creates a CustomTimeouts object from the GRPC request.
+function getCustomTimeouts(opts: any): PolicyCustomTimeouts {
+    const timeouts = opts.getCustomtimeouts();
+    return {
+        createSeconds: timeouts?.getCreate() ?? 0.0,
+        updateSeconds: timeouts?.getUpdate() ?? 0.0,
+        deleteSeconds: timeouts?.getDelete() ?? 0.0,
+    };
+}
+
+// Creates a PolicyProviderResource object from the GRPC request.
+function getProviderResource(r: any): PolicyProviderResource | undefined {
+    const prov = r.getProvider();
+    if (!prov) {
+        return undefined;
+    }
+    const deserd = deserializeProperties(prov.getProperties());
+    const props = unknownCheckingProxy(deserd);
+    return {
+        type: prov.getType(),
+        props,
+        urn: prov.getUrn(),
+        name: prov.getName(),
+    };
+}
+
+// Creates a Record<string, string[]> from the GRPC request.
+function getPropertyDependencies(r: any): Record<string, string[]> {
+    const result: Record<string, string[]> = {};
+    const map = r.getPropertydependenciesMap();
+    if (map) {
+        for (const [k, v] of map.entries()) {
+            const urns = v.getUrnsList();
+            result[k] = urns;
+        }
+    }
+    return result;
 }
 
 // Type guard used to determine if the `Policy` is a `ResourceValidationPolicy`.
