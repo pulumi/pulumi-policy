@@ -164,6 +164,19 @@ export function mapEnforcementLevel(el: EnforcementLevel) {
     }
 }
 
+/** @internal */
+export function convertEnforcementLevel(el: number): EnforcementLevel {
+    switch (el) {
+        case analyzerproto.EnforcementLevel.ADVISORY:
+            return "advisory";
+        case analyzerproto.EnforcementLevel.MANDATORY:
+            return "mandatory";
+        // TODO disabled
+        default:
+            throw new Error(`Unknown enforcement level ${el}.`);
+    }
+}
+
 // Ensures all possible values are covered in the switch.
 class UnknownEnforcementLevelError extends Error {
     constructor(el: never) {

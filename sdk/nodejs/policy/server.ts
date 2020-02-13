@@ -13,6 +13,7 @@
 // limitations under the License.
 
 const grpc = require("grpc");
+const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
@@ -36,6 +37,7 @@ import {
 } from "./policy";
 import {
     asGrpcError,
+    convertEnforcementLevel,
     Diagnostic,
     makeAnalyzeResponse,
     makeAnalyzerInfo,
@@ -58,6 +60,8 @@ let servingPolicyPack: string | undefined = undefined;
 
 // Regular expression for the policy pack name.
 const packNameRE = "^[a-zA-Z0-9-_.]{1,100}$";
+
+let policyPackConfig: Record<string, any> = {};
 
 /**
   * Starts the gRPC server to communicate with the Pulumi CLI client for analyzing resources.
@@ -105,6 +109,7 @@ export function serve(
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         getPluginInfo: getPluginInfoRpc,
+        configure: configure,
     });
     const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
 
@@ -141,6 +146,27 @@ async function getPluginInfoRpc(call: any, callback: any): Promise<void> {
     }
 }
 
+async function configure(call: any, callback: any): Promise<void> {
+    const req = call.request;
+    try {
+        const config: Record<string, any> = {};
+        for (const [k, v] of req.getPolicyconfigMap().entries()) {
+            const props = v.getProperties().toJavaScript();
+            props.enforcementLevel = convertEnforcementLevel(v.getEnforcementlevel());
+            config[k] = props;
+        }
+        policyPackConfig = config;
+        // We need to return an new instance of `Empty` from the "google-protobuf/google/protobuf/empty_pb.js" module,
+        // but we can't use `Empty` from the module that this package depends on -- it must be from the module that
+        // @pulumi/pulumi depends on, because there is an `arg instanceof google_protobuf_empty_pb.Empty` check that
+        // will fail if `Empty` isn't from the same module. To workaround, we can simply use
+        // `AnalyzerService.configure.responseType`, which is set to `Empty` in @pulumi/pulumi.
+        callback(undefined, new analyzerrpc.AnalyzerService.configure.responseType());
+    } catch (e) {
+        callback(asGrpcError(e), undefined);
+    }
+}
+
 // analyze is the RPC call that will analyze an individual resource, one at a time, called with the
 // "inputs" to the resource, before it is updated.
 function makeAnalyzeRpcFun(
@@ -157,7 +183,12 @@ function makeAnalyzeRpcFun(
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                const enforcementLevel = p.enforcementLevel || policyPackEnforcementLevel;
+                // If there is a configured enforcement level for the policy, it is used. Otherwise, the enforcement
+                // level for the policy is used, if set. Otherwise, the policy pack's enforcement level is used, which,
+                // if not set, defaults to "advisory".
+                const enforcementLevel: EnforcementLevel =
+                    policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
+
                 if (enforcementLevel === "disabled" || !isResourcePolicy(p)) {
                     continue;
                 }
@@ -175,7 +206,7 @@ function makeAnalyzeRpcFun(
                         message: violationMessage,
                         urn,
                         description: p.description,
-                        enforcementLevel: enforcementLevel,
+                        enforcementLevel,
                     });
                 };
 
@@ -277,7 +308,12 @@ function makeAnalyzeStackRpcFun(
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                const enforcementLevel = p.enforcementLevel || policyPackEnforcementLevel;
+                // If there is a configured enforcement level for the policy, it is used. Otherwise, the enforcement
+                // level for the policy is used, if set. Otherwise, the policy pack's enforcement level is used, which,
+                // if not set, defaults to "advisory".
+                const enforcementLevel: EnforcementLevel =
+                    policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
+
                 if (enforcementLevel === "disabled" || !isStackPolicy(p)) {
                     continue;
                 }
@@ -295,7 +331,7 @@ function makeAnalyzeStackRpcFun(
                         message: violationMessage,
                         urn,
                         description: p.description,
-                        enforcementLevel: enforcementLevel,
+                        enforcementLevel,
                     });
                 };
 
