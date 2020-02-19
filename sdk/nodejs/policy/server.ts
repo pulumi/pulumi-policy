@@ -66,10 +66,11 @@ const packNameRE = "^[a-zA-Z0-9-_.]{1,100}$";
   *
   * @param policyPackName Friendly name of the policy pack.
   * @param policyPackVersion Version of the policy pack SDK used.
+  * @param policyPackVersionTag Version tag of the policy pack SDK used.
   * @param policies The policies to be served.
   * @internal
   */
-export function serve(policyPackName: string, policyPackVersion: string, policies: Policies): void {
+export function serve(policyPackName: string, policyPackVersion: string, policyPackVersionTag: string, policies: Policies): void {
     if (!policyPackName || !policyPackName.match(packNameRE)) {
         console.error(`Invalids policy pack name "${policyPackName}". Policy pack names may only contain alphanumerics, hyphens, underscores, or periods.`);
         process.exit(1);
@@ -87,9 +88,9 @@ export function serve(policyPackName: string, policyPackVersion: string, policie
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server();
     server.addService(analyzerrpc.AnalyzerService, {
-        analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policies),
-        analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policies),
-        getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policies),
+        analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackVersionTag, policies),
+        analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackVersionTag, policies),
+        getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersionTag, policies),
         getPluginInfo: getPluginInfoRpc,
     });
     const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
@@ -103,13 +104,13 @@ export function serve(policyPackName: string, policyPackVersion: string, policie
 
 function makeGetAnalyzerInfoRpcFun(
     policyPackName: string,
-    policyPackVersion: string,
+    policyPackVersionTag: string,
     policies: Policies,
 ) {
-    return async function(call: any, callback: any): Promise<void> {
+    return async function (call: any, callback: any): Promise<void> {
         try {
             const enabledPolicies = (policies || []).filter(p => p.enforcementLevel !== "disabled");
-            callback(undefined, makeAnalyzerInfo(policyPackName, enabledPolicies));
+            callback(undefined, makeAnalyzerInfo(policyPackName, policyPackVersionTag, enabledPolicies));
         } catch (e) {
             callback(asGrpcError(e), undefined);
         }
@@ -128,8 +129,8 @@ async function getPluginInfoRpc(call: any, callback: any): Promise<void> {
 
 // analyze is the RPC call that will analyze an individual resource, one at a time, called with the
 // "inputs" to the resource, before it is updated.
-function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, policies: Policies) {
-    return async function(call: any, callback: any): Promise<void> {
+function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, policyPackVersionTag: string, policies: Policies) {
+    return async function (call: any, callback: any): Promise<void> {
         // Prep to perform the analysis.
         const req = call.request;
 
@@ -148,15 +149,17 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                     if (message) {
                         violationMessage += `\n${message}`;
                     }
-
-                    ds.push({
+                    const diagnosticEvent: Diagnostic = {
                         policyName: name,
                         policyPackName,
                         policyPackVersion,
                         message: violationMessage,
                         urn,
+                        policyPackVersionTag,
                         ...diag,
-                    });
+                    };
+
+                    ds.push(diagnosticEvent);
                 };
 
                 const validations = Array.isArray(p.validateResource)
@@ -175,13 +178,13 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                             name: req.getName(),
                             opts: getResourceOptions(req),
 
-                            isType: function<TResource extends Resource>(
+                            isType: function <TResource extends Resource>(
                                 resourceClass: { new(...rest: any[]): TResource },
                             ): boolean {
                                 return isTypeOf(type, resourceClass);
                             },
 
-                            asType: function<TResource extends Resource, TArgs>(
+                            asType: function <TResource extends Resource, TArgs>(
                                 resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
                             ): Unwrap<NonNullable<TArgs>> | undefined {
                                 return isTypeOf(type, resourceClass)
@@ -207,6 +210,7 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersion: string, po
                                 policyPackName,
                                 policyPackVersion,
                                 message: `can't run policy '${name}' during preview: ${e.message}`,
+                                policyPackVersionTag,
                                 ...diag,
                                 enforcementLevel: "advisory",
                             });
@@ -243,8 +247,8 @@ interface IntermediateStackResource {
 
 // analyzeStack is the RPC call that will analyze all resources within a stack, at the end of a successful
 // preview or update. The provided resources are the "outputs", after any mutations have taken place.
-function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: string, policies: Policies) {
-    return async function(call: any, callback: any): Promise<void> {
+function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: string, policyPackVersionTag: string, policies: Policies) {
+    return async function (call: any, callback: any): Promise<void> {
         // Prep to perform the analysis.
         const req = call.request;
 
@@ -270,6 +274,7 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                         policyPackVersion,
                         message: violationMessage,
                         urn,
+                        policyPackVersionTag,
                         ...diag,
                     });
                 };
@@ -291,13 +296,13 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                             dependencies: [],
                             propertyDependencies: {},
 
-                            isType: function<TResource extends Resource>(
+                            isType: function <TResource extends Resource>(
                                 resourceClass: { new(...rest: any[]): TResource },
                             ): boolean {
                                 return isTypeOf(type, resourceClass);
                             },
 
-                            asType: function<TResource extends Resource>(
+                            asType: function <TResource extends Resource>(
                                 resourceClass: { new(...rest: any[]): TResource },
                             ): q.ResolvedResource<TResource> | undefined {
                                 return isTypeOf(type, resourceClass)
@@ -365,6 +370,7 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersion: strin
                             policyPackName,
                             policyPackVersion,
                             message: `can't run policy '${name}' during preview: ${e.message}`,
+                            policyPackVersionTag,
                             ...diag,
                             enforcementLevel: "advisory",
                         });

@@ -83,6 +83,9 @@ export interface Diagnostic {
      * The URN of the resource that has the policy violation.
      */
     urn?: string;
+
+    /** Version tag of the policy pack. */
+    policyPackVersionTag: string;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -93,9 +96,10 @@ export interface Diagnostic {
 // ------------------------------------------------------------------------------------------------
 
 /** @internal */
-export function makeAnalyzerInfo(policyPackName: string, policies: Policies): any {
+export function makeAnalyzerInfo(policyPackName: string, versionTag: string, policies: Policies): any {
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
+    ai.setVersiontag(versionTag);
 
     const policyInfos: any[] = [];
     for (const policy of policies) {

@@ -43,9 +43,9 @@ describe("mapEnforcementLevel", () => {
 
 describe("makeAnalyzerInfo", () => {
     it("does not throw for reasonable policy packs", () => {
-        assert.doesNotThrow(() => makeAnalyzerInfo("testRules", []));
+        assert.doesNotThrow(() => makeAnalyzerInfo("testRules", "1.0.0", []));
         assert.doesNotThrow(() => {
-            makeAnalyzerInfo("testRules", [
+            makeAnalyzerInfo("testRules", "1.0.0", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
@@ -58,7 +58,7 @@ describe("makeAnalyzerInfo", () => {
 
     it("throws for disabled or invalid enforcementLevel", () => {
         assert.throws(() => {
-            makeAnalyzerInfo("testRules", [
+            makeAnalyzerInfo("testRules", "1.0.0", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
@@ -68,7 +68,7 @@ describe("makeAnalyzerInfo", () => {
             ]);
         });
         assert.throws(() => {
-            makeAnalyzerInfo("testRules", [
+            makeAnalyzerInfo("testRules", "1.0.0", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
@@ -94,6 +94,7 @@ describe("makeAnalyzeResponse", () => {
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: "mandatory",
+                    policyPackVersionTag: "1.0.0",
                 },
             ]);
         });
@@ -107,6 +108,7 @@ describe("makeAnalyzeResponse", () => {
                     message: "Did not use approved AMI",
                     enforcementLevel: "mandatory",
                     urn: "foo",
+                    policyPackVersionTag: "1.0.0",
                 },
             ]);
         });
@@ -122,6 +124,7 @@ describe("makeAnalyzeResponse", () => {
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: "disabled",
+                    policyPackVersionTag: "1.0.0",
                 },
             ]);
         });
@@ -134,6 +137,7 @@ describe("makeAnalyzeResponse", () => {
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: <any>"invalidEnforcementLevel",
+                    policyPackVersionTag: "1.0.0",
                 },
             ]);
         });
