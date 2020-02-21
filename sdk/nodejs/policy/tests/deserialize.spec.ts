@@ -15,6 +15,7 @@
 import { Inputs, runtime, secret } from "@pulumi/pulumi";
 import * as assert from "assert";
 import { deserializeProperties } from "../deserialize";
+import { asyncTest } from "./util";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
@@ -135,25 +136,3 @@ describe("runtime", () => {
         });
     });
 });
-
-type MochaFunc = (err: Error) => void;
-
-// A helper function for wrapping some of the boilerplate goo necessary to interface between Mocha's asynchronous
-// testing and our TypeScript async tests.
-function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void {
-    return (done: (err: any) => void) => {
-        const go = async () => {
-            let caught: Error | undefined;
-            try {
-                await test();
-            }
-            catch (err) {
-                caught = err;
-            }
-            finally {
-                done(caught);
-            }
-        };
-        go();
-    };
-}

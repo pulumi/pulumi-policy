@@ -305,7 +305,7 @@ export function validateResourceOfType<TResource extends Resource, TArgs>(
 ): ResourceValidation {
     return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
         if (args.isType(resourceClass)) {
-            validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
+            return validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
         }
     };
 }
@@ -474,7 +474,7 @@ export function validateStackResourcesOfType<TResource extends Resource>(
         if (filtered.length > 0) {
             const filteredTyped = filtered.map(r => r.props as q.ResolvedResource<TResource>);
             const filteredArgs = { resources: filtered };
-            validate(filteredTyped, filteredArgs, reportViolation);
+            return validate(filteredTyped, filteredArgs, reportViolation);
         }
     };
 }
