@@ -63,9 +63,7 @@ export class PolicyPack {
             throw new Error("Version must be defined in the package.json file.");
         }
 
-        // TODO: Wire up version information obtained from the service.
-        const version = "1";
-        serve(this.name, version, versionTag, this.policies);
+        serve(this.name, versionTag, this.policies);
     }
 }
 

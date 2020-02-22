@@ -132,6 +132,7 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
         diagnostic.setMessage(d.message);
         diagnostic.setEnforcementlevel(mapEnforcementLevel(d.enforcementLevel));
         diagnostic.setUrn(d.urn);
+        diagnostic.setPolicypackversiontag(d.policyPackVersionTag);
 
         diagnostics.push(diagnostic);
     }
