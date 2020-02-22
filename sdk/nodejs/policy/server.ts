@@ -151,7 +151,6 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersionTag: string,
                     const diagnosticEvent: Diagnostic = {
                         policyName: name,
                         policyPackName,
-                        policyPackVersion: "",
                         message: violationMessage,
                         urn,
                         policyPackVersionTag,
@@ -207,7 +206,6 @@ function makeAnalyzeRpcFun(policyPackName: string, policyPackVersionTag: string,
                             ds.push({
                                 policyName: name,
                                 policyPackName,
-                                policyPackVersion: "",
                                 message: `can't run policy '${name}' during preview: ${e.message}`,
                                 policyPackVersionTag,
                                 ...diag,
@@ -270,7 +268,6 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersionTag: st
                     ds.push({
                         policyName: name,
                         policyPackName,
-                        policyPackVersion: "",
                         message: violationMessage,
                         urn,
                         policyPackVersionTag,
@@ -367,7 +364,6 @@ function makeAnalyzeStackRpcFun(policyPackName: string, policyPackVersionTag: st
                         ds.push({
                             policyName: name,
                             policyPackName,
-                            policyPackVersion: "",
                             message: `can't run policy '${name}' during preview: ${e.message}`,
                             policyPackVersionTag,
                             ...diag,

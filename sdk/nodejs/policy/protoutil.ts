@@ -58,9 +58,6 @@ export interface Diagnostic {
     /** Name of the policy pack that the violated policy was a part of. */
     policyPackName: string;
 
-    /** Version of the policy pack. */
-    policyPackVersion: string;
-
     /**
      * A brief description of the policy rule. e.g., "S3 buckets should have default encryption
      * enabled."
@@ -127,7 +124,6 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
         const diagnostic = new analyzerproto.AnalyzeDiagnostic();
         diagnostic.setPolicyname(d.policyName);
         diagnostic.setPolicypackname(d.policyPackName);
-        diagnostic.setPolicypackversion(d.policyPackVersion);
         diagnostic.setDescription(d.description);
         diagnostic.setMessage(d.message);
         diagnostic.setEnforcementlevel(mapEnforcementLevel(d.enforcementLevel));
