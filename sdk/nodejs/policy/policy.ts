@@ -58,12 +58,12 @@ export class PolicyPack {
         // Get package version from the package.json file.
         const cwd = process.cwd();
         const pkg = require(`${cwd}/package.json`);
-        const versionTag = pkg.version;
-        if (!versionTag || versionTag === "") {
+        const version = pkg.version;
+        if (!version || version === "") {
             throw new Error("Version must be defined in the package.json file.");
         }
 
-        serve(this.name, versionTag, this.policies);
+        serve(this.name, version, this.policies);
     }
 }
 

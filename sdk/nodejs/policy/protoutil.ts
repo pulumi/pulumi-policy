@@ -58,6 +58,9 @@ export interface Diagnostic {
     /** Name of the policy pack that the violated policy was a part of. */
     policyPackName: string;
 
+    /** Version of the Policy Pack. */
+    policyPackVersion: string;
+
     /**
      * A brief description of the policy rule. e.g., "S3 buckets should have default encryption
      * enabled."
@@ -80,9 +83,6 @@ export interface Diagnostic {
      * The URN of the resource that has the policy violation.
      */
     urn?: string;
-
-    /** Version tag of the policy pack. */
-    policyPackVersionTag: string;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -93,10 +93,10 @@ export interface Diagnostic {
 // ------------------------------------------------------------------------------------------------
 
 /** @internal */
-export function makeAnalyzerInfo(policyPackName: string, versionTag: string, policies: Policies): any {
+export function makeAnalyzerInfo(policyPackName: string, version: string, policies: Policies): any {
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
-    ai.setVersiontag(versionTag);
+    ai.setVersion(version);
 
     const policyInfos: any[] = [];
     for (const policy of policies) {
@@ -124,11 +124,11 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
         const diagnostic = new analyzerproto.AnalyzeDiagnostic();
         diagnostic.setPolicyname(d.policyName);
         diagnostic.setPolicypackname(d.policyPackName);
+        diagnostic.setPolicypackversion(d.policyPackVersion);
         diagnostic.setDescription(d.description);
         diagnostic.setMessage(d.message);
         diagnostic.setEnforcementlevel(mapEnforcementLevel(d.enforcementLevel));
         diagnostic.setUrn(d.urn);
-        diagnostic.setPolicypackversiontag(d.policyPackVersionTag);
 
         diagnostics.push(diagnostic);
     }

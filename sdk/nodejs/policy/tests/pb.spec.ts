@@ -90,10 +90,10 @@ describe("makeAnalyzeResponse", () => {
                 {
                     policyName: "approved-amis-by-id",
                     policyPackName: "awsSecRules",
+                    policyPackVersion: "1.0.0",
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: "mandatory",
-                    policyPackVersionTag: "1.0.0",
                 },
             ]);
         });
@@ -102,11 +102,11 @@ describe("makeAnalyzeResponse", () => {
                 {
                     policyName: "approved-amis-by-id",
                     policyPackName: "awsSecRules",
+                    policyPackVersion: "1.0.0",
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: "mandatory",
                     urn: "foo",
-                    policyPackVersionTag: "1.0.0",
                 },
             ]);
         });
@@ -118,10 +118,10 @@ describe("makeAnalyzeResponse", () => {
                 {
                     policyName: "approved-amis-by-id",
                     policyPackName: "awsSecRules",
+                    policyPackVersion: "1.0.0",
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: "disabled",
-                    policyPackVersionTag: "1.0.0",
                 },
             ]);
         });
@@ -130,10 +130,10 @@ describe("makeAnalyzeResponse", () => {
                 {
                     policyName: "approved-amis-by-id",
                     policyPackName: "awsSecRules",
+                    policyPackVersion: "1.0.0",
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: <any>"invalidEnforcementLevel",
-                    policyPackVersionTag: "1.0.0",
                 },
             ]);
         });
