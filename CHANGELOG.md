@@ -4,6 +4,9 @@
 
 - Expose options, parent, dependencies, and provider config (https://github.com/pulumi/pulumi-policy/pull/184).
 
+- Fix issue that prevented async policies from failing as expected when using `validateResourceOfType` or
+  `validateStackResourcesOfType` (https://github.com/pulumi/pulumi-policy/pull/202).
+
 ## 0.4.0 (2020-01-30)
 
 ### Improvements

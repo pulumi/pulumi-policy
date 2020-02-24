@@ -26,6 +26,8 @@
 
         "tests/deserialize.spec.ts",
         "tests/pb.spec.ts",
-        "tests/proxy.spec.ts"
+        "tests/policy.spec.ts",
+        "tests/proxy.spec.ts",
+        "tests/util.ts"
     ]
 }
