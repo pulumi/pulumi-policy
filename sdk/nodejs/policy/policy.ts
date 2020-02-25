@@ -55,8 +55,14 @@ export class PolicyPack {
     constructor(private name: string, args: PolicyPackArgs) {
         this.policies = args.policies;
 
-        // TODO: Wire up version information obtained from the service.
-        const version = "1";
+        // Get package version from the package.json file.
+        const cwd = process.cwd();
+        const pkg = require(`${cwd}/package.json`);
+        const version = pkg.version;
+        if (!version || version === "") {
+            throw new Error("Version must be defined in the package.json file.");
+        }
+
         serve(this.name, version, this.policies);
     }
 }

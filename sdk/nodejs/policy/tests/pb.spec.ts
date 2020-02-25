@@ -43,9 +43,9 @@ describe("mapEnforcementLevel", () => {
 
 describe("makeAnalyzerInfo", () => {
     it("does not throw for reasonable policy packs", () => {
-        assert.doesNotThrow(() => makeAnalyzerInfo("testRules", []));
+        assert.doesNotThrow(() => makeAnalyzerInfo("testRules", "1.0.0", []));
         assert.doesNotThrow(() => {
-            makeAnalyzerInfo("testRules", [
+            makeAnalyzerInfo("testRules", "1.0.0", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
@@ -58,7 +58,7 @@ describe("makeAnalyzerInfo", () => {
 
     it("throws for disabled or invalid enforcementLevel", () => {
         assert.throws(() => {
-            makeAnalyzerInfo("testRules", [
+            makeAnalyzerInfo("testRules", "1.0.0", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
@@ -68,7 +68,7 @@ describe("makeAnalyzerInfo", () => {
             ]);
         });
         assert.throws(() => {
-            makeAnalyzerInfo("testRules", [
+            makeAnalyzerInfo("testRules", "1.0.0", [
                 {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
@@ -90,7 +90,7 @@ describe("makeAnalyzeResponse", () => {
                 {
                     policyName: "approved-amis-by-id",
                     policyPackName: "awsSecRules",
-                    policyPackVersion: "1",
+                    policyPackVersion: "1.0.0",
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: "mandatory",
@@ -102,7 +102,7 @@ describe("makeAnalyzeResponse", () => {
                 {
                     policyName: "approved-amis-by-id",
                     policyPackName: "awsSecRules",
-                    policyPackVersion: "1",
+                    policyPackVersion: "1.0.0",
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: "mandatory",
@@ -118,7 +118,7 @@ describe("makeAnalyzeResponse", () => {
                 {
                     policyName: "approved-amis-by-id",
                     policyPackName: "awsSecRules",
-                    policyPackVersion: "1",
+                    policyPackVersion: "1.0.0",
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: "disabled",
@@ -130,7 +130,7 @@ describe("makeAnalyzeResponse", () => {
                 {
                     policyName: "approved-amis-by-id",
                     policyPackName: "awsSecRules",
-                    policyPackVersion: "1",
+                    policyPackVersion: "1.0.0",
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: <any>"invalidEnforcementLevel",

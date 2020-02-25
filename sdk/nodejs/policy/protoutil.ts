@@ -58,7 +58,7 @@ export interface Diagnostic {
     /** Name of the policy pack that the violated policy was a part of. */
     policyPackName: string;
 
-    /** Version of the policy pack. */
+    /** Version of the Policy Pack. */
     policyPackVersion: string;
 
     /**
@@ -93,9 +93,10 @@ export interface Diagnostic {
 // ------------------------------------------------------------------------------------------------
 
 /** @internal */
-export function makeAnalyzerInfo(policyPackName: string, policies: Policies): any {
+export function makeAnalyzerInfo(policyPackName: string, version: string, policies: Policies): any {
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
+    ai.setVersion(version);
 
     const policyInfos: any[] = [];
     for (const policy of policies) {
