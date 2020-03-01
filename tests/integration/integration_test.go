@@ -375,3 +375,156 @@ func TestProvider(t *testing.T) {
 		{WantErrors: nil},
 	})
 }
+
+// Test Policy Packs with enforcement levels set on the Policy Pack and individual policies.
+func TestEnforcementLevel(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "enforcementlevel", NodeJS, nil, []policyTestScenario{
+		// Test scenario 1: Policy Pack: advisory; Policy: advisory.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 2: Policy Pack: advisory; Policy: disabled.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 3: Policy Pack: advisory; Policy: mandatory.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 4: Policy Pack: advisory; Policy: not set.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 5: Policy Pack: disabled; Policy: advisory.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 6: Policy Pack: disabled; Policy: disabled.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 7: Policy Pack: disabled; Policy: mandatory.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 8: Policy Pack: disabled; Policy: not set.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 9: Policy Pack: mandatory; Policy: advisory.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 10: Policy Pack: mandatory; Policy: disabled.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 11: Policy Pack: mandatory; Policy: mandatory.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 12: Policy Pack: mandatory; Policy: not set.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 13: Policy Pack: not set; Policy: advisory.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 14: Policy Pack: not set; Policy: disabled.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 15: Policy Pack: not set; Policy: mandatory.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 16: Policy Pack: not set; Policy: not set.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-resource (str)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+	})
+}
