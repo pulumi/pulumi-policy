@@ -191,41 +191,41 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 3: violates the first policy.
 		{
 			WantErrors: []string{
-				"pulumi-nodejs:dynamic:Resource (a):",
-				"  mandatory: Prohibits setting state to 1 on dynamic resources.",
-				"  'state' must not have the value 1.",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-1 (a)",
+				"Prohibits setting state to 1 on dynamic resources.",
+				"'state' must not have the value 1.",
 			},
 		},
 		// Test scenario 4: violates the second policy.
 		{
 			WantErrors: []string{
-				"pulumi-nodejs:dynamic:Resource (b):",
-				"  mandatory: Prohibits setting state to 2 on dynamic resources.",
-				"  'state' must not have the value 2.",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-2 (b)",
+				"Prohibits setting state to 2 on dynamic resources.",
+				"'state' must not have the value 2.",
 			},
 		},
 		// Test scenario 5: violates the first validation function of the third policy.
 		{
 			WantErrors: []string{
-				"pulumi-nodejs:dynamic:Resource (c):",
-				"  mandatory: Prohibits setting state to 3 or 4 on dynamic resources.",
-				"  'state' must not have the value 3.",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (c)",
+				"Prohibits setting state to 3 or 4 on dynamic resources.",
+				"'state' must not have the value 3.",
 			},
 		},
 		// Test scenario 6: violates the second validation function of the third policy.
 		{
 			WantErrors: []string{
-				"pulumi-nodejs:dynamic:Resource (d):",
-				"  mandatory: Prohibits setting state to 3 or 4 on dynamic resources.",
-				"  'state' must not have the value 4.",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (d)",
+				"Prohibits setting state to 3 or 4 on dynamic resources.",
+				"'state' must not have the value 4.",
 			},
 		},
 		// Test scenario 7: violates the fourth policy.
 		{
 			WantErrors: []string{
-				"random:index:RandomUuid (r1):",
-				"  mandatory: Prohibits creating a RandomUuid without any 'keepers'.",
-				"  RandomUuid must not have an empty 'keepers'.",
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r1)",
+				"Prohibits creating a RandomUuid without any 'keepers'.",
+				"RandomUuid must not have an empty 'keepers'.",
 			},
 		},
 		// Test scenario 8: no violations.
@@ -235,9 +235,9 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 9: violates the fifth policy.
 		{
 			WantErrors: []string{
-				"pulumi-nodejs:dynamic:Resource (e):",
-				"  mandatory: Prohibits setting state to 5 on dynamic resources.",
-				"  'state' must not have the value 5.",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-5 (e)",
+				"Prohibits setting state to 5 on dynamic resources.",
+				"'state' must not have the value 5.",
 			},
 		},
 		// Test scenario 10: no violations.
@@ -253,9 +253,9 @@ func TestValidatePythonResource(t *testing.T) {
 		// Test scenario 1: violates the policy.
 		{
 			WantErrors: []string{
-				"random:index:RandomUuid (r1):",
-				"  mandatory: Prohibits creating a RandomUuid without any 'keepers'.",
-				"  RandomUuid must not have an empty 'keepers'.",
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r1)",
+				"Prohibits creating a RandomUuid without any 'keepers'.",
+				"RandomUuid must not have an empty 'keepers'.",
 			},
 		},
 		// Test scenario 2: no violations.
@@ -279,37 +279,41 @@ func TestValidateStack(t *testing.T) {
 		// Test scenario 3: violates the first policy.
 		{
 			WantErrors: []string{
-				"  mandatory: Prohibits setting state to 1 on dynamic resources.",
-				"  'state' must not have the value 1.",
+				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-1",
+				"Prohibits setting state to 1 on dynamic resources.",
+				"'state' must not have the value 1.",
 			},
 		},
 		// Test scenario 4: violates the second policy.
 		{
 			WantErrors: []string{
-				"  mandatory: Prohibits setting state to 2 on dynamic resources.",
-				"  'state' must not have the value 2.",
+				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-2",
+				"Prohibits setting state to 2 on dynamic resources.",
+				"'state' must not have the value 2.",
 			},
 		},
 		// Test scenario 5: violates the third policy.
 		{
 			WantErrors: []string{
-				"pulumi-nodejs:dynamic:Resource (c):",
-				"  mandatory: Prohibits setting state to 3 on dynamic resources.",
-				"  'state' must not have the value 3.",
+				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-3 (c)",
+				"Prohibits setting state to 3 on dynamic resources.",
+				"'state' must not have the value 3.",
 			},
 		},
 		// Test scenario 6: violates the fourth policy.
 		{
 			WantErrors: []string{
-				"  mandatory: Prohibits creating a RandomUuid without any 'keepers'.",
-				"  RandomUuid must not have an empty 'keepers'.",
+				"[mandatory]  validate-stack-test-policy v0.0.1  randomuuid-no-keepers",
+				"Prohibits creating a RandomUuid without any 'keepers'.",
+				"RandomUuid must not have an empty 'keepers'.",
 			},
 		},
 		// Test scenario 7: violates the fifth policy.
 		{
 			WantErrors: []string{
-				"  mandatory: Prohibits RandomString resources.",
-				"  RandomString resources are not allowed.",
+				"[mandatory]  validate-stack-test-policy v0.0.1  no-randomstrings",
+				"Prohibits RandomString resources.",
+				"RandomString resources are not allowed.",
 			},
 		},
 		// Test scenario 8: no violations.
@@ -330,9 +334,10 @@ func TestUnknownValues(t *testing.T) {
 	}, []policyTestScenario{
 		{
 			WantErrors: []string{
-				"  advisory: can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
-				"random:index:RandomPet (pet):",
-				"advisory: can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
+				"[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (pet)",
+				"can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
+				"[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
+				"can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
 			},
 			Advisory: true,
 		},
