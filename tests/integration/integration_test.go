@@ -15,9 +15,10 @@
 package integrationtests
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -39,12 +40,16 @@ func abortIfFailed(t *testing.T) {
 	}
 }
 
+type PolicyConfig map[string]interface{}
+
 // policyTestScenario describes an iteration of the
 type policyTestScenario struct {
 	// WantErrors is the error message we expect to see in the command's output.
 	WantErrors []string
 	// Whether the error messages are advisory, and don't actually fail the operation.
 	Advisory bool
+	// The Policy Pack configuration to use for the test scenario.
+	PolicyPackConfig map[string]PolicyConfig
 }
 
 // runPolicyPackIntegrationTest creates a new Pulumi stack and then runs through
@@ -60,7 +65,7 @@ func runPolicyPackIntegrationTest(
 	if err != nil {
 		t.Fatalf("Error getting working directory")
 	}
-	rootDir := path.Join(cwd, testDirName)
+	rootDir := filepath.Join(cwd, testDirName)
 
 	// The Pulumi project name matches the test dir name in these tests.
 	os.Setenv("PULUMI_TEST_PROJECT", testDirName)
@@ -78,7 +83,7 @@ func runPolicyPackIntegrationTest(
 	e.ImportDirectory(rootDir)
 
 	// Change to the Policy Pack directory.
-	packDir := path.Join(e.RootPath, "policy-pack")
+	packDir := filepath.Join(e.RootPath, "policy-pack")
 	e.CWD = packDir
 
 	// Get dependencies.
@@ -90,7 +95,7 @@ func runPolicyPackIntegrationTest(
 	abortIfFailed(t)
 
 	// Change to the Pulumi program directory.
-	programDir := path.Join(e.RootPath, "program")
+	programDir := filepath.Join(e.RootPath, "program")
 	e.CWD = programDir
 
 	// Create the stack.
@@ -133,13 +138,41 @@ func runPolicyPackIntegrationTest(
 		// Create a sub-test so go test will output data incrementally, which will let
 		// a CI system like Travis know not to kill the job if no output is sent after 10m.
 		// idx+1 to make it 1-indexed.
-		t.Run(fmt.Sprintf("Scenario_%d", idx+1), func(t *testing.T) {
+		scenarioName := fmt.Sprintf("Scenario_%d", idx+1)
+		t.Run(scenarioName, func(t *testing.T) {
 			e.T = t
 
 			e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
 
 			cmd := "pulumi"
 			args := []string{"up", "--yes", "--policy-pack", packDir}
+
+			// If there is config for the scenario, write it out to a file and pass the file path
+			// as a --policy-pack-config argument.
+			if len(scenario.PolicyPackConfig) > 0 {
+				// Marshal the config to JSON, with indentation for easier debugging.
+				bytes, err := json.MarshalIndent(scenario.PolicyPackConfig, "", "    ")
+				if err != nil {
+					t.Fatalf("error marshalling policy config to JSON: %v", err)
+				}
+
+				// Change to the config directory.
+				configDir := filepath.Join(e.RootPath, "config", scenarioName)
+				e.CWD = configDir
+
+				// Write the JSON to a file.
+				filename := "policy-config.json"
+				e.WriteTestFile(filename, string(bytes))
+				abortIfFailed(t)
+
+				// Add the policy config argument.
+				policyConfigFile := filepath.Join(configDir, filename)
+				args = append(args, "--policy-pack-config", policyConfigFile)
+
+				// Change back to the program directory to proceed with the update.
+				e.CWD = programDir
+			}
+
 			if runtime == Python {
 				cmd = "pipenv"
 				args = append([]string{"run", "pulumi"}, args...)
@@ -534,6 +567,23 @@ func TestEnforcementLevel(t *testing.T) {
 				"validate-stack-violation-message",
 			},
 			Advisory: true,
+		},
+	})
+}
+
+// Test Policy Pack configuration.
+func TestConfig(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "config", NodeJS, nil, []policyTestScenario{
+		{
+			PolicyPackConfig: map[string]PolicyConfig{
+				"resource-validation": PolicyConfig{
+					"foo": "bar",
+				},
+				"stack-validation": PolicyConfig{
+					"foo": "bar",
+				},
+			},
+			WantErrors: nil,
 		},
 	})
 }

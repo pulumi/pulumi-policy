@@ -1,0 +1,3 @@
+name: config
+runtime: nodejs
+description: A program to test policy configuration.
