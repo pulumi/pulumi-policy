@@ -7,6 +7,12 @@
 - Fix issue that prevented async policies from failing as expected when using `validateResourceOfType` or
   `validateStackResourcesOfType` (https://github.com/pulumi/pulumi-policy/pull/202).
 
+- Added a top-level optional `enforcementLevel` on `PolicyPackArgs` and made `enforcementLevel` on `Policy` optional.
+  This allows setting the enforcement level at the Policy Pack level which will apply to all policies. Individual
+  policies can set their own `enforcementLevel` to override the value specified for the Policy Pack. If no enforcement
+  level is specified for either the Policy Pack or Policy, `"advisory"` is used.
+  (https://github.com/pulumi/pulumi-policy/issues/192).
+
 ## 0.4.0 (2020-01-30)
 
 ### Improvements
