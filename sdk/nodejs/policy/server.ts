@@ -239,6 +239,8 @@ function makeAnalyzeRpcFun(
                                     ? props as Unwrap<NonNullable<TArgs>>
                                     : undefined;
                             },
+
+                            getConfig: makeGetConfigFun(p.name),
                         };
                         const provider = getProviderResource(req);
                         if (provider) {
@@ -411,6 +413,7 @@ function makeAnalyzeStackRpcFun(
 
                     const args: StackValidationArgs = {
                         resources: intermediates.map(r => r.resource),
+                        getConfig: makeGetConfigFun(p.name),
                     };
 
                     // Pass the result of the validate call to Promise.resolve.
@@ -441,6 +444,22 @@ function makeAnalyzeStackRpcFun(
 
         // Now marshal the results into a resulting diagnostics list, and invoke the callback to finish.
         callback(undefined, makeAnalyzeResponse(ds));
+    };
+}
+
+// Creates a function for retrieving the configuration for a policy.
+function makeGetConfigFun<T>(policyName: string) {
+    return function(): T {
+        // If we don't have config, or don't have config for this policy,
+        // return an empty object.
+        const c = policyPackConfig[policyName];
+        if (!c) {
+            return <T>{};
+        }
+
+        // Otherwise, return the config properties (except enforcementLevel).
+        const { enforcementLevel: ef, ...properties } = c;
+        return properties;
     };
 }
 

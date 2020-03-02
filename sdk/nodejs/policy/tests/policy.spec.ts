@@ -66,6 +66,7 @@ describe("validateResourceOfType", () => {
         const args = {
             isType: () => true,  // true so the validation function always runs.
             asType: () => undefined,
+            getConfig: <T>() => <T>{},
             type: "",
             props: {},
             urn: "",
@@ -92,6 +93,7 @@ describe("validateStackResourcesOfType", () => {
         };
 
         const args = {
+            getConfig: <T>() => <T>{},
             resources: [{
                 isType: () => true, // true so the validation function always runs.
                 asType: () => undefined,

@@ -273,6 +273,11 @@ export interface ResourceValidationArgs {
     asType<TResource extends Resource, TArgs>(
         resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     ): Unwrap<NonNullable<TArgs>> | undefined;
+
+    /**
+     * Returns configuration for the policy.
+     */
+    getConfig<T extends object>(): T;
 }
 
 /**
@@ -432,6 +437,11 @@ export interface StackValidationArgs {
      * The resources in the stack.
      */
     resources: PolicyResource[];
+
+    /**
+     * Returns configuration for the policy.
+     */
+    getConfig<T extends object>(): T;
 }
 
 /**
@@ -548,7 +558,7 @@ export function validateStackResourcesOfType<TResource extends Resource>(
         const filtered = args.resources.filter(r => r.isType(resourceClass));
         if (filtered.length > 0) {
             const filteredTyped = filtered.map(r => r.props as q.ResolvedResource<TResource>);
-            const filteredArgs = { resources: filtered };
+            const filteredArgs = { resources: filtered, getConfig: args.getConfig };
             return validate(filteredTyped, filteredArgs, reportViolation);
         }
     };
