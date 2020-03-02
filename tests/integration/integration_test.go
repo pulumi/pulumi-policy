@@ -177,6 +177,15 @@ func runPolicyPackIntegrationTest(
 	// Cleanup already registered via defer.
 }
 
+// Test policy name validation.
+func TestInvalidPolicyName(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "invalid_policy_name", NodeJS, nil, []policyTestScenario{
+		{
+			WantErrors: []string{`Invalid policy name "all". "all" is a reserved name.`},
+		},
+	})
+}
+
 // Test basic resource validation.
 func TestValidateResource(t *testing.T) {
 	runPolicyPackIntegrationTest(t, "validate_resource", NodeJS, nil, []policyTestScenario{

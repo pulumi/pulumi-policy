@@ -75,6 +75,13 @@ export function serve(policyPackName: string, policyPackVersion: string, policie
         process.exit(1);
     }
 
+    for (const policy of (policies || [])) {
+        if (policy.name === "all") {
+            console.error(`Invalid policy name "all". "all" is a reserved name.`);
+            process.exit(1);
+        }
+    }
+
     if (servingPolicyPack) {
         // We only support running one gRPC instance at a time. (Since the Pulumi CLI is looking for a single
         // PID to be written to STDOUT.) So we just print an error and kill the process if a second policy pack
