@@ -156,9 +156,8 @@ export function mapEnforcementLevel(el: EnforcementLevel) {
             return analyzerproto.EnforcementLevel.ADVISORY;
         case "mandatory":
             return analyzerproto.EnforcementLevel.MANDATORY;
-        // Disabled is treated as if the policy was not defined, so the value should not escape over GRPC.
         case "disabled":
-            throw new Error("'disabled' should not escape the GRPC boundary");
+            return analyzerproto.EnforcementLevel.DISABLED;
         default:
             throw new UnknownEnforcementLevelError(el);
     }
@@ -171,7 +170,8 @@ export function convertEnforcementLevel(el: number): EnforcementLevel {
             return "advisory";
         case analyzerproto.EnforcementLevel.MANDATORY:
             return "mandatory";
-        // TODO disabled
+        case analyzerproto.EnforcementLevel.DISABLED:
+            return "disabled";
         default:
             throw new Error(`Unknown enforcement level ${el}.`);
     }

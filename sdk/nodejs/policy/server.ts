@@ -128,8 +128,7 @@ function makeGetAnalyzerInfoRpcFun(
 ) {
     return async function (call: any, callback: any): Promise<void> {
         try {
-            const enabledPolicies = (policies || []).filter(p => (p.enforcementLevel || policyPackEnforcementLevel) !== "disabled");
-            callback(undefined, makeAnalyzerInfo(policyPackName, policyPackVersion, policyPackEnforcementLevel, enabledPolicies));
+            callback(undefined, makeAnalyzerInfo(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies));
         } catch (e) {
             callback(asGrpcError(e), undefined);
         }
