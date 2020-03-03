@@ -91,6 +91,17 @@ export function serve(
             console.error(`Invalid policy name "all". "all" is a reserved name.`);
             process.exit(1);
         }
+
+        if (policy.config) {
+            if (policy.config.properties?.enforcementLevel) {
+                console.error(`enforcementLevel cannot be explicitly specified in properties.`);
+                process.exit(1);
+            }
+            if (policy.config.required && policy.config.required.includes("enforcementLevel")) {
+                console.error(`"enforcementLevel" cannot be specified in required.`);
+                process.exit(1);
+            }
+        }
     }
 
     if (servingPolicyPack) {

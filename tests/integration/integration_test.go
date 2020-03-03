@@ -210,11 +210,17 @@ func runPolicyPackIntegrationTest(
 	// Cleanup already registered via defer.
 }
 
-// Test policy name validation.
-func TestInvalidPolicyName(t *testing.T) {
-	runPolicyPackIntegrationTest(t, "invalid_policy_name", NodeJS, nil, []policyTestScenario{
+// Test invalid policies.
+func TestInvalidPolicy(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "invalid_policy", NodeJS, nil, []policyTestScenario{
 		{
 			WantErrors: []string{`Invalid policy name "all". "all" is a reserved name.`},
+		},
+		{
+			WantErrors: []string{`enforcementLevel cannot be explicitly specified in properties.`},
+		},
+		{
+			WantErrors: []string{`"enforcementLevel" cannot be specified in required.`},
 		},
 	})
 }

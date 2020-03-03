@@ -1,5 +1,5 @@
 {
-    "name": "unknown_values",
+    "name": "invalid_policy",
     "devDependencies": {
         "@types/node": "^8.0.0"
     },
