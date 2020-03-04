@@ -13,6 +13,31 @@
   level is specified for either the Policy Pack or Policy, `"advisory"` is used.
   (https://github.com/pulumi/pulumi-policy/issues/192).
 
+- Add support for configuring policies. Policies can now declare their config schema by setting the `config` property,
+  and access config values via `args.getConfig<T>()` (https://github.com/pulumi/pulumi-policy/pull/207).
+
+  Example:
+
+  ```typescript
+  {
+      name: "acm-certificate-expiration",
+      description: "Checks whether an ACM certificate has expired.",
+      config: {
+          properties: {
+              maxDaysUntilExpiration: {
+                  type: "integer",
+                  default: 14,
+              },
+          },
+      },
+      validateStack: validateStackResourcesOfType(aws.acm.Certificate, (certificates, args, reportViolation) => {
+          const { maxDaysUntilExpiration } = args.getConfig<{ maxDaysUntilExpiration: number }>();
+
+          // ...
+      }),
+  }
+  ```
+
 ## 0.4.0 (2020-01-30)
 
 ### Improvements
