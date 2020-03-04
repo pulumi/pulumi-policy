@@ -20,18 +20,18 @@
 
   ```typescript
   {
-      name: "acm-certificate-expiration",
-      description: "Checks whether an ACM certificate has expired.",
-      config: {
+      name: "certificate-expiration",
+      description: "Checks whether a certificate has expired.",
+      configSchema: {
           properties: {
-              maxDaysUntilExpiration: {
+              expiration: {
                   type: "integer",
                   default: 14,
               },
           },
       },
-      validateStack: validateStackResourcesOfType(aws.acm.Certificate, (certificates, args, reportViolation) => {
-          const { maxDaysUntilExpiration } = args.getConfig<{ maxDaysUntilExpiration: number }>();
+      validateResource: (args, reportViolation) => {
+          const { expiration } = args.getConfig<{ expiration: number }>();
 
           // ...
       }),

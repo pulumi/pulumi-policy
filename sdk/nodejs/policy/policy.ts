@@ -14,6 +14,8 @@
 
 import { Resource, Unwrap } from "@pulumi/pulumi";
 import * as q from "@pulumi/pulumi/queryable";
+
+import { PolicyConfigJSONSchema } from "./schema";
 import { serve } from "./server";
 
 const defaultEnforcementLevel: EnforcementLevel = "advisory";
@@ -104,64 +106,51 @@ export interface Policy {
     enforcementLevel?: EnforcementLevel;
 
     /**
-     * Configuration schema.
+     * This policy's configuration schema.
+     *
+     * For example:
+     *
+     * ```typescript
+     * {
+     *     configSchema: {
+     *         properties: {
+     *             expiration: {
+     *                 type: "integer",
+     *                 default: 14,
+     *             },
+     *             identifier: {
+     *                 type: "string",
+     *             },
+     *         },
+     *     },
+     *
+     *     validateResource: (args, reportViolation) => {
+     *         const { expiration, identifier } = args.getConfig<{ expiration: number; identifier?: string; }>();
+     *
+     *         // ...
+     *     }),
+     * }
+     * ```
      */
-    config?: PolicyConfigSchema;
+    configSchema?: PolicyConfigSchema;
 }
 
+/**
+ * Represents the configuration schema for a policy.
+ */
 export interface PolicyConfigSchema {
-    properties: Record<string, PolicyConfigPropertySchema>;
+    /**
+     * The policy's configuration properties.
+     */
+    properties: {
+        [key: string]: PolicyConfigJSONSchema;
+    };
+
+    /**
+     * The configuration properties that are required.
+     */
     required?: string[];
 }
-
-export type PolicyConfigPropertySchemaDefinition = PolicyConfigPropertySchema | boolean;
-export interface PolicyConfigPropertySchema {
-    type?: PolicyConfigPropertySchemaTypeName | PolicyConfigPropertySchemaTypeName[];
-    enum?: PolicyConfigPropertySchemaType[];
-    const?: PolicyConfigPropertySchemaType;
-
-    multipleOf?: number;
-    maximum?: number;
-    exclusiveMaximum?: number;
-    minimum?: number;
-    exclusiveMinimum?: number;
-
-    maxLength?: number;
-    minLength?: number;
-    pattern?: string;
-
-    items?: PolicyConfigPropertySchemaDefinition | PolicyConfigPropertySchemaDefinition[];
-    additionalItems?: PolicyConfigPropertySchemaDefinition;
-    maxItems?: number;
-    minItems?: number;
-    uniqueItems?: boolean;
-    contains?: PolicyConfigPropertySchema;
-
-    maxProperties?: number;
-    minProperties?: number;
-    required?: string[];
-    properties?: {
-        [key: string]: PolicyConfigPropertySchemaDefinition;
-    };
-    patternProperties?: {
-        [key: string]: PolicyConfigPropertySchemaDefinition;
-    };
-    additionalProperties?: PolicyConfigPropertySchemaDefinition;
-    dependencies?: {
-        [key: string]: PolicyConfigPropertySchemaDefinition | string[];
-    };
-    propertyNames?: PolicyConfigPropertySchemaDefinition;
-
-    description?: string;
-    default?: PolicyConfigPropertySchemaType;
-    readOnly?: boolean;
-    writeOnly?: boolean;
-}
-
-export type PolicyConfigPropertySchemaTypeName =
-    "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
-
-export type PolicyConfigPropertySchemaType = PolicyConfigPropertySchemaType[] | boolean | number | null | object | string;
 
 /**
  * An array of Policies.

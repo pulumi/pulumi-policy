@@ -35,7 +35,7 @@ new PolicyPack("config-policy", {
             name: "resource-validation",
             description: "Verifies policy config during resource validation.",
             enforcementLevel: "mandatory",
-            config: schema,
+            configSchema: schema,
             validateResource: (args, reportViolation) => {
                 verify(args);
             },
@@ -44,7 +44,7 @@ new PolicyPack("config-policy", {
             name: "stack-validation",
             description: "Verifies policy config during stack validation.",
             enforcementLevel: "mandatory",
-            config: schema,
+            configSchema: schema,
             validateStack: (args, reportViolation) => {
                 verify(args);
             },

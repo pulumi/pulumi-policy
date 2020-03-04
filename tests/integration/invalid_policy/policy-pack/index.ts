@@ -27,7 +27,7 @@ switch (testScenario) {
                     name: "foo",
                     description: "Invalid schema: enforcementLevel cannot be added to `properties`.",
                     enforcementLevel: "mandatory",
-                    config: {
+                    configSchema: {
                         properties: {
                             enforcementLevel: { type: "string" },
                         },
@@ -45,7 +45,7 @@ switch (testScenario) {
                     name: "foo",
                     description: "Invalid schema: enforcementLevel cannot be added to `required`.",
                     enforcementLevel: "mandatory",
-                    config: {
+                    configSchema: {
                         properties: {
                             foo: { type: "string" },
                         },

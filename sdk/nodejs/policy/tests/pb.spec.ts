@@ -63,7 +63,7 @@ describe("makeAnalyzerInfo", () => {
                     name: "approved-amis-by-id",
                     description: "Instances should use approved AMIs",
                     enforcementLevel: "mandatory",
-                    config: {
+                    configSchema: {
                         properties: {
                             foo: { type: "string" },
                         },

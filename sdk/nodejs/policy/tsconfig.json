@@ -22,6 +22,7 @@
         "protoutil.ts",
         "proxy.ts",
         "server.ts",
+        "schema.ts",
         "version.ts",
 
         "tests/deserialize.spec.ts",
