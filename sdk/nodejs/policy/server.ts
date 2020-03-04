@@ -193,9 +193,6 @@ function makeAnalyzeRpcFun(
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                // If there is a configured enforcement level for the policy, it is used. Otherwise, the enforcement
-                // level for the policy is used, if set. Otherwise, the policy pack's enforcement level is used, which,
-                // if not set, defaults to "advisory".
                 const enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
 
@@ -320,9 +317,6 @@ function makeAnalyzeStackRpcFun(
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                // If there is a configured enforcement level for the policy, it is used. Otherwise, the enforcement
-                // level for the policy is used, if set. Otherwise, the policy pack's enforcement level is used, which,
-                // if not set, defaults to "advisory".
                 const enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
 
