@@ -102,6 +102,7 @@ export function makeAnalyzerInfo(
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
     ai.setVersion(policyPackVersion);
+    ai.setSupportsconfig(true);
 
     const policyInfos: any[] = [];
     for (const policy of policies) {
