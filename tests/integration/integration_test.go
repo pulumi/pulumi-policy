@@ -15,9 +15,10 @@
 package integrationtests
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -39,12 +40,16 @@ func abortIfFailed(t *testing.T) {
 	}
 }
 
+type PolicyConfig map[string]interface{}
+
 // policyTestScenario describes an iteration of the
 type policyTestScenario struct {
 	// WantErrors is the error message we expect to see in the command's output.
 	WantErrors []string
 	// Whether the error messages are advisory, and don't actually fail the operation.
 	Advisory bool
+	// The Policy Pack configuration to use for the test scenario.
+	PolicyPackConfig map[string]PolicyConfig
 }
 
 // runPolicyPackIntegrationTest creates a new Pulumi stack and then runs through
@@ -60,7 +65,7 @@ func runPolicyPackIntegrationTest(
 	if err != nil {
 		t.Fatalf("Error getting working directory")
 	}
-	rootDir := path.Join(cwd, testDirName)
+	rootDir := filepath.Join(cwd, testDirName)
 
 	// The Pulumi project name matches the test dir name in these tests.
 	os.Setenv("PULUMI_TEST_PROJECT", testDirName)
@@ -78,7 +83,7 @@ func runPolicyPackIntegrationTest(
 	e.ImportDirectory(rootDir)
 
 	// Change to the Policy Pack directory.
-	packDir := path.Join(e.RootPath, "policy-pack")
+	packDir := filepath.Join(e.RootPath, "policy-pack")
 	e.CWD = packDir
 
 	// Get dependencies.
@@ -90,7 +95,7 @@ func runPolicyPackIntegrationTest(
 	abortIfFailed(t)
 
 	// Change to the Pulumi program directory.
-	programDir := path.Join(e.RootPath, "program")
+	programDir := filepath.Join(e.RootPath, "program")
 	e.CWD = programDir
 
 	// Create the stack.
@@ -133,13 +138,41 @@ func runPolicyPackIntegrationTest(
 		// Create a sub-test so go test will output data incrementally, which will let
 		// a CI system like Travis know not to kill the job if no output is sent after 10m.
 		// idx+1 to make it 1-indexed.
-		t.Run(fmt.Sprintf("Scenario_%d", idx+1), func(t *testing.T) {
+		scenarioName := fmt.Sprintf("scenario_%d", idx+1)
+		t.Run(scenarioName, func(t *testing.T) {
 			e.T = t
 
 			e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
 
 			cmd := "pulumi"
 			args := []string{"up", "--yes", "--policy-pack", packDir}
+
+			// If there is config for the scenario, write it out to a file and pass the file path
+			// as a --policy-pack-config argument.
+			if len(scenario.PolicyPackConfig) > 0 {
+				// Marshal the config to JSON, with indentation for easier debugging.
+				bytes, err := json.MarshalIndent(scenario.PolicyPackConfig, "", "    ")
+				if err != nil {
+					t.Fatalf("error marshalling policy config to JSON: %v", err)
+				}
+
+				// Change to the config directory.
+				configDir := filepath.Join(e.RootPath, "config", scenarioName)
+				e.CWD = configDir
+
+				// Write the JSON to a file.
+				filename := "policy-config.json"
+				e.WriteTestFile(filename, string(bytes))
+				abortIfFailed(t)
+
+				// Add the policy config argument.
+				policyConfigFile := filepath.Join(configDir, filename)
+				args = append(args, "--policy-pack-config", policyConfigFile)
+
+				// Change back to the program directory to proceed with the update.
+				e.CWD = programDir
+			}
+
 			if runtime == Python {
 				cmd = "pipenv"
 				args = append([]string{"run", "pulumi"}, args...)
@@ -177,11 +210,17 @@ func runPolicyPackIntegrationTest(
 	// Cleanup already registered via defer.
 }
 
-// Test policy name validation.
-func TestInvalidPolicyName(t *testing.T) {
-	runPolicyPackIntegrationTest(t, "invalid_policy_name", NodeJS, nil, []policyTestScenario{
+// Test invalid policies.
+func TestInvalidPolicy(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "invalid_policy", NodeJS, nil, []policyTestScenario{
 		{
 			WantErrors: []string{`Invalid policy name "all". "all" is a reserved name.`},
+		},
+		{
+			WantErrors: []string{`enforcementLevel cannot be explicitly specified in properties.`},
+		},
+		{
+			WantErrors: []string{`"enforcementLevel" cannot be specified in required.`},
 		},
 	})
 }
@@ -534,6 +573,174 @@ func TestEnforcementLevel(t *testing.T) {
 				"validate-stack-violation-message",
 			},
 			Advisory: true,
+		},
+	})
+}
+
+// Test Policy Pack configuration.
+func TestConfig(t *testing.T) {
+	const (
+		resourcePolicy = "resource-validation"
+		stackPolicy    = "stack-validation"
+		errorPreamble  = "error: validating policy config: config-policy 0.0.1  "
+	)
+
+	config := func(c PolicyConfig) map[string]PolicyConfig {
+		return map[string]PolicyConfig{
+			resourcePolicy: c,
+			stackPolicy:    c,
+		}
+	}
+
+	want := func(err ...string) []string {
+		var result []string
+		for _, e := range err {
+			result = append(result,
+				errorPreamble+resourcePolicy+": "+e,
+				errorPreamble+stackPolicy+": "+e,
+			)
+		}
+		return result
+	}
+
+	runPolicyPackIntegrationTest(t, "config", NodeJS, nil, []policyTestScenario{
+		// Test senario 1: String from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "bar",
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 2: Default string value specified in schema used.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 3: Default number value specified in schema used.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 4: Specified config value overrides default value.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "overridden",
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 5: Default value specified in schema for required field used.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 6: Required config property not set.
+		{
+			WantErrors: want("foo is required"),
+		},
+		// Test scenario 7: Default value set to incorrect type.
+		{
+			WantErrors: want("foo: Invalid type. Expected: string, given: integer"),
+		},
+		// Test scenario 8: Default value too long.
+		{
+			WantErrors: want("foo: String length must be less than or equal to 3"),
+		},
+		// Test scenario 9: Default value too short.
+		{
+			WantErrors: want("foo: String length must be greater than or equal to 50"),
+		},
+		// Test scenario 10: Default value set to invalid enum value.
+		{
+			WantErrors: want(`foo: foo must be one of the following: "bar", "baz"`),
+		},
+		// Test scenario 11: Default value set to invalid constant value.
+		{
+			WantErrors: want(`foo: foo does not match: "bar"`),
+		},
+		// Test scenario 12: Incorrect type.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": 1,
+			}),
+			WantErrors: want(`foo: Invalid type. Expected: string, given: integer`),
+		},
+		// Test scenario 13: Invalid enum value.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "blah",
+			}),
+			WantErrors: want(`foo: foo must be one of the following: "bar", "baz"`),
+		},
+		// Test scenario 14: Invalid constant value.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "blah",
+			}),
+			WantErrors: want(`foo: foo does not match: "bar"`),
+		},
+		// Test scenario 15: Multiple validation errors.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "this is too long",
+				"bar": float64(3.14),
+			}),
+			WantErrors: want(
+				`bar: Invalid type. Expected: integer, given: number`,
+				`foo: String length must be less than or equal to 3`,
+			),
+		},
+		// Test scenario 16: Number (int) from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": 42,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 17: Number (float) from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": float64(3.14),
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 18: Integer from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": 42,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 19: Boolean (true) from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": true,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 20: Boolean (false) from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": false,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 21: Object from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": map[string]interface{}{"bar": "baz"},
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 22: Array from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": []string{"a", "b", "c"},
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 23: Null from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": nil,
+			}),
+			WantErrors: nil,
 		},
 	})
 }

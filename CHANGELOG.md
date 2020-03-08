@@ -13,6 +13,31 @@
   level is specified for either the Policy Pack or Policy, `"advisory"` is used.
   (https://github.com/pulumi/pulumi-policy/issues/192).
 
+- Add support for configuring policies. Policies can now declare their config schema by setting the `config` property,
+  and access config values via `args.getConfig<T>()` (https://github.com/pulumi/pulumi-policy/pull/207).
+
+  Example:
+
+  ```typescript
+  {
+      name: "certificate-expiration",
+      description: "Checks whether a certificate has expired.",
+      configSchema: {
+          properties: {
+              expiration: {
+                  type: "integer",
+                  default: 14,
+              },
+          },
+      },
+      validateResource: (args, reportViolation) => {
+          const { expiration } = args.getConfig<{ expiration: number }>();
+
+          // ...
+      }),
+  }
+  ```
+
 ## 0.4.0 (2020-01-30)
 
 ### Improvements

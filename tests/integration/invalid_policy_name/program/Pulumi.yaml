@@ -1,3 +1,0 @@
-name: invalid_policy_name
-runtime: nodejs
-description: A program that creates policies with invalid names.

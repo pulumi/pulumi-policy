@@ -16,19 +16,6 @@
         "strictNullChecks": true,
     },
     "files": [
-        "deserialize.ts",
-        "index.ts",
-        "policy.ts",
-        "protoutil.ts",
-        "proxy.ts",
-        "server.ts",
-        "schema.ts",
-        "version.ts",
-
-        "tests/deserialize.spec.ts",
-        "tests/pb.spec.ts",
-        "tests/policy.spec.ts",
-        "tests/proxy.spec.ts",
-        "tests/util.ts"
+        "index.ts"
     ]
 }

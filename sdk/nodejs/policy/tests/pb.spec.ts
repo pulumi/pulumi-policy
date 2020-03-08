@@ -36,7 +36,10 @@ describe("mapEnforcementLevel", () => {
             mapEnforcementLevel("mandatory"),
             analyzerproto.EnforcementLevel.MANDATORY,
         );
-        assert.throws(() => mapEnforcementLevel("disabled"));
+        assert.strictEqual(
+            mapEnforcementLevel("disabled"),
+            analyzerproto.EnforcementLevel.DISABLED,
+        );
         assert.throws(() => mapEnforcementLevel(<any>"invalidEnforcementLevel"));
     });
 });
@@ -54,10 +57,22 @@ describe("makeAnalyzerInfo", () => {
                 },
             ]);
         });
-    });
-
-    it("throws for disabled or invalid enforcementLevel", () => {
-        assert.throws(() => {
+        assert.doesNotThrow(() => {
+            makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
+                {
+                    name: "approved-amis-by-id",
+                    description: "Instances should use approved AMIs",
+                    enforcementLevel: "mandatory",
+                    configSchema: {
+                        properties: {
+                            foo: { type: "string" },
+                        },
+                    },
+                    validateResource: (args, reportViolation) => { return; },
+                },
+            ]);
+        });
+        assert.doesNotThrow(() => {
             makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
                 {
                     name: "approved-amis-by-id",
@@ -67,6 +82,9 @@ describe("makeAnalyzerInfo", () => {
                 },
             ]);
         });
+    });
+
+    it("throws for invalid enforcementLevel", () => {
         assert.throws(() => {
             makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
                 {
@@ -110,10 +128,7 @@ describe("makeAnalyzeResponse", () => {
                 },
             ]);
         });
-    });
-
-    it("throws for disabled or invalid enforcementLevel", () => {
-        assert.throws(() => {
+        assert.doesNotThrow(() => {
             makeAnalyzeResponse([
                 {
                     policyName: "approved-amis-by-id",
@@ -125,6 +140,9 @@ describe("makeAnalyzeResponse", () => {
                 },
             ]);
         });
+    });
+
+    it("throws for invalid enforcementLevel", () => {
         assert.throws(() => {
             makeAnalyzeResponse([
                 {

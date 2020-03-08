@@ -102,6 +102,7 @@ export function makeAnalyzerInfo(
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
     ai.setVersion(policyPackVersion);
+    ai.setSupportsconfig(true);
 
     const policyInfos: any[] = [];
     for (const policy of policies) {
@@ -109,6 +110,13 @@ export function makeAnalyzerInfo(
         policyInfo.setName(policy.name);
         policyInfo.setDescription(policy.description);
         policyInfo.setEnforcementlevel(mapEnforcementLevel(policy.enforcementLevel || policyPackEnforcementLevel));
+
+        if (policy.configSchema) {
+            const schema = new analyzerproto.PolicyConfigSchema();
+            schema.setProperties(structproto.Struct.fromJavaScript(policy.configSchema.properties));
+            schema.setRequiredList(policy.configSchema.required);
+            policyInfo.setConfigschema(schema);
+        }
 
         policyInfos.push(policyInfo);
     }
@@ -149,11 +157,24 @@ export function mapEnforcementLevel(el: EnforcementLevel) {
             return analyzerproto.EnforcementLevel.ADVISORY;
         case "mandatory":
             return analyzerproto.EnforcementLevel.MANDATORY;
-        // Disabled is treated as if the policy was not defined, so the value should not escape over GRPC.
         case "disabled":
-            throw new Error("'disabled' should not escape the GRPC boundary");
+            return analyzerproto.EnforcementLevel.DISABLED;
         default:
             throw new UnknownEnforcementLevelError(el);
+    }
+}
+
+/** @internal */
+export function convertEnforcementLevel(el: number): EnforcementLevel {
+    switch (el) {
+        case analyzerproto.EnforcementLevel.ADVISORY:
+            return "advisory";
+        case analyzerproto.EnforcementLevel.MANDATORY:
+            return "mandatory";
+        case analyzerproto.EnforcementLevel.DISABLED:
+            return "disabled";
+        default:
+            throw new Error(`Unknown enforcement level ${el}.`);
     }
 }
 

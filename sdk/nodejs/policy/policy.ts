@@ -14,6 +14,8 @@
 
 import { Resource, Unwrap } from "@pulumi/pulumi";
 import * as q from "@pulumi/pulumi/queryable";
+
+import { PolicyConfigJSONSchema } from "./schema";
 import { serve } from "./server";
 
 const defaultEnforcementLevel: EnforcementLevel = "advisory";
@@ -102,6 +104,52 @@ export interface Policy {
      * proper permissions.
      */
     enforcementLevel?: EnforcementLevel;
+
+    /**
+     * This policy's configuration schema.
+     *
+     * For example:
+     *
+     * ```typescript
+     * {
+     *     configSchema: {
+     *         properties: {
+     *             expiration: {
+     *                 type: "integer",
+     *                 default: 14,
+     *             },
+     *             identifier: {
+     *                 type: "string",
+     *             },
+     *         },
+     *     },
+     *
+     *     validateResource: (args, reportViolation) => {
+     *         const { expiration, identifier } = args.getConfig<{ expiration: number; identifier?: string; }>();
+     *
+     *         // ...
+     *     }),
+     * }
+     * ```
+     */
+    configSchema?: PolicyConfigSchema;
+}
+
+/**
+ * Represents the configuration schema for a policy.
+ */
+export interface PolicyConfigSchema {
+    /**
+     * The policy's configuration properties.
+     */
+    properties: {
+        [key: string]: PolicyConfigJSONSchema;
+    };
+
+    /**
+     * The configuration properties that are required.
+     */
+    required?: string[];
 }
 
 /**
@@ -214,6 +262,11 @@ export interface ResourceValidationArgs {
     asType<TResource extends Resource, TArgs>(
         resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     ): Unwrap<NonNullable<TArgs>> | undefined;
+
+    /**
+     * Returns configuration for the policy.
+     */
+    getConfig<T extends object>(): T;
 }
 
 /**
@@ -373,6 +426,11 @@ export interface StackValidationArgs {
      * The resources in the stack.
      */
     resources: PolicyResource[];
+
+    /**
+     * Returns configuration for the policy.
+     */
+    getConfig<T extends object>(): T;
 }
 
 /**
@@ -489,7 +547,7 @@ export function validateStackResourcesOfType<TResource extends Resource>(
         const filtered = args.resources.filter(r => r.isType(resourceClass));
         if (filtered.length > 0) {
             const filteredTyped = filtered.map(r => r.props as q.ResolvedResource<TResource>);
-            const filteredArgs = { resources: filtered };
+            const filteredArgs = { resources: filtered, getConfig: args.getConfig };
             return validate(filteredTyped, filteredArgs, reportViolation);
         }
     };
