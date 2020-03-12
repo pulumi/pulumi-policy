@@ -1,5 +1,5 @@
 PROJECT_NAME := policy
-SUB_PROJECTS := sdk/nodejs/policy
+SUB_PROJECTS := sdk/nodejs/policy sdk/python
 include build/common.mk
 
 .PHONY: ensure

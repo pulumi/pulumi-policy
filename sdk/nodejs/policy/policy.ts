@@ -328,22 +328,22 @@ export interface PolicyCustomTimeouts {
  */
 export interface PolicyProviderResource {
     /**
-     * The type of the resource provider.
+     * The type of the provider resource.
      */
     type: string;
 
     /**
-     * The properties of the resource provider.
+     * The properties of the provider resource.
      */
     props: Record<string, any>;
 
     /**
-     * The URN of the resource provider.
+     * The URN of the provider resource.
      */
     urn: string;
 
     /**
-     * The name of the resource provider.
+     * The name of the provider resource.
      */
     name: string;
 }
@@ -419,7 +419,7 @@ export interface StackValidationPolicy extends Policy {
 export type StackValidation = (args: StackValidationArgs, reportViolation: ReportViolation) => Promise<void> | void;
 
 /**
- * StackValidationArgs is the argument bag passed to a resource validation.
+ * StackValidationArgs is the argument bag passed to a stack validation.
  */
 export interface StackValidationArgs {
     /**

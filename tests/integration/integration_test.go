@@ -106,6 +106,7 @@ func runPolicyPackIntegrationTest(
 	abortIfFailed(t)
 
 	// Get dependencies.
+	var venvCreated bool
 	switch runtime {
 	case NodeJS:
 		e.RunCommand("yarn", "install")
@@ -116,8 +117,35 @@ func runPolicyPackIntegrationTest(
 		abortIfFailed(t)
 		e.RunCommand("pipenv", "run", "pip", "install", "-r", "requirements.txt")
 		abortIfFailed(t)
+		venvCreated = true
 	default:
 		t.Fatalf("Unexpected runtime value.")
+	}
+
+	// If we have a Python policy pack, create the virtual environment (if one doesn't already exist),
+	// and install dependencies into it. If the test uses a Python program, the virtual environment and
+	// activation will be shared between the program and policy pack.
+	var hasPythonPack bool
+	pythonPackDir := filepath.Join(e.RootPath, "policy-pack-python")
+	if _, err := os.Stat(pythonPackDir); !os.IsNotExist(err) {
+		hasPythonPack = true
+
+		if !venvCreated {
+			e.RunCommand("pipenv", "--python", "3")
+			abortIfFailed(t)
+		}
+
+		pythonPackRequirements := filepath.Join(pythonPackDir, "requirements.txt")
+		if _, err := os.Stat(pythonPackRequirements); !os.IsNotExist(err) {
+			e.RunCommand("pipenv", "run", "pip", "install", "-r", pythonPackRequirements)
+			abortIfFailed(t)
+		}
+
+		dep := filepath.Join("..", "..", "sdk", "python", "env", "src")
+		dep, err = filepath.Abs(dep)
+		assert.NoError(t, err)
+		e.RunCommand("pipenv", "run", "pip", "install", "-e", dep)
+		abortIfFailed(t)
 	}
 
 	// Initial configuration.
@@ -134,75 +162,85 @@ func runPolicyPackIntegrationTest(
 	}()
 
 	assert.True(t, len(scenarios) > 0, "no test scenarios provided")
-	for idx, scenario := range scenarios {
-		// Create a sub-test so go test will output data incrementally, which will let
-		// a CI system like Travis know not to kill the job if no output is sent after 10m.
-		// idx+1 to make it 1-indexed.
-		scenarioName := fmt.Sprintf("scenario_%d", idx+1)
-		t.Run(scenarioName, func(t *testing.T) {
+	runScenarios := func(policyPackDirectoryPath string) {
+		t.Run(policyPackDirectoryPath, func(t *testing.T) {
 			e.T = t
 
-			e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
+			for idx, scenario := range scenarios {
+				// Create a sub-test so go test will output data incrementally, which will let
+				// a CI system like Travis know not to kill the job if no output is sent after 10m.
+				// idx+1 to make it 1-indexed.
+				scenarioName := fmt.Sprintf("scenario_%d", idx+1)
+				t.Run(scenarioName, func(t *testing.T) {
+					e.T = t
 
-			cmd := "pulumi"
-			args := []string{"up", "--yes", "--policy-pack", packDir}
+					e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
 
-			// If there is config for the scenario, write it out to a file and pass the file path
-			// as a --policy-pack-config argument.
-			if len(scenario.PolicyPackConfig) > 0 {
-				// Marshal the config to JSON, with indentation for easier debugging.
-				bytes, err := json.MarshalIndent(scenario.PolicyPackConfig, "", "    ")
-				if err != nil {
-					t.Fatalf("error marshalling policy config to JSON: %v", err)
-				}
+					cmd := "pulumi"
+					args := []string{"up", "--yes", "--policy-pack", policyPackDirectoryPath}
 
-				// Change to the config directory.
-				configDir := filepath.Join(e.RootPath, "config", scenarioName)
-				e.CWD = configDir
+					// If there is config for the scenario, write it out to a file and pass the file path
+					// as a --policy-pack-config argument.
+					if len(scenario.PolicyPackConfig) > 0 {
+						// Marshal the config to JSON, with indentation for easier debugging.
+						bytes, err := json.MarshalIndent(scenario.PolicyPackConfig, "", "    ")
+						if err != nil {
+							t.Fatalf("error marshalling policy config to JSON: %v", err)
+						}
 
-				// Write the JSON to a file.
-				filename := "policy-config.json"
-				e.WriteTestFile(filename, string(bytes))
-				abortIfFailed(t)
+						// Change to the config directory.
+						configDir := filepath.Join(e.RootPath, "config", scenarioName)
+						e.CWD = configDir
 
-				// Add the policy config argument.
-				policyConfigFile := filepath.Join(configDir, filename)
-				args = append(args, "--policy-pack-config", policyConfigFile)
+						// Write the JSON to a file.
+						filename := "policy-config.json"
+						e.WriteTestFile(filename, string(bytes))
+						abortIfFailed(t)
 
-				// Change back to the program directory to proceed with the update.
-				e.CWD = programDir
-			}
+						// Add the policy config argument.
+						policyConfigFile := filepath.Join(configDir, filename)
+						args = append(args, "--policy-pack-config", policyConfigFile)
 
-			if runtime == Python {
-				cmd = "pipenv"
-				args = append([]string{"run", "pulumi"}, args...)
-			}
-
-			if len(scenario.WantErrors) == 0 {
-				t.Log("No errors are expected.")
-				e.RunCommand(cmd, args...)
-			} else {
-				var stdout, stderr string
-				if scenario.Advisory {
-					stdout, stderr = e.RunCommand(cmd, args...)
-				} else {
-					stdout, stderr = e.RunCommandExpectError(cmd, args...)
-				}
-
-				for _, wantErr := range scenario.WantErrors {
-					inSTDOUT := strings.Contains(stdout, wantErr)
-					inSTDERR := strings.Contains(stderr, wantErr)
-
-					if !inSTDOUT && !inSTDERR {
-						t.Errorf("Did not find expected error %q", wantErr)
+						// Change back to the program directory to proceed with the update.
+						e.CWD = programDir
 					}
-				}
 
-				if t.Failed() {
-					t.Logf("Command output:\nSTDOUT:\n%v\n\nSTDERR:\n%v\n\n", stdout, stderr)
-				}
+					if runtime == Python || hasPythonPack {
+						cmd = "pipenv"
+						args = append([]string{"run", "pulumi"}, args...)
+					}
+
+					if len(scenario.WantErrors) == 0 {
+						t.Log("No errors are expected.")
+						e.RunCommand(cmd, args...)
+					} else {
+						var stdout, stderr string
+						if scenario.Advisory {
+							stdout, stderr = e.RunCommand(cmd, args...)
+						} else {
+							stdout, stderr = e.RunCommandExpectError(cmd, args...)
+						}
+
+						for _, wantErr := range scenario.WantErrors {
+							inSTDOUT := strings.Contains(stdout, wantErr)
+							inSTDERR := strings.Contains(stderr, wantErr)
+
+							if !inSTDOUT && !inSTDERR {
+								t.Errorf("Did not find expected error %q", wantErr)
+							}
+						}
+
+						if t.Failed() {
+							t.Logf("Command output:\nSTDOUT:\n%v\n\nSTDERR:\n%v\n\n", stdout, stderr)
+						}
+					}
+				})
 			}
 		})
+	}
+	runScenarios(packDir)
+	if hasPythonPack {
+		runScenarios(pythonPackDir)
 	}
 
 	e.T = t
