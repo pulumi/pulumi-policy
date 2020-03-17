@@ -20,7 +20,7 @@ import time
 
 from enum import Enum
 from inspect import isawaitable
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Union, cast
+from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Union, cast
 from abc import ABC
 
 import grpc
@@ -432,21 +432,20 @@ class PolicyResource:
     The provider of the resource.
     """
 
-    # TODO[pulumi/pulumi-policy#208]: Expose resource dependencies.
-    # parent: Optional[PolicyResource]
-    # """
-    # An optional parent that this resource belongs to.
-    # """
+    parent: Optional['PolicyResource']
+    """
+    An optional parent that this resource belongs to.
+    """
 
-    # dependencies: List[PolicyResource]
-    # """
-    # The dependencies of the resource.
-    # """
+    dependencies: List['PolicyResource']
+    """
+    The dependencies of the resource.
+    """
 
-    # property_dependencies: Dict[str, List[PolicyResource]]
-    # """
-    # The set of dependencies that affect each property.
-    # """
+    property_dependencies: Dict[str, List['PolicyResource']]
+    """
+    The set of dependencies that affect each property.
+    """
 
     def __init__(self,
                  resource_type: str,
@@ -454,13 +453,19 @@ class PolicyResource:
                  urn: str,
                  name: str,
                  opts: PolicyResourceOptions,
-                 provider: Optional[PolicyProviderResource]) -> None:
+                 provider: Optional[PolicyProviderResource],
+                 parent: Optional['PolicyResource'],
+                 dependencies: List['PolicyResource'],
+                 property_dependencies: Dict[str, List['PolicyResource']]) -> None:
         self.resource_type = resource_type
         self.props = props
         self.urn = urn
         self.name = name
         self.opts = opts
         self.provider = provider
+        self.parent = parent
+        self.dependencies = dependencies
+        self.property_dependencies = property_dependencies
 
 
 class StackValidationArgs:
@@ -579,15 +584,54 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             report_violation = self._create_report_violation(diagnostics, policy.name,
                                                              policy.description, enforcement_level)
 
-            resources: List[PolicyResource] = []
+            class IntermediateStackResource(NamedTuple):
+                resource: PolicyResource
+                parent: Optional[str]
+                dependencies: List[str]
+                property_dependencies: Dict[str, List[str]]
+
+            intermediates: List[IntermediateStackResource] = []
             for r in request.resources:
                 # TODO[pulumi/pulumi-policy#208]: Deserialize properties
                 # TODO[pulumi/pulumi-policy#208]: Unknown checking proxy
                 props = json_format.MessageToDict(r.properties)
                 opts = self._get_resource_options(r)
                 provider = self._get_provider_resource(r)
-                resource = PolicyResource(r.type, props, r.urn, r.name, opts, provider)
-                resources.append(resource)
+                resource = PolicyResource(r.type, props, r.urn, r.name, opts, provider, None, [], {})
+                property_dependencies: Dict[str, List[str]] = {}
+                for k, v in r.propertyDependencies.items():
+                    property_dependencies[k] = list(v.urns)
+                intermediates.append(IntermediateStackResource(resource, r.parent, list(r.dependencies), property_dependencies))
+
+            # Create a map of URNs to resources, used to fill in the parent and dependencies
+            # with references to the actual resource objects.
+            urns_to_resources: Dict[str, PolicyResource] = {}
+            for i in intermediates:
+                urns_to_resources[i.resource.urn] = i.resource
+
+            # Go through each intermediate result and set the parent and dependencies.
+            for i in intermediates:
+                # If the resource has a parent, lookup and set it to the actual resource object.
+                if i.parent is not None and i.parent in urns_to_resources:
+                    i.resource.parent = urns_to_resources[i.parent]
+
+                # Set dependencies to actual resource objects.
+                for d in i.dependencies:
+                    if d in urns_to_resources:
+                        i.resource.dependencies.append(urns_to_resources[d])
+
+                # Set property_dependencies to actual resource objects.
+                for k in i.property_dependencies:
+                    v = i.property_dependencies[k]
+                    deps: List[PolicyResource] = []
+                    for d in v:
+                        if d in urns_to_resources:
+                            deps.append(urns_to_resources[d])
+                    i.resource.property_dependencies[k] = deps
+
+            resources: List[PolicyResource] = []
+            for i in intermediates:
+                resources.append(i.resource)
             args = StackValidationArgs(resources)
 
             result = policy.validate(args, report_violation)
