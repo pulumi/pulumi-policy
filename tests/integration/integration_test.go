@@ -344,7 +344,15 @@ func TestValidatePythonResource(t *testing.T) {
 				"RandomUuid must not have an empty 'keepers'.",
 			},
 		},
-		// Test scenario 2: no violations.
+		// Test scenario 2: violates the policy.
+		{
+			WantErrors: []string{
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r2: random:index/randomUuid:RandomUuid)",
+				"Prohibits creating a RandomUuid without any 'keepers'.",
+				"RandomUuid must not have an empty 'keepers'.",
+			},
+		},
+		// Test scenario 3: no violations.
 		{
 			WantErrors: nil,
 		},
