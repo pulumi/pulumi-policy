@@ -570,9 +570,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 loop.run_until_complete(result)
                 loop.close()
 
-        return proto.AnalyzeResponse(**{
-            "diagnostics": diagnostics
-        })
+        return proto.AnalyzeResponse(diagnostics=diagnostics)
 
     def AnalyzeStack(self, request, context):
         diagnostics: List[proto.AnalyzeDiagnostic] = []
@@ -640,28 +638,26 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 loop.run_until_complete(result)
                 loop.close()
 
-        return proto.AnalyzeResponse(**{
-            "diagnostics": diagnostics
-        })
+        return proto.AnalyzeResponse(diagnostics=diagnostics)
 
     def GetAnalyzerInfo(self, request, context):
         policies: List[proto.PolicyInfo] = []
         for policy in self.__policies:
             enforcement_level = (policy.enforcement_level if policy.enforcement_level is not None
                                  else self.__policy_pack_enforcement_level)
-            policies.append(proto.PolicyInfo(**{
-                "name": policy.name,
-                "description": policy.description,
-                "enforcementLevel": self._map_enforcement_level(enforcement_level),
+            policies.append(proto.PolicyInfo(
+                name=policy.name,
+                description=policy.description,
+                enforcementLevel=self._map_enforcement_level(enforcement_level),
                 # TODO[pulumi/pulumi-policy#210]: Expose config schema
-            }))
+            ))
 
-        return proto.AnalyzerInfo(**{
-            "name": self.__policy_pack_name,
-            "version": self.__policy_pack_version,
-            "supportsConfig": False,  # TODO[pulumi/pulumi-policy#210]: Set to True when config support is added
-            "policies": policies,
-        })
+        return proto.AnalyzerInfo(
+            name=self.__policy_pack_name,
+            version=self.__policy_pack_version,
+            supportsConfig=False,  # TODO[pulumi/pulumi-policy#210]: Set to True when config support is added
+            policies=policies,
+        )
 
     def GetPluginInfo(self, request, context):
         return proto.PluginInfo(version=SEMVERSION)
@@ -704,15 +700,15 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             if message:
                 violation_message += f"\n{message}"
 
-            diagnostics.append(proto.AnalyzeDiagnostic(**{
-                "policyName": policy_name,
-                "policyPackName": self.__policy_pack_name,
-                "policyPackVersion": self.__policy_pack_version,
-                "message": violation_message,
-                "urn": urn if urn else "",
-                "description": policy_description,
-                "enforcementLevel": self._map_enforcement_level(enforcement_level),
-            }))
+            diagnostics.append(proto.AnalyzeDiagnostic(
+                policyName=policy_name,
+                policyPackName=self.__policy_pack_name,
+                policyPackVersion=self.__policy_pack_version,
+                message=violation_message,
+                urn=urn if urn else "",
+                description=policy_description,
+                enforcementLevel=self._map_enforcement_level(enforcement_level),
+            ))
         return report_violation
 
     def _map_enforcement_level(self, enforcement_level: EnforcementLevel) -> int:
