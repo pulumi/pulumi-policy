@@ -28,7 +28,7 @@ from google.protobuf import empty_pb2, json_format
 from pulumi.runtime import proto
 from pulumi.runtime.proto import analyzer_pb2_grpc
 
-from .version import _get_package_sem_version
+from .version import SEMVERSION
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -664,10 +664,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         })
 
     def GetPluginInfo(self, request, context):
-        version = _get_package_sem_version()
-        return proto.PluginInfo(**{
-            "version": version
-        })
+        return proto.PluginInfo(version=SEMVERSION)
 
     def Configure(self, request, context):
         # TODO[pulumi/pulumi-policy#210]: Add support for config
