@@ -31,7 +31,7 @@ def dynamic_no_state_with_value_3(args: StackValidationArgs, report_violation: R
 def randomuuid_no_keepers(args: StackValidationArgs, report_violation: ReportViolation):
     for r in args.resources:
         if r.resource_type == "random:index/randomUuid:RandomUuid":
-            if "keepers" not in args.props or not args.props["keepers"]:
+            if "keepers" not in r.props or not r.props["keepers"]:
                 report_violation("RandomUuid must not have an empty 'keepers'.")
 
 # Note: In the NodeJS Policy Pack, this uses the `isType` helper.
