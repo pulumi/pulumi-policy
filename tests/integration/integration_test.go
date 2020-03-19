@@ -106,6 +106,7 @@ func runPolicyPackIntegrationTest(
 	abortIfFailed(t)
 
 	// Get dependencies.
+	var venvCreated bool
 	switch runtime {
 	case NodeJS:
 		e.RunCommand("yarn", "install")
@@ -116,8 +117,35 @@ func runPolicyPackIntegrationTest(
 		abortIfFailed(t)
 		e.RunCommand("pipenv", "run", "pip", "install", "-r", "requirements.txt")
 		abortIfFailed(t)
+		venvCreated = true
 	default:
 		t.Fatalf("Unexpected runtime value.")
+	}
+
+	// If we have a Python policy pack, create the virtual environment (if one doesn't already exist),
+	// and install dependencies into it. If the test uses a Python program, the virtual environment and
+	// activation will be shared between the program and policy pack.
+	var hasPythonPack bool
+	pythonPackDir := filepath.Join(e.RootPath, "policy-pack-python")
+	if _, err := os.Stat(pythonPackDir); !os.IsNotExist(err) {
+		hasPythonPack = true
+
+		if !venvCreated {
+			e.RunCommand("pipenv", "--python", "3")
+			abortIfFailed(t)
+		}
+
+		pythonPackRequirements := filepath.Join(pythonPackDir, "requirements.txt")
+		if _, err := os.Stat(pythonPackRequirements); !os.IsNotExist(err) {
+			e.RunCommand("pipenv", "run", "pip", "install", "-r", pythonPackRequirements)
+			abortIfFailed(t)
+		}
+
+		dep := filepath.Join("..", "..", "sdk", "python", "env", "src")
+		dep, err = filepath.Abs(dep)
+		assert.NoError(t, err)
+		e.RunCommand("pipenv", "run", "pip", "install", "-e", dep)
+		abortIfFailed(t)
 	}
 
 	// Initial configuration.
@@ -134,75 +162,85 @@ func runPolicyPackIntegrationTest(
 	}()
 
 	assert.True(t, len(scenarios) > 0, "no test scenarios provided")
-	for idx, scenario := range scenarios {
-		// Create a sub-test so go test will output data incrementally, which will let
-		// a CI system like Travis know not to kill the job if no output is sent after 10m.
-		// idx+1 to make it 1-indexed.
-		scenarioName := fmt.Sprintf("scenario_%d", idx+1)
-		t.Run(scenarioName, func(t *testing.T) {
+	runScenarios := func(policyPackDirectoryPath string) {
+		t.Run(policyPackDirectoryPath, func(t *testing.T) {
 			e.T = t
 
-			e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
+			for idx, scenario := range scenarios {
+				// Create a sub-test so go test will output data incrementally, which will let
+				// a CI system like Travis know not to kill the job if no output is sent after 10m.
+				// idx+1 to make it 1-indexed.
+				scenarioName := fmt.Sprintf("scenario_%d", idx+1)
+				t.Run(scenarioName, func(t *testing.T) {
+					e.T = t
 
-			cmd := "pulumi"
-			args := []string{"up", "--yes", "--policy-pack", packDir}
+					e.RunCommand("pulumi", "config", "set", "scenario", fmt.Sprintf("%d", idx+1))
 
-			// If there is config for the scenario, write it out to a file and pass the file path
-			// as a --policy-pack-config argument.
-			if len(scenario.PolicyPackConfig) > 0 {
-				// Marshal the config to JSON, with indentation for easier debugging.
-				bytes, err := json.MarshalIndent(scenario.PolicyPackConfig, "", "    ")
-				if err != nil {
-					t.Fatalf("error marshalling policy config to JSON: %v", err)
-				}
+					cmd := "pulumi"
+					args := []string{"up", "--yes", "--policy-pack", policyPackDirectoryPath}
 
-				// Change to the config directory.
-				configDir := filepath.Join(e.RootPath, "config", scenarioName)
-				e.CWD = configDir
+					// If there is config for the scenario, write it out to a file and pass the file path
+					// as a --policy-pack-config argument.
+					if len(scenario.PolicyPackConfig) > 0 {
+						// Marshal the config to JSON, with indentation for easier debugging.
+						bytes, err := json.MarshalIndent(scenario.PolicyPackConfig, "", "    ")
+						if err != nil {
+							t.Fatalf("error marshalling policy config to JSON: %v", err)
+						}
 
-				// Write the JSON to a file.
-				filename := "policy-config.json"
-				e.WriteTestFile(filename, string(bytes))
-				abortIfFailed(t)
+						// Change to the config directory.
+						configDir := filepath.Join(e.RootPath, "config", scenarioName)
+						e.CWD = configDir
 
-				// Add the policy config argument.
-				policyConfigFile := filepath.Join(configDir, filename)
-				args = append(args, "--policy-pack-config", policyConfigFile)
+						// Write the JSON to a file.
+						filename := "policy-config.json"
+						e.WriteTestFile(filename, string(bytes))
+						abortIfFailed(t)
 
-				// Change back to the program directory to proceed with the update.
-				e.CWD = programDir
-			}
+						// Add the policy config argument.
+						policyConfigFile := filepath.Join(configDir, filename)
+						args = append(args, "--policy-pack-config", policyConfigFile)
 
-			if runtime == Python {
-				cmd = "pipenv"
-				args = append([]string{"run", "pulumi"}, args...)
-			}
-
-			if len(scenario.WantErrors) == 0 {
-				t.Log("No errors are expected.")
-				e.RunCommand(cmd, args...)
-			} else {
-				var stdout, stderr string
-				if scenario.Advisory {
-					stdout, stderr = e.RunCommand(cmd, args...)
-				} else {
-					stdout, stderr = e.RunCommandExpectError(cmd, args...)
-				}
-
-				for _, wantErr := range scenario.WantErrors {
-					inSTDOUT := strings.Contains(stdout, wantErr)
-					inSTDERR := strings.Contains(stderr, wantErr)
-
-					if !inSTDOUT && !inSTDERR {
-						t.Errorf("Did not find expected error %q", wantErr)
+						// Change back to the program directory to proceed with the update.
+						e.CWD = programDir
 					}
-				}
 
-				if t.Failed() {
-					t.Logf("Command output:\nSTDOUT:\n%v\n\nSTDERR:\n%v\n\n", stdout, stderr)
-				}
+					if runtime == Python || hasPythonPack {
+						cmd = "pipenv"
+						args = append([]string{"run", "pulumi"}, args...)
+					}
+
+					if len(scenario.WantErrors) == 0 {
+						t.Log("No errors are expected.")
+						e.RunCommand(cmd, args...)
+					} else {
+						var stdout, stderr string
+						if scenario.Advisory {
+							stdout, stderr = e.RunCommand(cmd, args...)
+						} else {
+							stdout, stderr = e.RunCommandExpectError(cmd, args...)
+						}
+
+						for _, wantErr := range scenario.WantErrors {
+							inSTDOUT := strings.Contains(stdout, wantErr)
+							inSTDERR := strings.Contains(stderr, wantErr)
+
+							if !inSTDOUT && !inSTDERR {
+								t.Errorf("Did not find expected error %q", wantErr)
+							}
+						}
+
+						if t.Failed() {
+							t.Logf("Command output:\nSTDOUT:\n%v\n\nSTDERR:\n%v\n\n", stdout, stderr)
+						}
+					}
+				})
 			}
 		})
+	}
+	runScenarios(packDir)
+	if hasPythonPack {
+		runScenarios(pythonPackDir)
 	}
 
 	e.T = t
@@ -239,7 +277,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 3: violates the first policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-1 (a)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-1 (a: pulumi-nodejs:dynamic:Resource)",
 				"Prohibits setting state to 1 on dynamic resources.",
 				"'state' must not have the value 1.",
 			},
@@ -247,7 +285,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 4: violates the second policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-2 (b)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-2 (b: pulumi-nodejs:dynamic:Resource)",
 				"Prohibits setting state to 2 on dynamic resources.",
 				"'state' must not have the value 2.",
 			},
@@ -255,7 +293,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 5: violates the first validation function of the third policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (c)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (c: pulumi-nodejs:dynamic:Resource)",
 				"Prohibits setting state to 3 or 4 on dynamic resources.",
 				"'state' must not have the value 3.",
 			},
@@ -263,7 +301,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 6: violates the second validation function of the third policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (d)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (d: pulumi-nodejs:dynamic:Resource)",
 				"Prohibits setting state to 3 or 4 on dynamic resources.",
 				"'state' must not have the value 4.",
 			},
@@ -271,7 +309,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 7: violates the fourth policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r1)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r1: random:index/randomUuid:RandomUuid)",
 				"Prohibits creating a RandomUuid without any 'keepers'.",
 				"RandomUuid must not have an empty 'keepers'.",
 			},
@@ -283,7 +321,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 9: violates the fifth policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-5 (e)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-5 (e: pulumi-nodejs:dynamic:Resource)",
 				"Prohibits setting state to 5 on dynamic resources.",
 				"'state' must not have the value 5.",
 			},
@@ -301,7 +339,7 @@ func TestValidatePythonResource(t *testing.T) {
 		// Test scenario 1: violates the policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r1)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r1: random:index/randomUuid:RandomUuid)",
 				"Prohibits creating a RandomUuid without any 'keepers'.",
 				"RandomUuid must not have an empty 'keepers'.",
 			},
@@ -343,7 +381,7 @@ func TestValidateStack(t *testing.T) {
 		// Test scenario 5: violates the third policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-3 (c)",
+				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-3 (c: pulumi-nodejs:dynamic:Resource)",
 				"Prohibits setting state to 3 on dynamic resources.",
 				"'state' must not have the value 3.",
 			},
@@ -382,7 +420,7 @@ func TestUnknownValues(t *testing.T) {
 	}, []policyTestScenario{
 		{
 			WantErrors: []string{
-				"[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (pet)",
+				"[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (pet: random:index/randomPet:RandomPet)",
 				"can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
 				"[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
 				"can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
@@ -430,7 +468,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 1: Policy Pack: advisory; Policy: advisory.
 		{
 			WantErrors: []string{
-				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-resource (str)",
+				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-stack",
@@ -446,7 +484,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 3: Policy Pack: advisory; Policy: mandatory.
 		{
 			WantErrors: []string{
-				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-stack",
@@ -457,7 +495,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 4: Policy Pack: advisory; Policy: not set.
 		{
 			WantErrors: []string{
-				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-resource (str)",
+				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-stack",
@@ -469,7 +507,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 5: Policy Pack: disabled; Policy: advisory.
 		{
 			WantErrors: []string{
-				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-resource (str)",
+				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-stack",
@@ -485,7 +523,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 7: Policy Pack: disabled; Policy: mandatory.
 		{
 			WantErrors: []string{
-				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-stack",
@@ -500,7 +538,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 9: Policy Pack: mandatory; Policy: advisory.
 		{
 			WantErrors: []string{
-				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-resource (str)",
+				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-stack",
@@ -516,7 +554,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 11: Policy Pack: mandatory; Policy: mandatory.
 		{
 			WantErrors: []string{
-				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-stack",
@@ -527,7 +565,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 12: Policy Pack: mandatory; Policy: not set.
 		{
 			WantErrors: []string{
-				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-stack",
@@ -538,7 +576,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 13: Policy Pack: not set; Policy: advisory.
 		{
 			WantErrors: []string{
-				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-resource (str)",
+				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-stack",
@@ -554,7 +592,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 15: Policy Pack: not set; Policy: mandatory.
 		{
 			WantErrors: []string{
-				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-resource (str)",
+				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-stack",
@@ -565,7 +603,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 16: Policy Pack: not set; Policy: not set.
 		{
 			WantErrors: []string{
-				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-resource (str)",
+				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-stack",
