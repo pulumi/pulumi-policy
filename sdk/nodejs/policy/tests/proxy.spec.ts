@@ -35,7 +35,7 @@ function assertThrowsUnknownValue(f: Function, unknownTypeSentinel: string, path
             assert.deepStrictEqual(e.props, path);
             return;
         }
-        assert.fail("threw something that is not an UnknownValueError");
+        assert.fail(`threw something that is not an UnknownValueError: ${e}`);
     }
     assert.fail("didn't throw an error");
 }
@@ -123,6 +123,35 @@ describe("proxy", () => {
             },
             unknownBooleanValue,
             ["foo", "bar"],
+        );
+        assertThrowsUnknownValue(
+            () => {
+                return unknownCheckingProxy({ foo: [unknownBooleanValue] }).foo[0];
+            },
+            unknownBooleanValue,
+            ["foo", "0"],
+        );
+        assertThrowsUnknownValue(
+            () => {
+                const props = unknownCheckingProxy({ foo: [true, unknownBooleanValue, false] });
+                let count = 0;
+                for (const item of props.foo) {
+                    count++;
+                }
+            },
+            unknownBooleanValue,
+            ["foo", "1"],
+        );
+        assertThrowsUnknownValue(
+            () => {
+                const props = unknownCheckingProxy({ foo: [true, unknownBooleanValue, false] });
+                let count = 0;
+                props.foo.forEach(() => {
+                    count++;
+                });
+            },
+            unknownBooleanValue,
+            ["foo", "1"],
         );
     });
 });
