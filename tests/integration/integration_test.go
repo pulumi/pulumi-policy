@@ -790,3 +790,10 @@ func TestConfig(t *testing.T) {
 		},
 	})
 }
+
+// Test deserializing resource properties.
+func TestDeserialize(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "deserialize", NodeJS, nil, []policyTestScenario{
+		{WantErrors: nil},
+	})
+}
