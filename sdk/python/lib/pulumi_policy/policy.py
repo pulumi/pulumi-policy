@@ -547,6 +547,12 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
     __policies: List[Policy]
     __policy_pack_enforcement_level: EnforcementLevel
 
+    class IntermediateStackResource(NamedTuple):
+        resource: PolicyResource
+        parent: Optional[str]
+        dependencies: List[str]
+        property_dependencies: Dict[str, List[str]]
+
     def Analyze(self, request, context):
         diagnostics: List[proto.AnalyzeDiagnostic] = []
         for policy in self.__policies:
@@ -582,13 +588,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             report_violation = self._create_report_violation(diagnostics, policy.name,
                                                              policy.description, enforcement_level)
 
-            class IntermediateStackResource(NamedTuple):
-                resource: PolicyResource
-                parent: Optional[str]
-                dependencies: List[str]
-                property_dependencies: Dict[str, List[str]]
-
-            intermediates: List[IntermediateStackResource] = []
+            intermediates: List[_PolicyAnalyzerServicer.IntermediateStackResource] = []
             for r in request.resources:
                 # TODO[pulumi/pulumi-policy#208]: Deserialize properties
                 # TODO[pulumi/pulumi-policy#208]: Unknown checking proxy
@@ -599,7 +599,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 property_dependencies: Dict[str, List[str]] = {}
                 for k, v in r.propertyDependencies.items():
                     property_dependencies[k] = list(v.urns)
-                intermediates.append(IntermediateStackResource(resource, r.parent, list(r.dependencies), property_dependencies))
+                intermediates.append(_PolicyAnalyzerServicer.IntermediateStackResource(resource, r.parent, list(r.dependencies), property_dependencies))
 
             # Create a map of URNs to resources, used to fill in the parent and dependencies
             # with references to the actual resource objects.
