@@ -29,6 +29,7 @@ from pulumi.runtime import proto
 from pulumi.runtime.proto import analyzer_pb2_grpc
 
 from .deserialize import deserialize_properties
+from .proxy import UnknownValueError, unknown_checking_proxy
 from .version import SEMVERSION
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
@@ -564,17 +565,28 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             report_violation = self._create_report_violation(diagnostics, policy.name,
                                                              policy.description, enforcement_level)
 
-            # TODO[pulumi/pulumi-policy#208]: Unknown checking proxy
-            props = deserialize_properties(json_format.MessageToDict(request.properties))
+            deserialized = deserialize_properties(json_format.MessageToDict(request.properties))
+            props = unknown_checking_proxy(deserialized)
             opts = self._get_resource_options(request)
             provider = self._get_provider_resource(request)
             args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider)
 
-            result = policy.validate(args, report_violation)
-            if isawaitable(result):
-                loop = asyncio.new_event_loop()
-                loop.run_until_complete(result)
-                loop.close()
+            try:
+                result = policy.validate(args, report_violation)
+                if isawaitable(result):
+                    loop = asyncio.new_event_loop()
+                    loop.run_until_complete(result)
+                    loop.close()
+            except UnknownValueError as e:
+                diagnostics.append(proto.AnalyzeDiagnostic(
+                    policyName=policy.name,
+                    policyPackName=self.__policy_pack_name,
+                    policyPackVersion=self.__policy_pack_version,
+                    message=f"can't run policy '{policy.name}' during preview: {e.message}",
+                    urn="",
+                    description=policy.description,
+                    enforcementLevel=self._map_enforcement_level(EnforcementLevel.ADVISORY),
+                ))
 
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
@@ -590,8 +602,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
             intermediates: List[_PolicyAnalyzerServicer.IntermediateStackResource] = []
             for r in request.resources:
-                # TODO[pulumi/pulumi-policy#208]: Unknown checking proxy
-                props = deserialize_properties(json_format.MessageToDict(r.properties))
+                deserialized = deserialize_properties(json_format.MessageToDict(r.properties))
+                props = unknown_checking_proxy(deserialized)
                 opts = self._get_resource_options(r)
                 provider = self._get_provider_resource(r)
                 resource = PolicyResource(r.type, props, r.urn, r.name, opts, provider, None, [], {})
@@ -631,11 +643,22 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 resources.append(i.resource)
             args = StackValidationArgs(resources)
 
-            result = policy.validate(args, report_violation)
-            if isawaitable(result):
-                loop = asyncio.new_event_loop()
-                loop.run_until_complete(result)
-                loop.close()
+            try:
+                result = policy.validate(args, report_violation)
+                if isawaitable(result):
+                    loop = asyncio.new_event_loop()
+                    loop.run_until_complete(result)
+                    loop.close()
+            except UnknownValueError as e:
+                diagnostics.append(proto.AnalyzeDiagnostic(
+                    policyName=policy.name,
+                    policyPackName=self.__policy_pack_name,
+                    policyPackVersion=self.__policy_pack_version,
+                    message=f"can't run policy '{policy.name}' during preview: {e.message}",
+                    urn="",
+                    description=policy.description,
+                    enforcementLevel=self._map_enforcement_level(EnforcementLevel.ADVISORY),
+                ))
 
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
@@ -737,6 +760,6 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         if not request.HasField("provider"):
             return None
         prov = request.provider
-        # TODO[pulumi/pulumi-policy#208]: unknown checking proxy
-        props = deserialize_properties(json_format.MessageToDict(prov.properties))
+        deserialized = deserialize_properties(json_format.MessageToDict(prov.properties))
+        props = unknown_checking_proxy(deserialized)
         return PolicyProviderResource(prov.type, props, prov.urn, prov.name)
