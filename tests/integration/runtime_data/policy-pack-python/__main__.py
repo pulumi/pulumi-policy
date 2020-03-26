@@ -44,7 +44,7 @@ def verify_data(r):
     assert get_stack() == r.props["getStack"]
 
     # Verify Config
-    assert json.dumps(CONFIG, sort_keys=True) == json.dumps(r.props["allConfig"], sort_keys=True)
+    assert json.dumps(CONFIG, sort_keys=True) == json.dumps(dict(r.props["allConfig"]), sort_keys=True)
     config = Config()
     value = config.require("aConfigValue")
     assert value == "this value is a value"
