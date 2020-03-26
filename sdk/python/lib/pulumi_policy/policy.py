@@ -20,7 +20,7 @@ import time
 
 from enum import Enum
 from inspect import isawaitable
-from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Union, cast
+from typing import Any, Awaitable, Callable, Dict, Mapping, List, NamedTuple, Optional, Union, cast
 from abc import ABC
 
 import grpc
@@ -171,7 +171,7 @@ class ResourceValidationArgs:
     The type of the resource.
     """
 
-    props: Dict[str, Any]
+    props: Mapping[str, Any]
     """
     The inputs of the resource.
     """
@@ -198,7 +198,7 @@ class ResourceValidationArgs:
 
     def __init__(self,
                  resource_type: str,
-                 props: Dict[str, Any],
+                 props: Mapping[str, Any],
                  urn: str,
                  name: str,
                  opts: 'PolicyResourceOptions',
@@ -301,7 +301,7 @@ class PolicyProviderResource:
     The type of the provider resource.
     """
 
-    props: Dict[str, Any]
+    props: Mapping[str, Any]
     """
     The properties of the provider resource.
     """
@@ -318,7 +318,7 @@ class PolicyProviderResource:
 
     def __init__(self,
                  resource_type: str,
-                 props: Dict[str, Any],
+                 props: Mapping[str, Any],
                  urn: str,
                  name: str) -> None:
         self.resource_type = resource_type
@@ -409,7 +409,7 @@ class PolicyResource:
     The type of the resource.
     """
 
-    props: Dict[str, Any]
+    props: Mapping[str, Any]
     """
     The outputs of the resource.
     """
@@ -451,7 +451,7 @@ class PolicyResource:
 
     def __init__(self,
                  resource_type: str,
-                 props: Dict[str, Any],
+                 props: Mapping[str, Any],
                  urn: str,
                  name: str,
                  opts: PolicyResourceOptions,
