@@ -28,6 +28,7 @@ from google.protobuf import empty_pb2, json_format
 from pulumi.runtime import proto
 from pulumi.runtime.proto import analyzer_pb2_grpc
 
+from .deserialize import deserialize_properties
 from .version import SEMVERSION
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
@@ -547,6 +548,12 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
     __policies: List[Policy]
     __policy_pack_enforcement_level: EnforcementLevel
 
+    class IntermediateStackResource(NamedTuple):
+        resource: PolicyResource
+        parent: Optional[str]
+        dependencies: List[str]
+        property_dependencies: Dict[str, List[str]]
+
     def Analyze(self, request, context):
         diagnostics: List[proto.AnalyzeDiagnostic] = []
         for policy in self.__policies:
@@ -557,9 +564,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             report_violation = self._create_report_violation(diagnostics, policy.name,
                                                              policy.description, enforcement_level)
 
-            # TODO[pulumi/pulumi-policy#208]: Deserialize properties
             # TODO[pulumi/pulumi-policy#208]: Unknown checking proxy
-            props = json_format.MessageToDict(request.properties)
+            props = deserialize_properties(json_format.MessageToDict(request.properties))
             opts = self._get_resource_options(request)
             provider = self._get_provider_resource(request)
             args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider)
@@ -582,24 +588,17 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             report_violation = self._create_report_violation(diagnostics, policy.name,
                                                              policy.description, enforcement_level)
 
-            class IntermediateStackResource(NamedTuple):
-                resource: PolicyResource
-                parent: Optional[str]
-                dependencies: List[str]
-                property_dependencies: Dict[str, List[str]]
-
-            intermediates: List[IntermediateStackResource] = []
+            intermediates: List[_PolicyAnalyzerServicer.IntermediateStackResource] = []
             for r in request.resources:
-                # TODO[pulumi/pulumi-policy#208]: Deserialize properties
                 # TODO[pulumi/pulumi-policy#208]: Unknown checking proxy
-                props = json_format.MessageToDict(r.properties)
+                props = deserialize_properties(json_format.MessageToDict(r.properties))
                 opts = self._get_resource_options(r)
                 provider = self._get_provider_resource(r)
                 resource = PolicyResource(r.type, props, r.urn, r.name, opts, provider, None, [], {})
                 property_dependencies: Dict[str, List[str]] = {}
                 for k, v in r.propertyDependencies.items():
                     property_dependencies[k] = list(v.urns)
-                intermediates.append(IntermediateStackResource(resource, r.parent, list(r.dependencies), property_dependencies))
+                intermediates.append(_PolicyAnalyzerServicer.IntermediateStackResource(resource, r.parent, list(r.dependencies), property_dependencies))
 
             # Create a map of URNs to resources, used to fill in the parent and dependencies
             # with references to the actual resource objects.
@@ -738,7 +737,6 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         if not request.HasField("provider"):
             return None
         prov = request.provider
-        # TODO[pulumi/pulumi-policy#208]: deserialize properties
         # TODO[pulumi/pulumi-policy#208]: unknown checking proxy
-        props = json_format.MessageToDict(prov.properties)
+        props = deserialize_properties(json_format.MessageToDict(prov.properties))
         return PolicyProviderResource(prov.type, props, prov.urn, prov.name)
