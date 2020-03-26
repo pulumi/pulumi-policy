@@ -238,7 +238,7 @@ func runPolicyPackIntegrationTest(
 			}
 		})
 	}
-	runScenarios(packDir)
+	//runScenarios(packDir)
 	if hasPythonPack {
 		runScenarios(pythonPackDir)
 	}

@@ -24,9 +24,13 @@ def verify(r):
     if t != "random:index/randomPet:RandomPet":
         return
 
+    print("JVP: before accessing prefix")
+
     # Accessing `prefix` is expected to result in a policy violation because its value is unknown
     # during previews given the associated Pulumi program.
     r.props["prefix"]
+
+    print("JVP: after accessing prefix")
 
 
 PolicyPack(

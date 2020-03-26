@@ -572,12 +572,21 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider)
 
             try:
+                print("JVP: Analyze: before validate")
                 result = policy.validate(args, report_violation)
+                print("JVP: Analyze: after validate")
+                print("JVP: Analyze: before isawaitable(result)")
                 if isawaitable(result):
+                    print("JVP: Analyze: inside isawaitable(result): 1")
                     loop = asyncio.new_event_loop()
+                    print("JVP: Analyze: inside isawaitable(result): 2")
                     loop.run_until_complete(result)
+                    print("JVP: Analyze: inside isawaitable(result): 3")
                     loop.close()
+                    print("JVP: Analyze: inside isawaitable(result): 4")
+                print("JVP: Analyze: after isawaitable(result)")
             except UnknownValueError as e:
+                print("JVP: Analyze: inside except UnknownValueError as e: 1")
                 diagnostics.append(proto.AnalyzeDiagnostic(
                     policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
@@ -587,6 +596,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     description=policy.description,
                     enforcementLevel=self._map_enforcement_level(EnforcementLevel.ADVISORY),
                 ))
+                print("JVP: Analyze: inside except UnknownValueError as e: 2")
 
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
@@ -644,12 +654,21 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             args = StackValidationArgs(resources)
 
             try:
+                print("JVP: AnalyzeStack: before validate")
                 result = policy.validate(args, report_violation)
+                print("JVP: AnalyzeStack: after validate")
+                print("JVP: AnalyzeStack: before isawaitable(result)")
                 if isawaitable(result):
+                    print("JVP: AnalyzeStack: inside isawaitable(result): 1")
                     loop = asyncio.new_event_loop()
+                    print("JVP: AnalyzeStack: inside isawaitable(result): 2")
                     loop.run_until_complete(result)
+                    print("JVP: AnalyzeStack: inside isawaitable(result): 3")
                     loop.close()
+                    print("JVP: AnalyzeStack: inside isawaitable(result): 4")
+                print("JVP: AnalyzeStack: after isawaitable(result)")
             except UnknownValueError as e:
+                print("JVP: AnalyzeStack: inside except UnknownValueError as e: 1")
                 diagnostics.append(proto.AnalyzeDiagnostic(
                     policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
@@ -659,6 +678,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     description=policy.description,
                     enforcementLevel=self._map_enforcement_level(EnforcementLevel.ADVISORY),
                 ))
+                print("JVP: AnalyzeStack: inside except UnknownValueError as e: 2")
 
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
