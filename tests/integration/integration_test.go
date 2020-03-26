@@ -166,6 +166,13 @@ func runPolicyPackIntegrationTest(
 		t.Run(policyPackDirectoryPath, func(t *testing.T) {
 			e.T = t
 
+			defer func() {
+				// Clean up the stack after running through the scenarios, so that subsequent runs
+				// begin on a clean slate.
+				e.RunCommand("pulumi", "destroy", "--yes")
+				abortIfFailed(t)
+			}()
+
 			for idx, scenario := range scenarios {
 				// Create a sub-test so go test will output data incrementally, which will let
 				// a CI system like Travis know not to kill the job if no output is sent after 10m.
