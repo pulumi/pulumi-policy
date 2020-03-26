@@ -26,7 +26,7 @@ def verify(r):
 
     # Accessing `prefix` is expected to result in a policy violation because its value is unknown
     # during previews given the associated Pulumi program.
-    print(r.props["prefix"])
+    r.props["prefix"]
 
 
 PolicyPack(
