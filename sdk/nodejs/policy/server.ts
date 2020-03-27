@@ -26,6 +26,7 @@ import {
     Policies,
     Policy,
     PolicyCustomTimeouts,
+    PolicyPackConfig,
     PolicyProviderResource,
     PolicyResource,
     PolicyResourceOptions,
@@ -80,6 +81,7 @@ export function serve(
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
     policies: Policies,
+    initialConfig?: PolicyPackConfig,
 ): void {
     if (!policyPackName || !policyPackName.match(packNameRE)) {
         console.error(`Invalid policy pack name "${policyPackName}". Policy pack names may only contain alphanumerics, hyphens, underscores, or periods.`);
@@ -118,7 +120,7 @@ export function serve(
     server.addService(analyzerrpc.AnalyzerService, {
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
-        getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
+        getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies, initialConfig),
         getPluginInfo: getPluginInfoRpc,
         configure: configure,
     });
@@ -136,10 +138,11 @@ function makeGetAnalyzerInfoRpcFun(
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
     policies: Policies,
+    initialConfig?: PolicyPackConfig,
 ) {
     return async function (call: any, callback: any): Promise<void> {
         try {
-            callback(undefined, makeAnalyzerInfo(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies));
+            callback(undefined, makeAnalyzerInfo(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies, initialConfig));
         } catch (e) {
             callback(asGrpcError(e), undefined);
         }

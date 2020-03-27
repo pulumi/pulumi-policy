@@ -63,7 +63,7 @@ export interface PolicyPackArgs {
 export class PolicyPack {
     private readonly policies: Policies;
 
-    constructor(private name: string, args: PolicyPackArgs) {
+    constructor(private name: string, args: PolicyPackArgs, initialConfig?: PolicyPackConfig) {
         this.policies = args.policies;
 
         // Get package version from the package.json file.
@@ -75,7 +75,7 @@ export class PolicyPack {
         }
 
         const enforcementLevel = args.enforcementLevel || defaultEnforcementLevel;
-        serve(this.name, version, enforcementLevel, this.policies);
+        serve(this.name, version, enforcementLevel, this.policies, initialConfig);
     }
 }
 
@@ -83,6 +83,12 @@ export class PolicyPack {
  * Indicates the impact of a policy violation.
  */
 export type EnforcementLevel = "advisory" | "mandatory" | "disabled";
+
+/**
+ * Represents configuration for the policy pack.
+ */
+export type PolicyPackConfig = { [policy: string]: PolicyConfig };
+type PolicyConfig = EnforcementLevel | ({ enforcementLevel?: EnforcementLevel } & { [key: string]: any });
 
 /**
  * A policy function that returns true if a resource definition violates some policy (e.g., "no

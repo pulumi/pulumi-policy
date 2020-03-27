@@ -18,7 +18,7 @@ const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
-import { EnforcementLevel, Policies } from "./policy";
+import { EnforcementLevel, Policies, PolicyPackConfig } from "./policy";
 
 /** @internal */
 export function asGrpcError(e: any, message?: string) {
@@ -98,6 +98,7 @@ export function makeAnalyzerInfo(
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
     policies: Policies,
+    initialConfig?: PolicyPackConfig,
 ): any {
     const ai: any = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
@@ -121,6 +122,27 @@ export function makeAnalyzerInfo(
         policyInfos.push(policyInfo);
     }
     ai.setPoliciesList(policyInfos);
+
+    if (initialConfig) {
+        const normalizedConfig = normalizeConfig(initialConfig);
+        let configMap;
+        for (const key of Object.keys(normalizedConfig)) {
+            const val = normalizedConfig[key];
+            let config;
+            if (val.enforcementLevel) {
+                config = new analyzerproto.PolicyConfig();
+                config.setEnforcementlevel(mapEnforcementLevel(val.enforcementLevel));
+            }
+            if (val.properties) {
+                config = config || new analyzerproto.PolicyConfig();
+                config.setProperties(structproto.Struct.fromJavaScript(val.properties));
+            }
+            if (config) {
+                configMap = configMap || ai.getInitialconfigMap();
+                configMap.set(key, config);
+            }
+        }
+    }
 
     return ai;
 }
@@ -176,6 +198,40 @@ export function convertEnforcementLevel(el: number): EnforcementLevel {
         default:
             throw new Error(`Unknown enforcement level ${el}.`);
     }
+}
+
+type NormalizedConfig = { [policy: string]: NormalizedConfigValue };
+type NormalizedConfigValue = { enforcementLevel?: EnforcementLevel; properties?: Record<string, any>; };
+
+/** @internal */
+export function normalizeConfig(config: PolicyPackConfig): NormalizedConfig {
+    const result: NormalizedConfig = {};
+    for (const key of Object.keys(config)) {
+        const val = config[key];
+
+        // If the value is a string, it's just an enforcement level.
+        if (typeof val === "string") {
+            result[key] = { enforcementLevel: val };
+            continue;
+        }
+
+        // Otherwise, it's an object that may have an enforcement level and additional
+        // properties.
+        let resultVal: NormalizedConfigValue | undefined;
+        if (val.enforcementLevel) {
+            resultVal = {};
+            resultVal.enforcementLevel = val.enforcementLevel;
+        }
+        const { enforcementLevel, ...properties } = val;
+        if (Object.keys(properties).length > 0) {
+            resultVal = resultVal || {};
+            resultVal.properties = properties;
+        }
+        if (resultVal) {
+            result[key] = resultVal;
+        }
+    }
+    return result;
 }
 
 // Ensures all possible values are covered in the switch.
