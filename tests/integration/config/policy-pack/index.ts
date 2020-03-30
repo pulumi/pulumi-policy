@@ -3,10 +3,11 @@
 import * as assert from "assert";
 
 import * as pulumi from "@pulumi/pulumi";
-import { PolicyConfigSchema, PolicyPack } from "@pulumi/policy";
+import { PolicyConfigSchema, PolicyPack, PolicyPackConfig } from "@pulumi/policy";
 
 interface TestScenario {
     schema: PolicyConfigSchema;
+    initialConfig?: PolicyPackConfig;
     verify?: (args: { getConfig<T extends object>(): T }) => void;
 }
 
@@ -294,6 +295,46 @@ const scenarios: TestScenario[] = [
             assert.strictEqual(config.foo, null);
         },
     },
+    // Test scenario 24: Initial config.
+    {
+        schema: {
+            properties: {
+                foo: { type: "string" },
+            },
+        },
+        initialConfig: {
+            "resource-validation": {
+                foo: "hello world",
+            },
+            "stack-validation": {
+                foo: "hello world",
+            },
+        },
+        verify: (args) => {
+            const config = args.getConfig<{ foo: string }>();
+            assert.strictEqual(config.foo, "hello world");
+        },
+    },
+    // Test scenario 25: Initial config overridden.
+    {
+        schema: {
+            properties: {
+                foo: { type: "string" },
+            },
+        },
+        initialConfig: {
+            "resource-validation": {
+                foo: "hello world",
+            },
+            "stack-validation": {
+                foo: "hello world",
+            },
+        },
+        verify: (args) => {
+            const config = args.getConfig<{ foo: string }>();
+            assert.strictEqual(config.foo, "overridden");
+        },
+    },
 ];
 
 const config = new pulumi.Config();
@@ -325,4 +366,4 @@ new PolicyPack("config-policy", {
             },
         },
     ],
-});
+}, scenarios[index].initialConfig);

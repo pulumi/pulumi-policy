@@ -795,6 +795,17 @@ func TestConfig(t *testing.T) {
 			}),
 			WantErrors: nil,
 		},
+		// Test scenario 24: Initial config.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 25: Initial config overridden.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "overridden",
+			}),
+			WantErrors: nil,
+		},
 	})
 }
 
