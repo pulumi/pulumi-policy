@@ -1,4 +1,4 @@
-## HEAD (Unreleased)
+## 0.5.0 (2020-04-01)
 
 ### Improvements
 
