@@ -1,6 +1,9 @@
-## 0.5.0 (2020-04-01)
+## HEAD (Unreleased)
 
-### Improvements
+- Remove deprecated `validateTypedResource` helper. Use `validateResourceOfType` instead.
+  (https://github.com/pulumi/pulumi-policy/pull/227).
+
+## 0.5.0 (2020-04-01)
 
 - Expose options, parent, dependencies, and provider config (https://github.com/pulumi/pulumi-policy/pull/184).
 
@@ -65,8 +68,6 @@
 
 ## 0.4.0 (2020-01-30)
 
-### Improvements
-
 - Add support for using `Config`, `getProject()`, `getStack()`, and `isDryRun()` from Policy Packs
   via upgraded dependency on `@pulumi/pulumi` v1.8.0 (requires v1.8.0 or later of the Pulumi SDK) (https://github.com/pulumi/pulumi-policy/pull/169).
 
@@ -94,16 +95,12 @@
 
 ## 0.3.0 (2019-11-26)
 
-### Improvements
-
 - Add `"disabled"` to `EnforcementLevel` to disable policies
   (https://github.com/pulumi/pulumi-policy/pull/156).
 - Add resource `urn` and `name` properties along with support for reporting the URN associated with
   a stack validation policy violation (https://github.com/pulumi/pulumi-policy/pull/151).
 
 ## 0.2.0 (2019-11-13)
-
-### Improvements
 
 - API changes to enable new types of policies (i.e. validating all resource in a stack) and passing
   additional information to validation functions (https://github.com/pulumi/pulumi-policy/pull/131).
@@ -134,20 +131,14 @@
   });
   ```
 
-### Bug fixes
-
 - Allow policies to deal with Pulumi secret values
   (https://github.com/pulumi/pulumi-policy/pull/115).
 
 ## 0.1.1
 
-### Improvements
-
 - Make policy violation error messages two lines (https://github.com/pulumi/pulumi-policy/pull/95).
 - Fix polarity issue in policy violation reports (https://github.com/pulumi/pulumi-policy/pull/95).
 
 ## 0.1.0
-
-### Major Changes
 
 - Add initial Policy server.

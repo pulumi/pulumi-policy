@@ -386,25 +386,6 @@ export function validateResourceOfType<TResource extends Resource, TArgs>(
 }
 
 /**
- * A helper function that returns a strongly-typed resource validation function, used to check only resources of the
- * specified resource class.
- *
- * @param resourceClass Used to filter this check to only resources of the specified resource class.
- * @param validate A callback function that validates if the resource definition violates a policy.
- *
- * @deprecated This is deprecated and will be removed in a future version. Use `validateResourceOfType` instead.
- */
-export function validateTypedResource<TResource extends Resource, TArgs>(
-    resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
-    validate: (
-        props: Unwrap<NonNullable<TArgs>>,
-        args: ResourceValidationArgs,
-        reportViolation: ReportViolation) => Promise<void> | void,
-): ResourceValidation {
-    return validateResourceOfType(resourceClass, validate);
-}
-
-/**
  * StackValidationPolicy is a policy that validates a stack.
  */
 export interface StackValidationPolicy extends Policy {
