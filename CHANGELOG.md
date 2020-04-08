@@ -1,4 +1,4 @@
-## HEAD (Unreleased)
+## 1.0.0 (2020-04-09)
 
 - Remove deprecated `validateTypedResource` helper. Use `validateResourceOfType` instead.
   (https://github.com/pulumi/pulumi-policy/pull/227).
