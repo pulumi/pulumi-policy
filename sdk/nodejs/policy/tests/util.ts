@@ -14,10 +14,12 @@
 
 import * as policy from "../policy";
 
+/** @internal */
 export type MochaFunc = (err: Error) => void;
 
 // A helper function for wrapping some of the boilerplate goo necessary to interface between Mocha's asynchronous
 // testing and our TypeScript async tests.
+/** @internal */
 export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void {
     return (done: (err: any) => void) => {
         const go = async () => {
@@ -36,6 +38,7 @@ export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void 
     };
 }
 
+/** @internal */
 export interface PolicyViolation {
     message: string;
     urn?: string;
@@ -43,6 +46,7 @@ export interface PolicyViolation {
 
 // runResourcePolicy will run some basic checks for a policy's metadata, and then
 // execute its rules with the provided type and properties.
+/** @internal */
 export async function runResourcePolicy(resPolicy: policy.ResourceValidationPolicy, args: policy.ResourceValidationArgs): Promise<PolicyViolation[]> {
     const violations: PolicyViolation[] = [];
     const report = (message: string, urn?: string) => {
@@ -59,6 +63,7 @@ export async function runResourcePolicy(resPolicy: policy.ResourceValidationPoli
 
 // runStackPolicy will run some basic checks for a policy's metadata, and then
 // execute its rules with the provided type and properties.
+/** @internal */
 export async function runStackPolicy(stackPolicy: policy.StackValidationPolicy, args: policy.StackValidationArgs): Promise<PolicyViolation[]> {
     const violations: PolicyViolation[] = [];
     const report = (message: string, urn?: string) => {
