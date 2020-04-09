@@ -1,6 +1,6 @@
 PROJECT_NAME     := Pulumi Policy Python SDK
-SEMVER           := $(shell ../../scripts/get-version)
-VERSION          := $(shell ../../scripts/get-py-version HEAD)
+SEMVER           := v1.0.0
+VERSION          := 1.0.0
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
