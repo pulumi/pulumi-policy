@@ -47,10 +47,10 @@ function validate(r: ResourceValidationArgs | PolicyResource) {
         case "random:index/randomUuid:RandomUuid":
             assert.notStrictEqual(r.provider, undefined);
             assert.strictEqual(r.provider!.type, "pulumi:providers:random");
-            assert.strictEqual(r.provider!.name, "default_1_5_0");
-            assert.strictEqual(r.provider!.urn, createURN("pulumi:providers:random", "default_1_5_0"));
+            assert.strictEqual(r.provider!.name, "default_2_0_0");
+            assert.strictEqual(r.provider!.urn, createURN("pulumi:providers:random", "default_2_0_0"));
             assert.notStrictEqual(r.provider!.props, undefined);
-            assert.deepStrictEqual(r.provider!.props.version, "1.5.0");
+            assert.deepStrictEqual(r.provider!.props.version, "2.0.0");
             break;
 
         case "random:index/randomString:RandomString":
