@@ -1,4 +1,4 @@
-## HEAD (Unreleased)
+## 1.1.0 (2020-04-17)
 
 - Replace `grpc` with `@grpc/grpc-js` and upgrade dependencies to 2.0
   (https://github.com/pulumi/pulumi-policy/pull/235).
