@@ -1,10 +1,10 @@
 {
     "name": "parent-dependencies",
     "devDependencies": {
-        "@types/node": "^8.0.0"
+        "@types/node": "^10.0.0"
     },
     "dependencies": {
-        "@pulumi/pulumi": "^1.0.0",
-        "@pulumi/random": "^1.1.0"
+        "@pulumi/pulumi": "^2.0.0",
+        "@pulumi/random": "^2.0.0"
     }
 }

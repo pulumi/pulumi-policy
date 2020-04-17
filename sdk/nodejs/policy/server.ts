@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const grpc = require("grpc");
+import * as grpc from "@grpc/grpc-js";
+
 const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
@@ -124,13 +125,18 @@ export function serve(
         getPluginInfo: getPluginInfoRpc,
         configure: configure,
     });
-    const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
+    server.bindAsync("0.0.0.0:0", grpc.ServerCredentials.createInsecure(), (err, port) => {
+        if (err) {
+            console.error(err);
+            process.exit(1);
+        }
 
-    server.start();
+        server.start();
 
-    // Emit the address so the monitor can read it to connect.  The gRPC server will keep the
-    // message loop alive.
-    console.log(port);
+        // Emit the address so the monitor can read it to connect.  The gRPC server will keep the
+        // message loop alive.
+        console.log(port);
+    });
 }
 
 function makeGetAnalyzerInfoRpcFun(
