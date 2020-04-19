@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
+import { ChannelOptions } from "@grpc/grpc-js/build/src/channel-options";
 
 const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
@@ -62,6 +63,9 @@ let servingPolicyPack: string | undefined = undefined;
 
 // Regular expression for the policy pack name.
 const packNameRE = "^[a-zA-Z0-9-_.]{1,100}$";
+
+// Max message size for RPC calls
+const maxMessageSize = 1024 * 1024 * 400;
 
 let policyPackConfig: Record<string, any> = {};
 
@@ -117,7 +121,12 @@ export function serve(
     servingPolicyPack = policyPackName;
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    const server = new grpc.Server();
+    const server = new grpc.Server(
+        <ChannelOptions>{
+            "grpc.max_send_message_length": maxMessageSize,
+            "grpc.max_receive_message_length": maxMessageSize,
+        }
+    );
     server.addService(analyzerrpc.AnalyzerService, {
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
