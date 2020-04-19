@@ -123,7 +123,6 @@ export function serve(
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server(
         <ChannelOptions>{
-            "grpc.max_send_message_length": maxMessageSize,
             "grpc.max_receive_message_length": maxMessageSize,
         }
     );
