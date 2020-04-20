@@ -121,11 +121,9 @@ export function serve(
     servingPolicyPack = policyPackName;
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    const server = new grpc.Server(
-        <ChannelOptions>{
-            "grpc.max_receive_message_length": maxMessageSize,
-        }
-    );
+    const server = new grpc.Server(<ChannelOptions>{
+        "grpc.max_receive_message_length": maxMessageSize,
+    });
     server.addService(analyzerrpc.AnalyzerService, {
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
