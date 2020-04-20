@@ -80,7 +80,7 @@ class PolicyPack:
             name, version, policies, enforcement_level if enforcement_level is not None else EnforcementLevel.ADVISORY)
         server = grpc.server(
             futures.ThreadPoolExecutor(max_workers=4),
-            ('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)
+            options=[('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
         )
         analyzer_pb2_grpc.add_AnalyzerServicer_to_server(
             servicer, server)
