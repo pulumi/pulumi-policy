@@ -1,3 +1,8 @@
+## HEAD (unreleased)
+
+- Increase the MaxCallRecvMsgSize for all RPC calls. 
+  (https://github.com/pulumi/pulumi-policy/pull/239)
+
 ## 1.1.0 (2020-04-17)
 
 - Replace `grpc` with `@grpc/grpc-js` and upgrade dependencies to 2.0
