@@ -255,21 +255,20 @@ func runPolicyPackIntegrationTest(
 	// Cleanup already registered via defer.
 }
 
-//
-//// Test invalid policies.
-//func TestInvalidPolicy(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "invalid_policy", NodeJS, nil, []policyTestScenario{
-//		{
-//			WantErrors: []string{`Invalid policy name "all". "all" is a reserved name.`},
-//		},
-//		{
-//			WantErrors: []string{`enforcementLevel cannot be explicitly specified in properties.`},
-//		},
-//		{
-//			WantErrors: []string{`"enforcementLevel" cannot be specified in required.`},
-//		},
-//	})
-//}
+// Test invalid policies.
+func TestInvalidPolicy(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "invalid_policy", NodeJS, nil, []policyTestScenario{
+		{
+			WantErrors: []string{`Invalid policy name "all". "all" is a reserved name.`},
+		},
+		{
+			WantErrors: []string{`enforcementLevel cannot be explicitly specified in properties.`},
+		},
+		{
+			WantErrors: []string{`"enforcementLevel" cannot be specified in required.`},
+		},
+	})
+}
 
 // Test basic resource validation.
 func TestValidateResource(t *testing.T) {
@@ -347,479 +346,478 @@ func TestValidateResource(t *testing.T) {
 	})
 }
 
-//
-//// Test basic resource validation of a Python program.
-//func TestValidatePythonResource(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "validate_python_resource", Python, nil, []policyTestScenario{
-//		// Test scenario 1: violates the policy.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r1: random:index/randomUuid:RandomUuid)",
-//				"Prohibits creating a RandomUuid without any 'keepers'.",
-//				"RandomUuid must not have an empty 'keepers'.",
-//			},
-//		},
-//		// Test scenario 2: violates the policy.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r2: random:index/randomUuid:RandomUuid)",
-//				"Prohibits creating a RandomUuid without any 'keepers'.",
-//				"RandomUuid must not have an empty 'keepers'.",
-//			},
-//		},
-//		// Test scenario 3: no violations.
-//		{
-//			WantErrors: nil,
-//		},
-//	})
-//}
-//
-//// Test basic stack validation.
-//func TestValidateStack(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "validate_stack", NodeJS, nil, []policyTestScenario{
-//		// Test scenario 1: no resources.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 2: no violations.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 3: violates the first policy.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-1",
-//				"Prohibits setting state to 1 on dynamic resources.",
-//				"'state' must not have the value 1.",
-//			},
-//		},
-//		// Test scenario 4: violates the second policy.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-2",
-//				"Prohibits setting state to 2 on dynamic resources.",
-//				"'state' must not have the value 2.",
-//			},
-//		},
-//		// Test scenario 5: violates the third policy.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-3 (c: pulumi-nodejs:dynamic:Resource)",
-//				"Prohibits setting state to 3 on dynamic resources.",
-//				"'state' must not have the value 3.",
-//			},
-//		},
-//		// Test scenario 6: violates the fourth policy.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  validate-stack-test-policy v0.0.1  randomuuid-no-keepers",
-//				"Prohibits creating a RandomUuid without any 'keepers'.",
-//				"RandomUuid must not have an empty 'keepers'.",
-//			},
-//		},
-//		// Test scenario 7: violates the fifth policy.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  validate-stack-test-policy v0.0.1  no-randomstrings",
-//				"Prohibits RandomString resources.",
-//				"RandomString resources are not allowed.",
-//			},
-//		},
-//		// Test scenario 8: no violations.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 9: no violations.
-//		{
-//			WantErrors: nil,
-//		},
-//	})
-//}
-//
-//// Test that accessing unknown values returns an error during previews.
-//func TestUnknownValues(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "unknown_values", NodeJS, map[string]string{
-//		"aws:region": "us-west-2",
-//	}, []policyTestScenario{
-//		{
-//			WantErrors: []string{
-//				"[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (pet: random:index/randomPet:RandomPet)",
-//				"can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
-//				"[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
-//				"can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
-//			},
-//			Advisory: true,
-//		},
-//	})
-//}
-//
-//// Test runtime data (Config, getStack, getProject, and isDryRun) is available to the Policy Pack.
-//func TestRuntimeData(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "runtime_data", NodeJS, map[string]string{
-//		"aConfigValue": "this value is a value",
-//		"aws:region":   "us-west-2",
-//	}, []policyTestScenario{{WantErrors: nil}})
-//}
-//
-//// Test resource options.
-//func TestResourceOptions(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "resource_options", NodeJS, nil, []policyTestScenario{
-//		// Test scenario 1: test resource options.
-//		{WantErrors: nil},
-//		// Test scenario 2: prepare for destroying the stack (unprotect protected resources).
-//		{WantErrors: nil},
-//	})
-//}
-//
-//// Test parent and dependencies.
-//func TestParentDependencies(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "parent_dependencies", NodeJS, nil, []policyTestScenario{
-//		{WantErrors: nil},
-//	})
-//}
-//
-//// Test provider.
-//func TestProvider(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "provider", NodeJS, nil, []policyTestScenario{
-//		{WantErrors: nil},
-//	})
-//}
-//
-//// Test Policy Packs with enforcement levels set on the Policy Pack and individual policies.
-//func TestEnforcementLevel(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "enforcementlevel", NodeJS, nil, []policyTestScenario{
-//		// Test scenario 1: Policy Pack: advisory; Policy: advisory.
-//		{
-//			WantErrors: []string{
-//				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//			Advisory: true,
-//		},
-//		// Test scenario 2: Policy Pack: advisory; Policy: disabled.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 3: Policy Pack: advisory; Policy: mandatory.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//		},
-//		// Test scenario 4: Policy Pack: advisory; Policy: not set.
-//		{
-//			WantErrors: []string{
-//				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//			Advisory: true,
-//		},
-//		// Test scenario 5: Policy Pack: disabled; Policy: advisory.
-//		{
-//			WantErrors: []string{
-//				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//			Advisory: true,
-//		},
-//		// Test scenario 6: Policy Pack: disabled; Policy: disabled.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 7: Policy Pack: disabled; Policy: mandatory.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//		},
-//		// Test scenario 8: Policy Pack: disabled; Policy: not set.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 9: Policy Pack: mandatory; Policy: advisory.
-//		{
-//			WantErrors: []string{
-//				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//			Advisory: true,
-//		},
-//		// Test scenario 10: Policy Pack: mandatory; Policy: disabled.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 11: Policy Pack: mandatory; Policy: mandatory.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//		},
-//		// Test scenario 12: Policy Pack: mandatory; Policy: not set.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//		},
-//		// Test scenario 13: Policy Pack: not set; Policy: advisory.
-//		{
-//			WantErrors: []string{
-//				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//			Advisory: true,
-//		},
-//		// Test scenario 14: Policy Pack: not set; Policy: disabled.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 15: Policy Pack: not set; Policy: mandatory.
-//		{
-//			WantErrors: []string{
-//				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//		},
-//		// Test scenario 16: Policy Pack: not set; Policy: not set.
-//		{
-//			WantErrors: []string{
-//				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
-//				"Always reports a resource violation.",
-//				"validate-resource-violation-message",
-//				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-stack",
-//				"Always reports a stack violation.",
-//				"validate-stack-violation-message",
-//			},
-//			Advisory: true,
-//		},
-//	})
-//}
-//
-//// Test Policy Pack configuration.
-//func TestConfig(t *testing.T) {
-//	const (
-//		resourcePolicy = "resource-validation"
-//		stackPolicy    = "stack-validation"
-//		errorPreamble  = "error: validating policy config: config-policy 0.0.1  "
-//	)
-//
-//	config := func(c PolicyConfig) map[string]PolicyConfig {
-//		return map[string]PolicyConfig{
-//			resourcePolicy: c,
-//			stackPolicy:    c,
-//		}
-//	}
-//
-//	want := func(err ...string) []string {
-//		var result []string
-//		for _, e := range err {
-//			result = append(result,
-//				errorPreamble+resourcePolicy+": "+e,
-//				errorPreamble+stackPolicy+": "+e,
-//			)
-//		}
-//		return result
-//	}
-//
-//	runPolicyPackIntegrationTest(t, "config", NodeJS, nil, []policyTestScenario{
-//		// Test senario 1: String from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": "bar",
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 2: Default string value specified in schema used.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 3: Default number value specified in schema used.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 4: Specified config value overrides default value.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": "overridden",
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 5: Default value specified in schema for required field used.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 6: Required config property not set.
-//		{
-//			WantErrors: want("foo is required"),
-//		},
-//		// Test scenario 7: Default value set to incorrect type.
-//		{
-//			WantErrors: want("foo: Invalid type. Expected: string, given: integer"),
-//		},
-//		// Test scenario 8: Default value too long.
-//		{
-//			WantErrors: want("foo: String length must be less than or equal to 3"),
-//		},
-//		// Test scenario 9: Default value too short.
-//		{
-//			WantErrors: want("foo: String length must be greater than or equal to 50"),
-//		},
-//		// Test scenario 10: Default value set to invalid enum value.
-//		{
-//			WantErrors: want(`foo: foo must be one of the following: "bar", "baz"`),
-//		},
-//		// Test scenario 11: Default value set to invalid constant value.
-//		{
-//			WantErrors: want(`foo: foo does not match: "bar"`),
-//		},
-//		// Test scenario 12: Incorrect type.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": 1,
-//			}),
-//			WantErrors: want(`foo: Invalid type. Expected: string, given: integer`),
-//		},
-//		// Test scenario 13: Invalid enum value.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": "blah",
-//			}),
-//			WantErrors: want(`foo: foo must be one of the following: "bar", "baz"`),
-//		},
-//		// Test scenario 14: Invalid constant value.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": "blah",
-//			}),
-//			WantErrors: want(`foo: foo does not match: "bar"`),
-//		},
-//		// Test scenario 15: Multiple validation errors.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": "this is too long",
-//				"bar": float64(3.14),
-//			}),
-//			WantErrors: want(
-//				`bar: Invalid type. Expected: integer, given: number`,
-//				`foo: String length must be less than or equal to 3`,
-//			),
-//		},
-//		// Test scenario 16: Number (int) from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": 42,
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 17: Number (float) from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": float64(3.14),
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 18: Integer from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": 42,
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 19: Boolean (true) from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": true,
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 20: Boolean (false) from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": false,
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 21: Object from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": map[string]interface{}{"bar": "baz"},
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 22: Array from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": []string{"a", "b", "c"},
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 23: Null from config.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": nil,
-//			}),
-//			WantErrors: nil,
-//		},
-//		// Test scenario 24: Initial config.
-//		{
-//			WantErrors: nil,
-//		},
-//		// Test scenario 25: Initial config overridden.
-//		{
-//			PolicyPackConfig: config(PolicyConfig{
-//				"foo": "overridden",
-//			}),
-//			WantErrors: nil,
-//		},
-//	})
-//}
+// Test basic resource validation of a Python program.
+func TestValidatePythonResource(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "validate_python_resource", Python, nil, []policyTestScenario{
+		// Test scenario 1: violates the policy.
+		{
+			WantErrors: []string{
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r1: random:index/randomUuid:RandomUuid)",
+				"Prohibits creating a RandomUuid without any 'keepers'.",
+				"RandomUuid must not have an empty 'keepers'.",
+			},
+		},
+		// Test scenario 2: violates the policy.
+		{
+			WantErrors: []string{
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (r2: random:index/randomUuid:RandomUuid)",
+				"Prohibits creating a RandomUuid without any 'keepers'.",
+				"RandomUuid must not have an empty 'keepers'.",
+			},
+		},
+		// Test scenario 3: no violations.
+		{
+			WantErrors: nil,
+		},
+	})
+}
 
-//// Test deserializing resource properties.
-//func TestDeserialize(t *testing.T) {
-//	runPolicyPackIntegrationTest(t, "deserialize", NodeJS, nil, []policyTestScenario{
-//		{WantErrors: nil},
-//	})
-//}
+// Test basic stack validation.
+func TestValidateStack(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "validate_stack", NodeJS, nil, []policyTestScenario{
+		// Test scenario 1: no resources.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 2: no violations.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 3: violates the first policy.
+		{
+			WantErrors: []string{
+				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-1",
+				"Prohibits setting state to 1 on dynamic resources.",
+				"'state' must not have the value 1.",
+			},
+		},
+		// Test scenario 4: violates the second policy.
+		{
+			WantErrors: []string{
+				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-2",
+				"Prohibits setting state to 2 on dynamic resources.",
+				"'state' must not have the value 2.",
+			},
+		},
+		// Test scenario 5: violates the third policy.
+		{
+			WantErrors: []string{
+				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-3 (c: pulumi-nodejs:dynamic:Resource)",
+				"Prohibits setting state to 3 on dynamic resources.",
+				"'state' must not have the value 3.",
+			},
+		},
+		// Test scenario 6: violates the fourth policy.
+		{
+			WantErrors: []string{
+				"[mandatory]  validate-stack-test-policy v0.0.1  randomuuid-no-keepers",
+				"Prohibits creating a RandomUuid without any 'keepers'.",
+				"RandomUuid must not have an empty 'keepers'.",
+			},
+		},
+		// Test scenario 7: violates the fifth policy.
+		{
+			WantErrors: []string{
+				"[mandatory]  validate-stack-test-policy v0.0.1  no-randomstrings",
+				"Prohibits RandomString resources.",
+				"RandomString resources are not allowed.",
+			},
+		},
+		// Test scenario 8: no violations.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 9: no violations.
+		{
+			WantErrors: nil,
+		},
+	})
+}
+
+// Test that accessing unknown values returns an error during previews.
+func TestUnknownValues(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "unknown_values", NodeJS, map[string]string{
+		"aws:region": "us-west-2",
+	}, []policyTestScenario{
+		{
+			WantErrors: []string{
+				"[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (pet: random:index/randomPet:RandomPet)",
+				"can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
+				"[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
+				"can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
+			},
+			Advisory: true,
+		},
+	})
+}
+
+// Test runtime data (Config, getStack, getProject, and isDryRun) is available to the Policy Pack.
+func TestRuntimeData(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "runtime_data", NodeJS, map[string]string{
+		"aConfigValue": "this value is a value",
+		"aws:region":   "us-west-2",
+	}, []policyTestScenario{{WantErrors: nil}})
+}
+
+// Test resource options.
+func TestResourceOptions(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "resource_options", NodeJS, nil, []policyTestScenario{
+		// Test scenario 1: test resource options.
+		{WantErrors: nil},
+		// Test scenario 2: prepare for destroying the stack (unprotect protected resources).
+		{WantErrors: nil},
+	})
+}
+
+// Test parent and dependencies.
+func TestParentDependencies(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "parent_dependencies", NodeJS, nil, []policyTestScenario{
+		{WantErrors: nil},
+	})
+}
+
+// Test provider.
+func TestProvider(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "provider", NodeJS, nil, []policyTestScenario{
+		{WantErrors: nil},
+	})
+}
+
+// Test Policy Packs with enforcement levels set on the Policy Pack and individual policies.
+func TestEnforcementLevel(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "enforcementlevel", NodeJS, nil, []policyTestScenario{
+		// Test scenario 1: Policy Pack: advisory; Policy: advisory.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 2: Policy Pack: advisory; Policy: disabled.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 3: Policy Pack: advisory; Policy: mandatory.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 4: Policy Pack: advisory; Policy: not set.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 5: Policy Pack: disabled; Policy: advisory.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 6: Policy Pack: disabled; Policy: disabled.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 7: Policy Pack: disabled; Policy: mandatory.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 8: Policy Pack: disabled; Policy: not set.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 9: Policy Pack: mandatory; Policy: advisory.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 10: Policy Pack: mandatory; Policy: disabled.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 11: Policy Pack: mandatory; Policy: mandatory.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 12: Policy Pack: mandatory; Policy: not set.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 13: Policy Pack: not set; Policy: advisory.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+		// Test scenario 14: Policy Pack: not set; Policy: disabled.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 15: Policy Pack: not set; Policy: mandatory.
+		{
+			WantErrors: []string{
+				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+		},
+		// Test scenario 16: Policy Pack: not set; Policy: not set.
+		{
+			WantErrors: []string{
+				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-resource (str: random:index/randomString:RandomString)",
+				"Always reports a resource violation.",
+				"validate-resource-violation-message",
+				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-stack",
+				"Always reports a stack violation.",
+				"validate-stack-violation-message",
+			},
+			Advisory: true,
+		},
+	})
+}
+
+// Test Policy Pack configuration.
+func TestConfig(t *testing.T) {
+	const (
+		resourcePolicy = "resource-validation"
+		stackPolicy    = "stack-validation"
+		errorPreamble  = "error: validating policy config: config-policy 0.0.1  "
+	)
+
+	config := func(c PolicyConfig) map[string]PolicyConfig {
+		return map[string]PolicyConfig{
+			resourcePolicy: c,
+			stackPolicy:    c,
+		}
+	}
+
+	want := func(err ...string) []string {
+		var result []string
+		for _, e := range err {
+			result = append(result,
+				errorPreamble+resourcePolicy+": "+e,
+				errorPreamble+stackPolicy+": "+e,
+			)
+		}
+		return result
+	}
+
+	runPolicyPackIntegrationTest(t, "config", NodeJS, nil, []policyTestScenario{
+		// Test senario 1: String from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "bar",
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 2: Default string value specified in schema used.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 3: Default number value specified in schema used.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 4: Specified config value overrides default value.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "overridden",
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 5: Default value specified in schema for required field used.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 6: Required config property not set.
+		{
+			WantErrors: want("foo is required"),
+		},
+		// Test scenario 7: Default value set to incorrect type.
+		{
+			WantErrors: want("foo: Invalid type. Expected: string, given: integer"),
+		},
+		// Test scenario 8: Default value too long.
+		{
+			WantErrors: want("foo: String length must be less than or equal to 3"),
+		},
+		// Test scenario 9: Default value too short.
+		{
+			WantErrors: want("foo: String length must be greater than or equal to 50"),
+		},
+		// Test scenario 10: Default value set to invalid enum value.
+		{
+			WantErrors: want(`foo: foo must be one of the following: "bar", "baz"`),
+		},
+		// Test scenario 11: Default value set to invalid constant value.
+		{
+			WantErrors: want(`foo: foo does not match: "bar"`),
+		},
+		// Test scenario 12: Incorrect type.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": 1,
+			}),
+			WantErrors: want(`foo: Invalid type. Expected: string, given: integer`),
+		},
+		// Test scenario 13: Invalid enum value.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "blah",
+			}),
+			WantErrors: want(`foo: foo must be one of the following: "bar", "baz"`),
+		},
+		// Test scenario 14: Invalid constant value.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "blah",
+			}),
+			WantErrors: want(`foo: foo does not match: "bar"`),
+		},
+		// Test scenario 15: Multiple validation errors.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "this is too long",
+				"bar": float64(3.14),
+			}),
+			WantErrors: want(
+				`bar: Invalid type. Expected: integer, given: number`,
+				`foo: String length must be less than or equal to 3`,
+			),
+		},
+		// Test scenario 16: Number (int) from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": 42,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 17: Number (float) from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": float64(3.14),
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 18: Integer from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": 42,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 19: Boolean (true) from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": true,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 20: Boolean (false) from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": false,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 21: Object from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": map[string]interface{}{"bar": "baz"},
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 22: Array from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": []string{"a", "b", "c"},
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 23: Null from config.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": nil,
+			}),
+			WantErrors: nil,
+		},
+		// Test scenario 24: Initial config.
+		{
+			WantErrors: nil,
+		},
+		// Test scenario 25: Initial config overridden.
+		{
+			PolicyPackConfig: config(PolicyConfig{
+				"foo": "overridden",
+			}),
+			WantErrors: nil,
+		},
+	})
+}
+
+// Test deserializing resource properties.
+func TestDeserialize(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "deserialize", NodeJS, nil, []policyTestScenario{
+		{WantErrors: nil},
+	})
+}
