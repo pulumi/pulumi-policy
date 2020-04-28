@@ -4,7 +4,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pulumi = ">=2.0.0,<3.0.0"
+pulumi = "2.1.0-alpha.1588034821"
+# pulumi = ">=2.0.0,<3.0.0"
 protobuf = ">=3.6.0"
 grpcio = ">=1.9.1"
 
