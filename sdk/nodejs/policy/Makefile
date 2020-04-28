@@ -17,12 +17,12 @@ build::
 	node ../../../scripts/reversion.js bin/version.js ${VERSION}
 
 lint::
-	tslint -c ../tslint.json -p tsconfig.json
+	npx tslint -c ../tslint.json -p tsconfig.json
 
 istanbul_tests::
-	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
-	istanbul report text-summary
-	istanbul report text
+	npx istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+	npx istanbul report text-summary
+	npx istanbul report text
 
 test_fast:: istanbul_tests
 
