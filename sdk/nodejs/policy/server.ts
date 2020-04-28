@@ -63,6 +63,9 @@ let servingPolicyPack: string | undefined = undefined;
 // Regular expression for the policy pack name.
 const packNameRE = "^[a-zA-Z0-9-_.]{1,100}$";
 
+// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+const maxRPCMessageSize = 1024 * 1024 * 400;
+
 let policyPackConfig: Record<string, any> = {};
 
 /**
@@ -117,7 +120,9 @@ export function serve(
     servingPolicyPack = policyPackName;
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    const server = new grpc.Server();
+    const server = new grpc.Server({
+        "grpc.max_receive_message_length": maxRPCMessageSize,
+    });
     server.addService(analyzerrpc.AnalyzerService, {
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),

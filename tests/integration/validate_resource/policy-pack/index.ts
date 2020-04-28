@@ -97,5 +97,23 @@ new PolicyPack("validate-resource-test-policy", {
                 }
             },
         },
+        // Ensure that the resource can contain large strings.
+        {
+            name: "large-resource",
+            description: "Ensures that large string properties are set properly.",
+            enforcementLevel: "mandatory",
+            validateResource: (args) => {
+                if (args.type === "pulumi-nodejs:dynamic:Resource") {
+                    if (args.props.state === 6) {
+                        const longString = "a".repeat(5 * 1024 * 1024);
+                        const expected = longString.length;
+                        const result = args.props.longString.length;
+                        if (result !== expected) {
+                            throw new Error(`'longString' had expected length of ${expected}, got ${result}`);
+                        }
+                    }
+                }
+            },
+        }
     ],
 });

@@ -337,6 +337,12 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: nil,
 		},
+		// Test scenario 11: no violations.
+		// Test the ability to send large gRPC messages (>4mb).
+		// Issue: https://github.com/pulumi/pulumi/issues/4155
+		{
+			WantErrors: nil,
+		},
 	})
 }
 

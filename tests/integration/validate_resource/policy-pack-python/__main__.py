@@ -40,6 +40,16 @@ def dynamic_no_state_with_value_5(args: ResourceValidationArgs, report_violation
         if "state" in args.props and args.props["state"] == 5:
             report_violation("'state' must not have the value 5.", "some-urn")
 
+def large_resource(args: ResourceValidationArgs, report_violation: ReportViolation):
+    if args.resource_type == "pulumi-nodejs:dynamic:Resource":
+        if "state" in args.props and args.props["state"] == 6:
+            long_string = "a" * 5 * 1024 * 1024
+            expected = len(long_string)
+            result = len(args.props["longString"])
+            if result != expected:
+                report_violation(f"'longString' had expected length of {expected}, got {result}")
+
+
 PolicyPack(
     name="validate-resource-test-policy",
     enforcement_level=EnforcementLevel.MANDATORY,
@@ -72,5 +82,10 @@ PolicyPack(
             description="Prohibits setting state to 5 on dynamic resources.",
             validate=dynamic_no_state_with_value_5,
         ),
+        ResourceValidationPolicy(
+            name="large-resource",
+            description="Ensures that large string properties are set properly.",
+            validate=large_resource,
+        )
     ],
 )

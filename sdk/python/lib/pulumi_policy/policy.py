@@ -36,6 +36,10 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 _POLICY_PACK_NAME_RE = re.compile("^[a-zA-Z0-9-_.]{1,100}$")
 
+# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
+_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
+
 class PolicyPack:
     """
     A policy pack contains one or more policies to enforce.
@@ -76,7 +80,10 @@ class PolicyPack:
 
         servicer = _PolicyAnalyzerServicer(
             name, version, policies, enforcement_level if enforcement_level is not None else EnforcementLevel.ADVISORY)
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+        server = grpc.server(
+            futures.ThreadPoolExecutor(max_workers=4),
+            options=_GRPC_CHANNEL_OPTIONS
+        )
         analyzer_pb2_grpc.add_AnalyzerServicer_to_server(
             servicer, server)
         port = server.add_insecure_port(address="0.0.0.0:0")
