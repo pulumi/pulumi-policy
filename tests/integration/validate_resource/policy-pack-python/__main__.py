@@ -42,7 +42,7 @@ def dynamic_no_state_with_value_5(args: ResourceValidationArgs, report_violation
 
 def large_resource(args: ResourceValidationArgs, report_violation: ReportViolation):
     if args.resource_type == "pulumi-nodejs:dynamic:Resource":
-        if ["state", "longString"] in args.props and args.props["state"] == 6:
+        if "state" in args.props and args.props["state"] == 6:
             long_string = "a" * 5 * 1024 * 1024
             expected = len(long_string)
             result = len(args.props["longString"])
