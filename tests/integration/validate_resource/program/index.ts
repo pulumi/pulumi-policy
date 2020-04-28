@@ -62,4 +62,9 @@ switch (testScenario) {
             length: 42,
         });
         break;
+
+    case 11:
+        // Create a resource with a large string property.
+        const longString = "a".repeat(5 * 1024 * 1024);
+        const largeStringResource = new Resource("large-resource", { state: 6, longString })
 }
