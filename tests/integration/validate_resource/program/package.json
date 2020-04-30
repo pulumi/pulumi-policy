@@ -4,7 +4,7 @@
         "@types/node": "^10.0.0"
     },
     "dependencies": {
-        "@pulumi/pulumi": "2.1.0-alpha.1588034821",
+        "@pulumi/pulumi": "^2.1.0",
         "@pulumi/random": "^2.0.0"
     }
 }
