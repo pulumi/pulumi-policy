@@ -11,7 +11,7 @@ before_install:
     - source ${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh
 install:
     # Install Pulumi 🍹
-    - curl -fsSL https://get.pulumi.com/ | bash -s -- --version "2.1.0-alpha.1588034821"
+    - curl -fsSL https://get.pulumi.com/ | bash
     - export PATH="$HOME/.pulumi/bin:$PATH"
     # Install other tools.
     - source ${PULUMI_SCRIPTS}/ci/install-common-toolchain.sh
