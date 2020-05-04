@@ -12,11 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as process from "process";
 import * as grpc from "@grpc/grpc-js";
-
-const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
-const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
-const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
 import { Resource, Unwrap } from "@pulumi/pulumi";
 import * as q from "@pulumi/pulumi/queryable";
@@ -47,7 +44,10 @@ import {
 import { unknownCheckingProxy, UnknownValueError } from "./proxy";
 import { version } from "./version";
 
-import * as process from "process";
+const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
+const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
+const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
+
 
 // ------------------------------------------------------------------------------------------------
 
@@ -94,17 +94,17 @@ export function serve(
 
     for (const policy of (policies || [])) {
         if (policy.name === "all") {
-            console.error(`Invalid policy name "all". "all" is a reserved name.`);
+            console.error("Invalid policy name \"all\". \"all\" is a reserved name.");
             process.exit(1);
         }
 
         if (policy.configSchema) {
             if (policy.configSchema.properties?.enforcementLevel) {
-                console.error(`enforcementLevel cannot be explicitly specified in properties.`);
+                console.error("enforcementLevel cannot be explicitly specified in properties.");
                 process.exit(1);
             }
             if (policy.configSchema.required && policy.configSchema.required.includes("enforcementLevel")) {
-                console.error(`"enforcementLevel" cannot be specified in required.`);
+                console.error("\"enforcementLevel\" cannot be specified in required.");
                 process.exit(1);
             }
         }

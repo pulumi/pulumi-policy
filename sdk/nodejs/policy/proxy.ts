@@ -83,22 +83,22 @@ function isUnknown(o: any): boolean {
 
 function unknownToString(o: string): string {
     switch (o) {
-        case unknownBooleanValue:
-            return "boolean";
-        case unknownNumberValue:
-            return "number";
-        case unknownStringValue:
-            return "string";
-        case unknownArrayValue:
-            return "Array";
-        case unknownAssetValue:
-            return "asset";
-        case unknownArchiveValue:
-            return "archive";
-        case unknownObjectValue:
-            return "Object";
-        default:
-            throw new Error(`unknown value not recognized: ${o}`);
+    case unknownBooleanValue:
+        return "boolean";
+    case unknownNumberValue:
+        return "number";
+    case unknownStringValue:
+        return "string";
+    case unknownArrayValue:
+        return "Array";
+    case unknownAssetValue:
+        return "asset";
+    case unknownArchiveValue:
+        return "archive";
+    case unknownObjectValue:
+        return "Object";
+    default:
+        throw new Error(`unknown value not recognized: ${o}`);
     }
 }
 
