@@ -3,21 +3,29 @@
     "version": "${VERSION}",
     "description": "A framework for writing policy as code",
     "license": "Apache-2.0",
-    "keywords": ["pulumi", "policy"],
+    "keywords": [
+        "pulumi",
+        "policy"
+    ],
     "homepage": "https://pulumi.io",
     "repository": "https://github.com/pulumi/pulumi-policy",
     "dependencies": {
-        "@pulumi/pulumi": "^2.1.0",
         "@grpc/grpc-js": "^0.6.15",
+        "@pulumi/pulumi": "^2.1.0",
         "google-protobuf": "^3.5.0",
         "protobufjs": "^6.8.6"
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
         "@types/node": "^10.12.7",
+        "@typescript-eslint/eslint-plugin": "^2.31.0",
+        "@typescript-eslint/eslint-plugin-tslint": "^2.31.0",
+        "@typescript-eslint/parser": "^2.31.0",
+        "eslint": "^6.8.0",
+        "eslint-plugin-import": "^2.20.2",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
-        "tslint": "^5.11.0",
+        "tslint": "^6.1.2",
         "typescript": "^3.7.5"
     }
 }
