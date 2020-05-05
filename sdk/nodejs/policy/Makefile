@@ -17,7 +17,7 @@ build::
 	node ../../../scripts/reversion.js bin/version.js ${VERSION}
 
 lint::
-	npx tslint -c ../tslint.json -p tsconfig.json
+	npx eslint -c .eslintrc.js --ext .ts .
 
 istanbul_tests::
 	npx istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
