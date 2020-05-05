@@ -69,46 +69,46 @@ function deserializeProperty(prop: any): any {
         const sig: any = prop[specialSigKey];
         if (sig) {
             switch (sig) {
-            case specialAssetSig:
-                if (prop["path"]) {
-                    return new asset.FileAsset(<string>prop["path"]);
-                } else if (prop["text"]) {
-                    return new asset.StringAsset(<string>prop["text"]);
-                } else if (prop["uri"]) {
-                    return new asset.RemoteAsset(<string>prop["uri"]);
-                } else {
-                    throw new Error(
-                        "Invalid asset encountered when unmarshaling resource property",
-                    );
-                }
-            case specialArchiveSig:
-                if (prop["assets"]) {
-                    const assets: asset.AssetMap = {};
-                    for (const name of Object.keys(prop["assets"])) {
-                        const a = deserializeProperty(prop["assets"][name]);
-                        if (!asset.Asset.isInstance(a) && !asset.Archive.isInstance(a)) {
-                            throw new Error(
-                                "Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects",
-                            );
-                        }
-                        assets[name] = a;
+                case specialAssetSig:
+                    if (prop["path"]) {
+                        return new asset.FileAsset(<string>prop["path"]);
+                    } else if (prop["text"]) {
+                        return new asset.StringAsset(<string>prop["text"]);
+                    } else if (prop["uri"]) {
+                        return new asset.RemoteAsset(<string>prop["uri"]);
+                    } else {
+                        throw new Error(
+                            "Invalid asset encountered when unmarshaling resource property",
+                        );
                     }
-                    return new asset.AssetArchive(assets);
-                } else if (prop["path"]) {
-                    return new asset.FileArchive(<string>prop["path"]);
-                } else if (prop["uri"]) {
-                    return new asset.RemoteArchive(<string>prop["uri"]);
-                } else {
+                case specialArchiveSig:
+                    if (prop["assets"]) {
+                        const assets: asset.AssetMap = {};
+                        for (const name of Object.keys(prop["assets"])) {
+                            const a = deserializeProperty(prop["assets"][name]);
+                            if (!asset.Asset.isInstance(a) && !asset.Archive.isInstance(a)) {
+                                throw new Error(
+                                    "Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects",
+                                );
+                            }
+                            assets[name] = a;
+                        }
+                        return new asset.AssetArchive(assets);
+                    } else if (prop["path"]) {
+                        return new asset.FileArchive(<string>prop["path"]);
+                    } else if (prop["uri"]) {
+                        return new asset.RemoteArchive(<string>prop["uri"]);
+                    } else {
+                        throw new Error(
+                            "Invalid archive encountered when unmarshaling resource property",
+                        );
+                    }
+                case specialSecretSig:
+                    return deserializeProperty(prop["value"]);
+                default:
                     throw new Error(
-                        "Invalid archive encountered when unmarshaling resource property",
+                        `Unrecognized signature '${sig}' when unmarshaling resource property`,
                     );
-                }
-            case specialSecretSig:
-                return deserializeProperty(prop["value"]);
-            default:
-                throw new Error(
-                    `Unrecognized signature '${sig}' when unmarshaling resource property`,
-                );
             }
         }
 

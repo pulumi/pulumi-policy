@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as assert from "assert";
-
 import { Inputs, runtime, secret } from "@pulumi/pulumi";
-
+import * as assert from "assert";
 import { deserializeProperties } from "../deserialize";
 import { asyncTest } from "./util";
 

@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { EnforcementLevel, Policies, PolicyPackConfig } from "./policy";
-
 const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
+import { EnforcementLevel, Policies, PolicyPackConfig } from "./policy";
 
 /** @internal */
 export function asGrpcError(e: any, message?: string) {
@@ -175,33 +174,33 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
 /** @internal */
 export function mapEnforcementLevel(el: EnforcementLevel) {
     switch (el) {
-    case "advisory":
-        return analyzerproto.EnforcementLevel.ADVISORY;
-    case "mandatory":
-        return analyzerproto.EnforcementLevel.MANDATORY;
-    case "disabled":
-        return analyzerproto.EnforcementLevel.DISABLED;
-    default:
-        throw new UnknownEnforcementLevelError(el);
+        case "advisory":
+            return analyzerproto.EnforcementLevel.ADVISORY;
+        case "mandatory":
+            return analyzerproto.EnforcementLevel.MANDATORY;
+        case "disabled":
+            return analyzerproto.EnforcementLevel.DISABLED;
+        default:
+            throw new UnknownEnforcementLevelError(el);
     }
 }
 
 /** @internal */
 export function convertEnforcementLevel(el: number): EnforcementLevel {
     switch (el) {
-    case analyzerproto.EnforcementLevel.ADVISORY:
-        return "advisory";
-    case analyzerproto.EnforcementLevel.MANDATORY:
-        return "mandatory";
-    case analyzerproto.EnforcementLevel.DISABLED:
-        return "disabled";
-    default:
-        throw new Error(`Unknown enforcement level ${el}.`);
+        case analyzerproto.EnforcementLevel.ADVISORY:
+            return "advisory";
+        case analyzerproto.EnforcementLevel.MANDATORY:
+            return "mandatory";
+        case analyzerproto.EnforcementLevel.DISABLED:
+            return "disabled";
+        default:
+            throw new Error(`Unknown enforcement level ${el}.`);
     }
 }
 
 type NormalizedConfig = { [policy: string]: NormalizedConfigValue };
-type NormalizedConfigValue = { enforcementLevel?: EnforcementLevel; properties?: Record<string, any> };
+type NormalizedConfigValue = { enforcementLevel?: EnforcementLevel; properties?: Record<string, any>; };
 
 /** @internal */
 export function normalizeConfig(config: PolicyPackConfig): NormalizedConfig {
