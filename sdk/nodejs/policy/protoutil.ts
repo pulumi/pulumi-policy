@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { EnforcementLevel, Policies, PolicyPackConfig } from "./policy";
+
 const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
-
-import { EnforcementLevel, Policies, PolicyPackConfig } from "./policy";
 
 /** @internal */
 export function asGrpcError(e: any, message?: string) {
@@ -200,7 +200,7 @@ export function convertEnforcementLevel(el: number): EnforcementLevel {
 }
 
 type NormalizedConfig = { [policy: string]: NormalizedConfigValue };
-type NormalizedConfigValue = { enforcementLevel?: EnforcementLevel; properties?: Record<string, any>; };
+type NormalizedConfigValue = { enforcementLevel?: EnforcementLevel; properties?: Record<string, any> };
 
 /** @internal */
 export function normalizeConfig(config: PolicyPackConfig): NormalizedConfig {
