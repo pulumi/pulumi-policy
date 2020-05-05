@@ -13,7 +13,6 @@ Happy linting! 💖
 */
 module.exports = {
     "env": {
-        "browser": true,
         "es6": true,
         "node": true
     },
@@ -26,7 +25,7 @@ module.exports = {
     "plugins": [
         "@typescript-eslint",
         "eslint-plugin-import",
-        "@typescript-eslint/tslint"
+        "header"
     ],
     "rules": {
         "@typescript-eslint/class-name-casing": "error",
@@ -45,7 +44,8 @@ module.exports = {
                 },
                 "FunctionExpression": {
                     "parameters": "first"
-                }
+                },
+                "SwitchCase": 1
             }
         ],
         "@typescript-eslint/interface-name-prefix": "off",
@@ -154,6 +154,8 @@ module.exports = {
             }
         ],
         "no-trailing-spaces": "error",
+        "no-irregular-whitespace": "error",
+        "keyword-spacing": "error",
         "no-unused-expressions": "error",
         "no-unused-labels": "error",
         "no-var": "error",
@@ -168,24 +170,8 @@ module.exports = {
                 ]
             }
         ],
-        "@typescript-eslint/tslint/config": [
-            "error",
-            {
-                "rules": {
-                    "file-header": [
-                        true,
-                        "Copyright \\d{4}-\\d{4}, Pulumi Corporation."
-                    ],
-                    "whitespace": [
-                        true,
-                        "check-branch",
-                        "check-decl",
-                        "check-module",
-                        "check-separator",
-                        "check-type"
-                    ]
-                }
-            }
-        ]
+        "header/header": [2, "line", [
+            {"pattern": "Copyright \\d{4}-\\d{4}, Pulumi Corporation."},
+        ]]
     }
 };
