@@ -24,7 +24,7 @@ from typing import Any, Awaitable, Callable, Dict, Mapping, List, NamedTuple, Op
 from abc import ABC
 
 import grpc
-from google.protobuf import empty_pb2, json_format
+from google.protobuf import empty_pb2, json_format, struct_pb2
 from pulumi.runtime import proto
 from pulumi.runtime.proto import analyzer_pb2_grpc
 
@@ -48,7 +48,8 @@ class PolicyPack:
     def __init__(self,
                  name: str,
                  policies: List['Policy'],
-                 enforcement_level: Optional['EnforcementLevel'] = None) -> None:
+                 enforcement_level: Optional['EnforcementLevel'] = None,
+                 initial_config: Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] = None) -> None:
         """
         :param str name: The name of the policy pack.
         :param List[Policy] policies: The policies associated with a policy pack.
@@ -56,6 +57,9 @@ class PolicyPack:
                violation, e.g., block deployment but allow override with
                proper permissions. This is the default used for all policies in the policy pack.
                Individual policies can override.
+        :param Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] initial_config: Initial
+               configuration for the policy pack. Allows specifying configuration programmatically from reusable
+               policy libraries.
         """
         if not name:
             raise TypeError("Missing name argument")
@@ -74,12 +78,28 @@ class PolicyPack:
         if enforcement_level is not None and not isinstance(enforcement_level, EnforcementLevel):
             raise TypeError(
                 "Expected enforcement_level to be an EnforcementLevel")
+        if initial_config is not None:
+            if not isinstance(initial_config, dict):
+                raise TypeError("Expected initial_config to be a dict")
+            for k, v in initial_config.items():
+                if not isinstance(k, str):
+                    raise TypeError("Expected initial_config key to be a string")
+                if not isinstance(v, EnforcementLevel) and not isinstance(v, dict):
+                    raise TypeError(f"Expected initial_config['{k}'] to be an EnforcementLevel or dict")
+                if isinstance(v, dict):
+                    for vk in v:
+                        if not isinstance(vk, str):
+                            raise TypeError(f"Expected initial_config['{k}'] key to be a string")
 
         # TODO[pulumi/pulumi-policy#208]: lookup the policy pack actual version.
         version = "0.0.1"
 
         servicer = _PolicyAnalyzerServicer(
-            name, version, policies, enforcement_level if enforcement_level is not None else EnforcementLevel.ADVISORY)
+            name,
+            version,
+            policies,
+            enforcement_level if enforcement_level is not None else EnforcementLevel.ADVISORY,
+            initial_config)
         server = grpc.server(
             futures.ThreadPoolExecutor(max_workers=4),
             options=_GRPC_CHANNEL_OPTIONS
@@ -106,6 +126,52 @@ class EnforcementLevel(Enum):
     DISABLED = "disabled"
 
 
+class PolicyConfigSchema:
+    """
+    Represents the configuration schema for a policy.
+    """
+
+    properties: Dict[str, Dict[str, Any]]
+    """
+    The policy's configuration properties.
+    """
+
+    required: Optional[List[str]]
+    """
+    The configuration properties that are required.
+    """
+
+    def __init__(self,
+                 properties: Dict[str, Dict[str, Any]],
+                 required: Optional[List[str]] = None) -> None:
+        """
+        :param Dict[str, Dict[str, Any]] properties: The policy's configuration properties.
+        :param Optional[List[str]] required: The configuration properties that are required.
+        """
+        if not isinstance(properties, dict):
+            raise TypeError("Expected properties to be a dict")
+        for k, v in properties.items():
+            if not isinstance(k, str):
+                raise TypeError("Expected properties key to be a string")
+            if not isinstance(v, dict):
+                raise TypeError(f"Expected properties['{k}'] to be a dict")
+            if "enforcementLevel" in properties:
+                raise TypeError("enforcementLevel cannot be explicitly specified in properties")
+            for vk in v:
+                if not isinstance(vk, str):
+                    raise TypeError(f"Expected properties['{k}'] key to be a string")
+        if required is not None:
+            if not isinstance(required, List):
+                raise TypeError("Expected properties to be a list of strings")
+            for r in required:
+                if not isinstance(r, str):
+                    raise TypeError("Expected properties to be a list of strings")
+                if r == "enforcementLevel":
+                    raise TypeError('"enforcementLevel" cannot be specified in required')
+        self.properties = properties
+        self.required = required
+
+
 class Policy(ABC):
     """
     A policy function that returns true if a resource definition violates some policy (e.g., "no
@@ -130,16 +196,23 @@ class Policy(ABC):
     proper permissions.
     """
 
+    config_schema: Optional[PolicyConfigSchema]
+    """
+    This policy's configuration schema.
+    """
+
     def __init__(self,
                  name: str,
                  description: str,
-                 enforcement_level: Optional[EnforcementLevel] = None) -> None:
+                 enforcement_level: Optional[EnforcementLevel] = None,
+                 config_schema: Optional[PolicyConfigSchema] = None) -> None:
         """
         :param str name: An ID for the policy. Must be unique within the current policy set.
         :param str description: A brief description of the policy rule. e.g., "S3 buckets should have
                default encryptionenabled."
         :param Optional[EnforcementLevel] enforcement_level: Indicates what to do on policy violation,
                e.g., block deployment but allow override with proper permissions.
+        :param Optional[PolicyConfigSchema] config_schema: This policy's configuration schema.
         """
         if not name:
             raise TypeError("Missing name argument")
@@ -155,9 +228,13 @@ class Policy(ABC):
         if enforcement_level is not None and not isinstance(enforcement_level, EnforcementLevel):
             raise TypeError(
                 "Expected enforcement_level to be an EnforcementLevel")
+        if config_schema is not None and not isinstance(config_schema, PolicyConfigSchema):
+            raise TypeError(
+                "Expected config_schema to be a PolicyConfigSchema")
         self.name = name
         self.description = description
         self.enforcement_level = enforcement_level
+        self.config_schema = config_schema
 
 
 ReportViolation = Callable[[str, Optional[str]], None]
@@ -203,19 +280,32 @@ class ResourceValidationArgs:
     The provider of the resource.
     """
 
+    __config: Mapping[str, Any]
+    """
+    Private field holding the configuration for this policy.
+    """
+
+    def get_config(self) -> Mapping[str, Any]:
+        """
+        Returns configuration for the policy.
+        """
+        return self.__config
+
     def __init__(self,
                  resource_type: str,
                  props: Mapping[str, Any],
                  urn: str,
                  name: str,
                  opts: 'PolicyResourceOptions',
-                 provider: Optional['PolicyProviderResource']) -> None:
+                 provider: Optional['PolicyProviderResource'],
+                 config: Optional[Mapping[str, Any]] = None) -> None:
         self.resource_type = resource_type
         self.props = props
         self.urn = urn
         self.name = name
         self.opts = opts
         self.provider = provider
+        self.__config = config if config is not None else {}
 
 
 class PolicyResourceOptions:
@@ -379,7 +469,8 @@ class ResourceValidationPolicy(Policy):
                  name: str,
                  description: str,
                  validate: Optional[Union[ResourceValidation, List[ResourceValidation]]] = None,
-                 enforcement_level: Optional[EnforcementLevel] = None) -> None:
+                 enforcement_level: Optional[EnforcementLevel] = None,
+                 config_schema: Optional[PolicyConfigSchema] = None) -> None:
         """
         :param str name: An ID for the policy. Must be unique within the current policy set.
         :param str description: A brief description of the policy rule. e.g., "S3 buckets should have
@@ -389,8 +480,9 @@ class ResourceValidationPolicy(Policy):
                A single callback function can be specified, or multiple functions, which are called in order.
         :param Optional[EnforcementLevel] enforcement_level: Indicates what to do on policy violation,
                e.g., block deployment but allow override with proper permissions.
+        :param Optional[PolicyConfigSchema] config_schema: This policy's configuration schema.
         """
-        super().__init__(name, description, enforcement_level)
+        super().__init__(name, description, enforcement_level, config_schema)
 
         # If this instance isn't a subclass, then validate must be specified.
         not_subclassed = type(self) is ResourceValidationPolicy # pylint: disable=unidiomatic-typecheck
@@ -487,8 +579,22 @@ class StackValidationArgs:
     The resources in the stack.
     """
 
-    def __init__(self, resources: List[PolicyResource]) -> None:
+    __config: Mapping[str, Any]
+    """
+    Private field holding the configuration for this policy.
+    """
+
+    def get_config(self) -> Mapping[str, Any]:
+        """
+        Returns configuration for the policy.
+        """
+        return self.__config
+
+    def __init__(self,
+                 resources: List[PolicyResource],
+                 config: Optional[Mapping[str, Any]] = None) -> None:
         self.resources = resources
+        self.__config = config if config is not None else {}
 
 
 StackValidation = Callable[[StackValidationArgs, ReportViolation], Optional[Awaitable]]
@@ -527,7 +633,8 @@ class StackValidationPolicy(Policy):
                  name: str,
                  description: str,
                  validate: Optional[StackValidation] = None,
-                 enforcement_level: Optional[EnforcementLevel] = None) -> None:
+                 enforcement_level: Optional[EnforcementLevel] = None,
+                 config_schema: Optional[PolicyConfigSchema] = None) -> None:
         """
         :param str name: An ID for the policy. Must be unique within the current policy set.
         :param str description: A brief description of the policy rule. e.g., "S3 buckets should have
@@ -535,8 +642,9 @@ class StackValidationPolicy(Policy):
         :param Optional[StackValidation] validate: A callback function that validates if a stack violates a policy.
         :param Optional[EnforcementLevel] enforcement_level: Indicates what to do on policy violation,
                e.g., block deployment but allow override with proper permissions.
+        :param Optional[PolicyConfigSchema] config_schema: This policy's configuration schema.
         """
-        super().__init__(name, description, enforcement_level)
+        super().__init__(name, description, enforcement_level, config_schema)
 
         # If this instance isn't a subclass, then validate must be specified.
         not_subclassed = type(self) is StackValidationPolicy # pylint: disable=unidiomatic-typecheck
@@ -555,6 +663,9 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
     __policy_pack_version: str
     __policies: List[Policy]
     __policy_pack_enforcement_level: EnforcementLevel
+    __initial_config: Optional[Dict[str, Union[EnforcementLevel, Dict[str, Any]]]]
+    __policy_pack_config: Dict[str, Dict[str, Any]]
+    __policy_pack_config_enforcement_level: Dict[str, EnforcementLevel]
 
     class IntermediateStackResource(NamedTuple):
         resource: PolicyResource
@@ -576,7 +687,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             props = unknown_checking_proxy(deserialized)
             opts = self._get_resource_options(request)
             provider = self._get_provider_resource(request)
-            args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider)
+            config = self._get_policy_config(policy.name)
+            args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider, config)
 
             try:
                 result = policy.validate(args, report_violation)
@@ -648,7 +760,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             resources: List[PolicyResource] = []
             for i in intermediates:
                 resources.append(i.resource)
-            args = StackValidationArgs(resources)
+            config = self._get_policy_config(policy.name)
+            args = StackValidationArgs(resources, config)
 
             try:
                 result = policy.validate(args, report_violation)
@@ -674,43 +787,86 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         for policy in self.__policies:
             enforcement_level = (policy.enforcement_level if policy.enforcement_level is not None
                                  else self.__policy_pack_enforcement_level)
+
+            schema = {}
+            if policy.config_schema is not None:
+                if policy.config_schema.properties:
+                    properties = struct_pb2.Struct()
+                    for k, v in policy.config_schema.properties.items():
+                        # pylint: disable=unsupported-assignment-operation
+                        properties[k] = v
+                    schema["properties"] = properties
+                if policy.config_schema.required:
+                    schema["required"] = policy.config_schema.required
+
             policies.append(proto.PolicyInfo(
                 name=policy.name,
                 description=policy.description,
                 enforcementLevel=self._map_enforcement_level(enforcement_level),
-                # TODO[pulumi/pulumi-policy#210]: Expose config schema
+                configSchema=proto.PolicyConfigSchema(**schema) if schema else None,
             ))
+
+        initial_config = {}
+        if self.__initial_config is not None:
+            normalized_config = _normalize_config(self.__initial_config)
+            for key, val in normalized_config.items():
+                config = {}
+                if val.enforcement_level is not None:
+                    config["enforcementLevel"] = self._map_enforcement_level(val.enforcement_level)
+                if val.properties:
+                    properties = struct_pb2.Struct()
+                    for k, v in val.properties.items():
+                        # pylint: disable=unsupported-assignment-operation
+                        properties[k] = v
+                    config["properties"] = properties
+                if config:
+                    initial_config[key] = proto.PolicyConfig(**config)
 
         return proto.AnalyzerInfo(
             name=self.__policy_pack_name,
             version=self.__policy_pack_version,
-            supportsConfig=False,  # TODO[pulumi/pulumi-policy#210]: Set to True when config support is added
+            supportsConfig=True,
             policies=policies,
+            initialConfig=initial_config,
         )
 
     def GetPluginInfo(self, request, context):
         return proto.PluginInfo(version=SEMVERSION)
 
     def Configure(self, request, context):
-        # TODO[pulumi/pulumi-policy#210]: Add support for config
+        config, config_enforcement_level = {}, {}
+        for k in request.policyConfig:
+            v = request.policyConfig[k]
+            config[k] = json_format.MessageToDict(v.properties)
+            config_enforcement_level[k] = self._convert_enforcement_level(v.enforcementLevel)
+        self.__policy_pack_config = config
+        self.__policy_pack_config_enforcement_level = config_enforcement_level
         return empty_pb2.Empty()
 
     def __init__(self,
                  name: str,
                  version: str,
                  policies: List[Policy],
-                 enforcement_level: EnforcementLevel) -> None:
+                 enforcement_level: EnforcementLevel,
+                 initial_config: Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] = None) -> None:
         assert name and isinstance(name, str)
         assert version and isinstance(version, str)
         assert policies and isinstance(policies, list)
         assert enforcement_level and isinstance(
             enforcement_level, EnforcementLevel)
+        assert initial_config is None or isinstance(initial_config, dict)
         self.__policy_pack_name = name
         self.__policy_pack_version = version
         self.__policies = policies
         self.__policy_pack_enforcement_level = enforcement_level
+        self.__initial_config = initial_config
+        self.__policy_pack_config = {}
+        self.__policy_pack_config_enforcement_level = {}
 
     def _get_enforcement_level(self, policy: Policy) -> EnforcementLevel:
+        if policy.name in self.__policy_pack_config_enforcement_level:
+            return self.__policy_pack_config_enforcement_level[policy.name]
+
         return (policy.enforcement_level if policy.enforcement_level is not None
                 else self.__policy_pack_enforcement_level)
 
@@ -750,6 +906,16 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         raise AssertionError(
             f"unknown enforcement level: {enforcement_level}")
 
+    def _convert_enforcement_level(self, enforcement_level: int) -> EnforcementLevel:
+        if enforcement_level == proto.ADVISORY:
+            return EnforcementLevel.ADVISORY
+        if enforcement_level == proto.MANDATORY:
+            return EnforcementLevel.MANDATORY
+        if enforcement_level == proto.DISABLED:
+            return EnforcementLevel.DISABLED
+        raise AssertionError(
+            f"unknown enforcement level: {enforcement_level}")
+
     def _get_resource_options(self, request) -> PolicyResourceOptions:
         opts = request.options
         protect = opts.protect
@@ -770,3 +936,41 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         deserialized = deserialize_properties(json_format.MessageToDict(prov.properties))
         props = unknown_checking_proxy(deserialized)
         return PolicyProviderResource(prov.type, props, prov.urn, prov.name)
+
+    def _get_policy_config(self, name: str) -> Optional[Dict[str, Any]]:
+        if name in self.__policy_pack_config:
+            config = self.__policy_pack_config[name]
+            if config:
+                return config.copy()
+        return None
+
+
+class _NormalizedConfigValue(NamedTuple):
+    enforcement_level: Optional[EnforcementLevel]
+    properties: Optional[Dict[str, Any]]
+
+
+def _normalize_config(config: Dict[str, Union[EnforcementLevel, Dict[str, Any]]]) -> Dict[str, _NormalizedConfigValue]:
+    result = {}
+
+    for key in config:
+        val = config[key]
+
+        # If the value is an enforcement level, we're done.
+        if isinstance(val, EnforcementLevel):
+            result[key] = _NormalizedConfigValue(val, None)
+            continue
+
+        # Otherwise, it's an object that may have an enforcement level and additional
+        # properties.
+        enforcement_level, properties = None, None
+        for k in val:
+            if k == "enforcementLevel":
+                enforcement_level = val["enforcementLevel"]
+            else:
+                if properties is None:
+                    properties = {}
+                properties[k] = val[k]
+        result[key] = _NormalizedConfigValue(enforcement_level, properties)
+
+    return result

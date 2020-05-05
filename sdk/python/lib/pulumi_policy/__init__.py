@@ -20,6 +20,7 @@ The Pulumi Policy SDK for Python.
 from .policy import (
     EnforcementLevel,
     Policy,
+    PolicyConfigSchema,
     PolicyCustomTimeouts,
     PolicyPack,
     PolicyProviderResource,
