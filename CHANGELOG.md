@@ -1,7 +1,10 @@
 ## HEAD (unreleased)
 
-- Increase the MaxCallRecvMsgSize for all RPC calls. 
-  (https://github.com/pulumi/pulumi-policy/pull/239)
+- Increase the MaxCallRecvMsgSize for all RPC calls
+  (https://github.com/pulumi/pulumi-policy/pull/239).
+
+- Add Python support for policy configuration
+  (https://github.com/pulumi/pulumi-policy/pull/246).
 
 ## 1.1.0 (2020-04-17)
 

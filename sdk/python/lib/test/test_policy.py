@@ -19,6 +19,7 @@ import unittest
 
 from pulumi_policy import (
     EnforcementLevel,
+    PolicyConfigSchema,
     PolicyPack,
     ReportViolation,
     ResourceValidationPolicy,
@@ -42,7 +43,7 @@ def run_policy(policy: Union[ResourceValidationPolicy, StackValidationPolicy]) -
     return violations
 
 class PolicyPackTests(unittest.TestCase):
-    def test_int_raises(self):
+    def test_init_raises(self):
         self.assertRaises(TypeError, lambda: PolicyPack(None, [NOP_POLICY]))
         self.assertRaises(TypeError, lambda: PolicyPack("", [NOP_POLICY]))
         self.assertRaises(TypeError, lambda: PolicyPack(1, [NOP_POLICY]))
@@ -59,6 +60,19 @@ class PolicyPackTests(unittest.TestCase):
 
         self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], ""))
         self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], 1))
+
+        el = EnforcementLevel.ADVISORY
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, ""))
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, 1))
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, []))
+
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, {1: 1}))
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, {"p": None}))
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, {"p": ""}))
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, {"p": 1}))
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, {"p": []}))
+
+        self.assertRaises(TypeError, lambda: PolicyPack("policies", [NOP_POLICY], el, {"p": {1: 1}}))
 
 class ResourceValidationPolicyTests(unittest.TestCase):
     def test_init_raises(self):
@@ -252,3 +266,26 @@ class StackValidationPolicySubclassAsyncValidateTests(unittest.TestCase):
         policy = self.Subclass()
         violations = run_policy(policy)
         self.assertEqual(["first", "second"], violations)
+
+
+class PolicyConfigSchemaTests(unittest.TestCase):
+    def test_init_raises(self):
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema(None))
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema(""))
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema(1))
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema([]))
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema({"enforcementLevel": {}}))
+
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema({}, ""))
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema({}, 1))
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema({}, [None]))
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema({}, [1]))
+        self.assertRaises(TypeError, lambda: PolicyConfigSchema({}, ["enforcementLevel"]))
+
+    def test_init(self):
+        PolicyConfigSchema({})
+        PolicyConfigSchema({"foo": {}})
+        PolicyConfigSchema({"foo": {"type": "string"}})
+
+        PolicyConfigSchema({}, [])
+        PolicyConfigSchema({}, ["foo"])
