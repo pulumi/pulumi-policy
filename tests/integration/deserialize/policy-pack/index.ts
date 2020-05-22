@@ -34,19 +34,19 @@ function verify(r: PolicyResource | ResourceValidationArgs) {
 
     assert.strictEqual(r.props.secret, "a secret value");
 
-    assert.ok(pulumi.asset.FileAsset.isInstance(r.props.fileAsset));
     assert.deepStrictEqual(r.props.fileAsset.path, Promise.resolve("index.ts"));
+    assert.ok(pulumi.asset.FileAsset.isInstance(r.props.fileAsset));
 
-    assert.ok(pulumi.asset.StringAsset.isInstance(r.props.stringAsset));
     assert.deepStrictEqual(r.props.stringAsset.text, Promise.resolve("some text"));
+    assert.ok(pulumi.asset.StringAsset.isInstance(r.props.stringAsset));
 
-    assert.ok(pulumi.asset.FileArchive.isInstance(r.props.fileArchive));
     assert.deepStrictEqual(r.props.fileArchive.path, Promise.resolve("."));
+    assert.ok(pulumi.asset.FileArchive.isInstance(r.props.fileArchive));
 
-    assert.ok(pulumi.asset.AssetArchive.isInstance(r.props.assetArchive));
     assert.deepStrictEqual(r.props.assetArchive.assets, Promise.resolve({
         fileAsset: new pulumi.asset.FileAsset("index.ts"),
         stringAsset: new pulumi.asset.StringAsset("some text"),
         fileArchive: new pulumi.asset.FileArchive("."),
     }));
+    assert.ok(pulumi.asset.AssetArchive.isInstance(r.props.assetArchive));
 }
