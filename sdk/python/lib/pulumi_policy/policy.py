@@ -91,7 +91,9 @@ class PolicyPack:
                         if not isinstance(vk, str):
                             raise TypeError(f"Expected initial_config['{k}'] key to be a string")
 
-        # TODO[pulumi/pulumi-policy#208]: lookup the policy pack actual version.
+        # Python policy packs should specify a version in PulumiPolicy.yaml; the CLI will use the
+        # version specified there. We always return "0.0.1" from here which will only be used if
+        # there isn't a version in PulumiPolicy.yaml.
         version = "0.0.1"
 
         servicer = _PolicyAnalyzerServicer(
