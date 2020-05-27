@@ -1,4 +1,4 @@
-## HEAD (unreleased)
+## 1.2.0 (2020-05-27)
 
 - Increase the MaxCallRecvMsgSize for all RPC calls
   (https://github.com/pulumi/pulumi-policy/pull/239).
