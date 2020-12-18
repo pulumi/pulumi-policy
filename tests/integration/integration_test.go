@@ -442,8 +442,8 @@ func TestUnknownValues(t *testing.T) {
 		{
 			WantErrors: []string{
                 "[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (random:index/randomPet:RandomPet: pet)",
-				// "can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
-				"[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
+				"can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
+				// "[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
 				// "can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
 			},
 			Advisory: true,
