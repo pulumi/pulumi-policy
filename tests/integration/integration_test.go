@@ -436,6 +436,7 @@ func TestValidateStack(t *testing.T) {
 
 // Test that accessing unknown values returns an error during previews.
 func TestUnknownValues(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi-policy/issues/263")
 	runPolicyPackIntegrationTest(t, "unknown_values", NodeJS, map[string]string{
 		"aws:region": "us-west-2",
 	}, []policyTestScenario{
@@ -443,8 +444,8 @@ func TestUnknownValues(t *testing.T) {
 			WantErrors: []string{
                 "[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (random:index/randomPet:RandomPet: pet)",
 				"can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
-				// "[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
-				// "can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
+				"[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
+				"can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
 			},
 			Advisory: true,
 		},
