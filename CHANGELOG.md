@@ -1,3 +1,8 @@
+## HEAD (Unreleased)
+_(none)_
+
+---
+
 ## 1.2.0 (2020-05-27)
 
 - Increase the MaxCallRecvMsgSize for all RPC calls
