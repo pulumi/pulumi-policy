@@ -5,7 +5,7 @@ include build/common.mk
 .PHONY: ensure
 ensure::
 	# Golang dependencies for the integration tests.
-	go get -t -d ./tests/integration
+	cd ./tests/integration && go mod download && go mod tidy
 
 .PHONY: publish_packages
 publish_packages:
@@ -19,7 +19,7 @@ check_clean_worktree:
 
 .PHONY: test_all
 test_all::
-	go test ./tests/integration -v -timeout 30m
+	cd ./tests/integration && go test . -v -timeout 30m
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api

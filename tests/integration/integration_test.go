@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	ptesting "github.com/pulumi/pulumi/sdk/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -284,7 +284,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 3: violates the first policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-1 (pulumi-nodejs:dynamic:Resource: a)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-1 (pulumi-nodejs:dynamic:Resource: a)",
 				"Prohibits setting state to 1 on dynamic resources.",
 				"'state' must not have the value 1.",
 			},
@@ -292,7 +292,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 4: violates the second policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-2 (pulumi-nodejs:dynamic:Resource: b)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-2 (pulumi-nodejs:dynamic:Resource: b)",
 				"Prohibits setting state to 2 on dynamic resources.",
 				"'state' must not have the value 2.",
 			},
@@ -300,7 +300,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 5: violates the first validation function of the third policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (pulumi-nodejs:dynamic:Resource: c)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (pulumi-nodejs:dynamic:Resource: c)",
 				"Prohibits setting state to 3 or 4 on dynamic resources.",
 				"'state' must not have the value 3.",
 			},
@@ -308,7 +308,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 6: violates the second validation function of the third policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (pulumi-nodejs:dynamic:Resource: d)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-3-or-4 (pulumi-nodejs:dynamic:Resource: d)",
 				"Prohibits setting state to 3 or 4 on dynamic resources.",
 				"'state' must not have the value 4.",
 			},
@@ -316,7 +316,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 7: violates the fourth policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (random:index/randomUuid:RandomUuid: r1)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (random:index/randomUuid:RandomUuid: r1)",
 				"Prohibits creating a RandomUuid without any 'keepers'.",
 				"RandomUuid must not have an empty 'keepers'.",
 			},
@@ -328,7 +328,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 9: violates the fifth policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-5 (pulumi-nodejs:dynamic:Resource: e)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  dynamic-no-state-with-value-5 (pulumi-nodejs:dynamic:Resource: e)",
 				"Prohibits setting state to 5 on dynamic resources.",
 				"'state' must not have the value 5.",
 			},
@@ -352,7 +352,7 @@ func TestValidatePythonResource(t *testing.T) {
 		// Test scenario 1: violates the policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (random:index/randomUuid:RandomUuid: r1)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (random:index/randomUuid:RandomUuid: r1)",
 				"Prohibits creating a RandomUuid without any 'keepers'.",
 				"RandomUuid must not have an empty 'keepers'.",
 			},
@@ -360,7 +360,7 @@ func TestValidatePythonResource(t *testing.T) {
 		// Test scenario 2: violates the policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (random:index/randomUuid:RandomUuid: r2)",
+				"[mandatory]  validate-resource-test-policy v0.0.1  randomuuid-no-keepers (random:index/randomUuid:RandomUuid: r2)",
 				"Prohibits creating a RandomUuid without any 'keepers'.",
 				"RandomUuid must not have an empty 'keepers'.",
 			},
@@ -402,7 +402,7 @@ func TestValidateStack(t *testing.T) {
 		// Test scenario 5: violates the third policy.
 		{
 			WantErrors: []string{
-                "[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-3 (pulumi-nodejs:dynamic:Resource: c)",
+				"[mandatory]  validate-stack-test-policy v0.0.1  dynamic-no-state-with-value-3 (pulumi-nodejs:dynamic:Resource: c)",
 				"Prohibits setting state to 3 on dynamic resources.",
 				"'state' must not have the value 3.",
 			},
@@ -442,7 +442,7 @@ func TestUnknownValues(t *testing.T) {
 	}, []policyTestScenario{
 		{
 			WantErrors: []string{
-                "[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (random:index/randomPet:RandomPet: pet)",
+				"[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (random:index/randomPet:RandomPet: pet)",
 				"can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
 				"[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
 				"can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
@@ -490,7 +490,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 1: Policy Pack: advisory; Policy: advisory.
 		{
 			WantErrors: []string{
-                "[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-advisory-advisory-test-policy v0.0.1  validate-stack",
@@ -506,7 +506,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 3: Policy Pack: advisory; Policy: mandatory.
 		{
 			WantErrors: []string{
-                "[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-advisory-mandatory-test-policy v0.0.1  validate-stack",
@@ -517,7 +517,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 4: Policy Pack: advisory; Policy: not set.
 		{
 			WantErrors: []string{
-                "[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-advisory-test-policy v0.0.1  validate-stack",
@@ -529,7 +529,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 5: Policy Pack: disabled; Policy: advisory.
 		{
 			WantErrors: []string{
-                "[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-disabled-advisory-test-policy v0.0.1  validate-stack",
@@ -545,7 +545,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 7: Policy Pack: disabled; Policy: mandatory.
 		{
 			WantErrors: []string{
-                "[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-disabled-mandatory-test-policy v0.0.1  validate-stack",
@@ -560,7 +560,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 9: Policy Pack: mandatory; Policy: advisory.
 		{
 			WantErrors: []string{
-                "[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-mandatory-advisory-test-policy v0.0.1  validate-stack",
@@ -576,7 +576,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 11: Policy Pack: mandatory; Policy: mandatory.
 		{
 			WantErrors: []string{
-                "[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-mandatory-mandatory-test-policy v0.0.1  validate-stack",
@@ -587,7 +587,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 12: Policy Pack: mandatory; Policy: not set.
 		{
 			WantErrors: []string{
-                "[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-mandatory-test-policy v0.0.1  validate-stack",
@@ -598,7 +598,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 13: Policy Pack: not set; Policy: advisory.
 		{
 			WantErrors: []string{
-                "[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-none-advisory-test-policy v0.0.1  validate-stack",
@@ -614,7 +614,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 15: Policy Pack: not set; Policy: mandatory.
 		{
 			WantErrors: []string{
-                "[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  enforcementlevel-none-mandatory-test-policy v0.0.1  validate-stack",
@@ -625,7 +625,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 16: Policy Pack: not set; Policy: not set.
 		{
 			WantErrors: []string{
-                "[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
+				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-resource (random:index/randomString:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  enforcementlevel-none-test-policy v0.0.1  validate-stack",
