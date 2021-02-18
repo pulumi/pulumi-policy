@@ -30,7 +30,8 @@ setup(name='pulumi_policy',
       packages=find_packages(exclude=("test*",)),
       package_data={
           'pulumi_policy': [
-              'py.typed'
+              'py.typed',
+              'pulumiplugin.json'
           ]
       },
       install_requires=[
