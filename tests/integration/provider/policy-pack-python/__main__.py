@@ -47,7 +47,8 @@ def validate(r):
         assert r.provider.resource_type == "pulumi:providers:random"
         assert r.provider.name == "my-provider"
         assert r.provider.urn == create_urn("pulumi:providers:random", "my-provider")
-        assert not r.provider.props
+        assert r.provider.props
+        assert r.provider.props["version"] == "2.0.0"
     else:
         raise AssertionError(f"Unexpected resource of type: '{t}'.")
 

@@ -58,7 +58,8 @@ function validate(r: ResourceValidationArgs | PolicyResource) {
             assert.strictEqual(r.provider!.type, "pulumi:providers:random");
             assert.strictEqual(r.provider!.name, "my-provider");
             assert.strictEqual(r.provider!.urn, createURN("pulumi:providers:random", "my-provider"));
-            assert.deepStrictEqual(r.provider!.props, {});
+            assert.notStrictEqual(r.provider!.props, undefined);
+            assert.deepStrictEqual(r.provider!.props.version, "2.0.0");
             break;
 
         default:
