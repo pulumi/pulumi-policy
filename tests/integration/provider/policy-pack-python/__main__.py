@@ -38,17 +38,17 @@ def validate(r):
     elif t == "random:index/randomUuid:RandomUuid":
         assert r.provider is not None
         assert r.provider.resource_type == "pulumi:providers:random"
-        assert r.provider.name == "default_2_0_0"
-        assert r.provider.urn == create_urn("pulumi:providers:random", "default_2_0_0")
+        assert r.provider.name == "default_4_0_0"
+        assert r.provider.urn == create_urn("pulumi:providers:random", "default_4_0_0")
         assert r.provider.props
-        assert r.provider.props["version"] == "2.0.0"
+        assert r.provider.props["version"] == "4.0.0"
     elif t == "random:index/randomString:RandomString":
         assert r.provider is not None
         assert r.provider.resource_type == "pulumi:providers:random"
         assert r.provider.name == "my-provider"
         assert r.provider.urn == create_urn("pulumi:providers:random", "my-provider")
         assert r.provider.props
-        assert r.provider.props["version"] == "2.0.0"
+        assert r.provider.props["version"] == "4.0.0"
     else:
         raise AssertionError(f"Unexpected resource of type: '{t}'.")
 
