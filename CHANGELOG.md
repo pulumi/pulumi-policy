@@ -1,8 +1,11 @@
 ## HEAD (Unreleased)
-
-- Upgrade project to use Pulumi v3
+_(none)_
 
 ---
+
+## 1.3.0 (2021-04-22)
+- Upgrade project to use Pulumi v3
+  (https://github.com/pulumi/pulumi-policy/pull/266).
 
 ## 1.2.0 (2020-05-27)
 
