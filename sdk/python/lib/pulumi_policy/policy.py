@@ -103,7 +103,7 @@ class PolicyPack:
             enforcement_level if enforcement_level is not None else EnforcementLevel.ADVISORY,
             initial_config)
         server = grpc.server(
-            futures.ThreadPoolExecutor(max_workers=4),
+            futures.ThreadPoolExecutor(max_workers=4),  # pylint: disable=consider-using-with
             options=_GRPC_CHANNEL_OPTIONS
         )
         analyzer_pb2_grpc.add_AnalyzerServicer_to_server(
