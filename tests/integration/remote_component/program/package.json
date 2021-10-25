@@ -1,0 +1,10 @@
+{
+    "name": "remote_component",
+    "devDependencies": {
+        "@types/node": "^10.0.0"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.0.0",
+        "@pulumi/random": "^4.3.1"
+    }
+}

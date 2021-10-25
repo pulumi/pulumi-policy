@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -52,6 +53,14 @@ type policyTestScenario struct {
 	PolicyPackConfig map[string]PolicyConfig
 }
 
+func pathEnvWith(path string) string {
+	pathEnv, pathSeparator := os.Getenv("PATH"), ":"
+	if runtime.GOOS == "windows" {
+		pathSeparator = ";"
+	}
+	return "PATH=" + pathEnv + pathSeparator + path
+}
+
 // runPolicyPackIntegrationTest creates a new Pulumi stack and then runs through
 // a sequence of test scenarios where a configuration value is set and then
 // the stack is updated or previewed, confirming the expected result.
@@ -81,6 +90,19 @@ func runPolicyPackIntegrationTest(
 		}
 	}()
 	e.ImportDirectory(rootDir)
+
+	// If there is a testcomponent directory, update dependencies and set the PATH envvar.
+	testComponentDir := filepath.Join(e.RootPath, "testcomponent")
+	if _, err := os.Stat(testComponentDir); !os.IsNotExist(err) {
+		// Upgrade dependencies.
+		e.CWD = testComponentDir
+		e.RunCommand("go", "get", "-u", "./...")
+		abortIfFailed(t)
+
+		// Set the PATH envvar to the path to the testcomponent so the provider is available
+		// to the program.
+		e.Env = []string{pathEnvWith(testComponentDir)}
+	}
 
 	// Change to the Policy Pack directory.
 	packDir := filepath.Join(e.RootPath, "policy-pack")
@@ -820,5 +842,19 @@ func TestConfig(t *testing.T) {
 func TestDeserialize(t *testing.T) {
 	runPolicyPackIntegrationTest(t, "deserialize", NodeJS, nil, []policyTestScenario{
 		{WantErrors: nil},
+	})
+}
+
+// Test using a remote component with a nested unknown, ensuring the unknown remains at the leaf position and does
+// not end up making the whole top-level property unknown.
+func TestRemoteComponent(t *testing.T) {
+	runPolicyPackIntegrationTest(t, "remote_component", NodeJS, nil, []policyTestScenario{
+		{
+			WantErrors: []string{
+				"[advisory]  remote-component-policy v0.0.1  resource-validation (random:index/randomString:RandomString: innerRandom)",
+				"can't run policy 'resource-validation' during preview: string value at .keepers.hi can't be known during preview",
+			},
+			Advisory: true,
+		},
 	})
 }
