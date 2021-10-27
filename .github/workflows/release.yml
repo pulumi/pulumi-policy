@@ -58,6 +58,14 @@ jobs:
         with:
           node-version: ${{matrix.nodeversion}}
           registry-url: https://registry.npmjs.org
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{matrix.pythonversion}}
+      - name: Install Python deps
+        run: |-
+          pip3 install virtualenv==20.0.23
+          pip3 install pipenv
       - name: Ensure dependencies
         run: make ensure
       - name: Checkout Scripts Repo
