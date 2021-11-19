@@ -2,7 +2,7 @@ PROJECT_NAME := policy
 NODE_MODULE_NAME := @pulumi/policy
 include ../../../build/common.mk
 
-VERSION := $(shell ../../../scripts/get-version)
+VERSION := $(shell cd ../../../ && pulumictl get version --language javascript)
 
 export PATH := $(shell yarn bin 2>/dev/null):$(PATH)
 
