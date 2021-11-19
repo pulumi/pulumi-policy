@@ -99,8 +99,10 @@ jobs:
         run: make only_build
       - name: Check worktree clean
         run: ./ci-scripts/ci/check-worktree-is-clean
-      - name: Run Tests
+      - name: Run Unit Tests
         run: make only_test_fast
+      - name: Run Integration Tests
+        run: make test_all
       - name: Publish
         run: make publish_packages
     strategy:
