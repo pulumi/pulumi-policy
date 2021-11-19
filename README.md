@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/pulumi/pulumi-policy.svg?token=eHg7Zp5zdDDJfTjY8ejq&branch=master)](https://travis-ci.com/pulumi/pulumi-policy)
+![Build Status](https://github.com/pulumi/pulumi-policy/actions/workflows/master.yml/badge.svg)
 
 # Pulumi Policy SDK
 
