@@ -15,6 +15,7 @@ ensure::
 build::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(PYPI_VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
+	sed -i.bak "s/\$${VERSION}/$(VERSION:v%=%)/g" $(PYENVSRCLIB)/version.py && rm $(PYENVSRCLIB)/version.py.bak
 
 	cp ../../README.md $(PYENVSRC)
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
