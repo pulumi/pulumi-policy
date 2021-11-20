@@ -30,7 +30,7 @@ from pulumi.runtime.proto import analyzer_pb2_grpc
 
 from .deserialize import deserialize_properties
 from .proxy import UnknownValueError, unknown_checking_proxy
-from .version import SEMVERSION
+from .version import VERSION
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -833,7 +833,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         )
 
     def GetPluginInfo(self, request, context):
-        return proto.PluginInfo(version=SEMVERSION)
+        return proto.PluginInfo(version=VERSION)
 
     def Configure(self, request, context):
         config, config_enforcement_level = {}, {}

@@ -1,6 +1,6 @@
 PROJECT_NAME     := Pulumi Policy Python SDK
-SEMVER           := $(shell ../../scripts/get-version)
-VERSION          := $(shell ../../scripts/get-py-version HEAD)
+VERSION          := $(shell cd ../../ && pulumictl get version)
+PYPI_VERSION     := $(shell cd ../../ && pulumictl get version --language python)
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
@@ -14,8 +14,9 @@ ensure::
 
 build::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
-	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
-	sed -i.bak "s/\$${SEMVERSION}/$(SEMVER:v%=%)/g" $(PYENVSRCLIB)/version.py && rm $(PYENVSRCLIB)/version.py.bak
+	sed -i.bak "s/\$${VERSION}/$(PYPI_VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
+	sed -i.bak "s/\$${VERSION}/$(VERSION:v%=%)/g" $(PYENVSRCLIB)/version.py && rm $(PYENVSRCLIB)/version.py.bak
+
 	cp ../../README.md $(PYENVSRC)
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 
