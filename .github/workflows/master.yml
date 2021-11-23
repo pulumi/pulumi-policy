@@ -78,7 +78,7 @@ jobs:
           python-version: ${{matrix.python-version}}
       - name: Install pipenv
         run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
+          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet twine
       - name: Ensure dependencies
         run: make ensure
       - name: Checkout Scripts Repo
