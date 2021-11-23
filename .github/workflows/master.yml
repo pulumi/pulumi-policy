@@ -8,7 +8,7 @@ env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
   PULUMI_API: https://api.pulumi-staging.io
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  TRAVIS_OS_NAME: linux
+  PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 jobs:
   lint:
     name: lint
