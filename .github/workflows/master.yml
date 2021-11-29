@@ -122,8 +122,6 @@ jobs:
         node-version: [ 14.x ]
 name: master
 "on":
-  schedule:
-    - cron: '0 7 * * *'
   push:
     branches:
       - master
