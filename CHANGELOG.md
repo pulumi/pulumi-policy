@@ -3,7 +3,7 @@ _(none)_
 
 ---
 
-## 1.4.0 (2022-01-05)
+## 1.4.0 (2022-01-06)
 
 - Update @grpc/grpc-js dependency to 1.2.7
   (https://github.com/pulumi/pulumi-policy/pull/270).
