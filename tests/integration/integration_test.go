@@ -128,7 +128,7 @@ func runPolicyPackIntegrationTest(
 	abortIfFailed(t)
 
 	// Get dependencies.
-	var venvCreated bool
+	//var venvCreated bool
 	switch runtime {
 	case NodeJS:
 		e.RunCommand("yarn", "install")
@@ -139,7 +139,7 @@ func runPolicyPackIntegrationTest(
 		abortIfFailed(t)
 		e.RunCommand("pipenv", "run", "pip", "install", "-r", "requirements.txt")
 		abortIfFailed(t)
-		venvCreated = true
+		//venvCreated = true
 	default:
 		t.Fatalf("Unexpected runtime value.")
 	}
@@ -147,27 +147,44 @@ func runPolicyPackIntegrationTest(
 	// If we have a Python policy pack, create the virtual environment (if one doesn't already exist),
 	// and install dependencies into it. If the test uses a Python program, the virtual environment and
 	// activation will be shared between the program and policy pack.
-	var hasPythonPack bool
-	pythonPackDir := filepath.Join(e.RootPath, "policy-pack-python")
-	if _, err := os.Stat(pythonPackDir); !os.IsNotExist(err) {
-		hasPythonPack = true
+	//var hasPythonPack bool
+	//pythonPackDir := filepath.Join(e.RootPath, "policy-pack-python")
+	//if _, err := os.Stat(pythonPackDir); !os.IsNotExist(err) {
+	//	hasPythonPack = true
+	//
+	//	if !venvCreated {
+	//		e.RunCommand("pipenv", "--python", "3")
+	//		abortIfFailed(t)
+	//	}
+	//
+	//	pythonPackRequirements := filepath.Join(pythonPackDir, "requirements.txt")
+	//	if _, err := os.Stat(pythonPackRequirements); !os.IsNotExist(err) {
+	//		e.RunCommand("pipenv", "run", "pip", "install", "-r", pythonPackRequirements)
+	//		abortIfFailed(t)
+	//	}
+	//
+	//	dep := filepath.Join("..", "..", "sdk", "python", "env", "src")
+	//	dep, err = filepath.Abs(dep)
+	//	assert.NoError(t, err)
+	//	e.RunCommand("pipenv", "run", "pip", "install", "-e", dep)
+	//	abortIfFailed(t)
+	//}
 
-		if !venvCreated {
-			e.RunCommand("pipenv", "--python", "3")
-			abortIfFailed(t)
-		}
+	var hasGoPack bool
+	goPackDir := filepath.Join(e.RootPath, "policy-pack-go")
+	if _, err := os.Stat(goPackDir); !os.IsNotExist(err) {
+		hasGoPack = true
 
-		pythonPackRequirements := filepath.Join(pythonPackDir, "requirements.txt")
-		if _, err := os.Stat(pythonPackRequirements); !os.IsNotExist(err) {
-			e.RunCommand("pipenv", "run", "pip", "install", "-r", pythonPackRequirements)
-			abortIfFailed(t)
-		}
+		// Change directory to the policy-pack
+		e.CWD = goPackDir
 
-		dep := filepath.Join("..", "..", "sdk", "python", "env", "src")
+		dep := filepath.Join("..", "..", "sdk", "go")
 		dep, err = filepath.Abs(dep)
 		assert.NoError(t, err)
-		e.RunCommand("pipenv", "run", "pip", "install", "-e", dep)
-		abortIfFailed(t)
+		e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi-policy/sdk/go="+dep)
+
+		// Change back to the program directory
+		e.CWD = programDir
 	}
 
 	// Initial configuration.
@@ -234,7 +251,7 @@ func runPolicyPackIntegrationTest(
 						e.CWD = programDir
 					}
 
-					if runtime == Python || hasPythonPack {
+					if runtime == Python { //|| hasPythonPack {
 						cmd = "pipenv"
 						args = append([]string{"run", "pulumi"}, args...)
 					}
@@ -268,8 +285,11 @@ func runPolicyPackIntegrationTest(
 		})
 	}
 	runScenarios(packDir)
-	if hasPythonPack {
-		runScenarios(pythonPackDir)
+	//if hasPythonPack {
+	//	runScenarios(pythonPackDir)
+	//}
+	if hasGoPack {
+		runScenarios(goPackDir)
 	}
 
 	e.T = t

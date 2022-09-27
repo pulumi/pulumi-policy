@@ -2,22 +2,13 @@ package policy
 
 import (
 	"context"
-	"errors"
-	"flag"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"strings"
-	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
 )
 
 func PolicyPack(name string) error {
@@ -48,27 +39,22 @@ type analyzerServer struct {
 	analyzer plugin.Analyzer
 }
 
-func (a *analyzerServer) Analyze(context.Context, *AnalyzeRequest) (*AnalyzeResponse, error)
-{
+func (a *analyzerServer) Analyze(context.Context, *pulumirpc.AnalyzeRequest) (*pulumirpc.AnalyzeResponse, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }
 
-func (a *analyzerServer) AnalyzeStack(context.Context, *AnalyzeStackRequest) (*AnalyzeResponse, error)
-{
+func (a *analyzerServer) AnalyzeStack(context.Context, *pulumirpc.AnalyzeStackRequest) (*pulumirpc.AnalyzeResponse, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }
 
-func (a *analyzerServer) GetAnalyzerInfo(context.Context, *emptypb.Empty) (*AnalyzerInfo, error)
-{
+func (a *analyzerServer) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pulumirpc.AnalyzerInfo, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }
 
-func (a *analyzerServer) GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
-{
+func (a *analyzerServer) GetPluginInfo(context.Context, *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }
 
-func (a *analyzerServer) Configure(context.Context, *ConfigureAnalyzerRequest) (*emptypb.Empty, error)
-{
+func (a *analyzerServer) Configure(context.Context, *pulumirpc.ConfigureAnalyzerRequest) (*pbempty.Empty, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }
