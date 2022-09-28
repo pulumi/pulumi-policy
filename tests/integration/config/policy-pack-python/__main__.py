@@ -2,6 +2,8 @@
 
 import pulumi
 
+import os
+
 from pulumi_policy import (
     EnforcementLevel,
     PolicyConfigSchema,
@@ -13,6 +15,8 @@ from pulumi_policy import (
 schema = None
 initial_config = None
 verify = None
+
+print(os.environ["PULUMI_PROJECT"])
 
 test_scenario = pulumi.Config().require_int("scenario")
 

@@ -4,7 +4,10 @@ go 1.18
 
 replace github.com/pulumi/pulumi-policy/sdk/go => ../../../../sdk/go
 
-require github.com/pulumi/pulumi-policy/sdk/go v0.0.0-00010101000000-000000000000
+require (
+	github.com/pulumi/pulumi-policy/sdk/go v0.0.0-00010101000000-000000000000
+	github.com/pulumi/pulumi/sdk/v3 v3.40.1
+)
 
 require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
@@ -36,7 +39,6 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
-	github.com/pulumi/pulumi/sdk/v3 v3.40.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94 // indirect

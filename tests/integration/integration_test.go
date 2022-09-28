@@ -147,28 +147,46 @@ func runPolicyPackIntegrationTest(
 	// If we have a Python policy pack, create the virtual environment (if one doesn't already exist),
 	// and install dependencies into it. If the test uses a Python program, the virtual environment and
 	// activation will be shared between the program and policy pack.
-	//var hasPythonPack bool
-	//pythonPackDir := filepath.Join(e.RootPath, "policy-pack-python")
-	//if _, err := os.Stat(pythonPackDir); !os.IsNotExist(err) {
-	//	hasPythonPack = true
-	//
-	//	if !venvCreated {
-	//		e.RunCommand("pipenv", "--python", "3")
-	//		abortIfFailed(t)
-	//	}
-	//
-	//	pythonPackRequirements := filepath.Join(pythonPackDir, "requirements.txt")
-	//	if _, err := os.Stat(pythonPackRequirements); !os.IsNotExist(err) {
-	//		e.RunCommand("pipenv", "run", "pip", "install", "-r", pythonPackRequirements)
-	//		abortIfFailed(t)
-	//	}
-	//
-	//	dep := filepath.Join("..", "..", "sdk", "python", "env", "src")
-	//	dep, err = filepath.Abs(dep)
-	//	assert.NoError(t, err)
-	//	e.RunCommand("pipenv", "run", "pip", "install", "-e", dep)
-	//	abortIfFailed(t)
-	//}
+	var hasPythonPack bool
+	pythonPackDir := filepath.Join(e.RootPath, "policy-pack-python")
+	if _, err := os.Stat(pythonPackDir); !os.IsNotExist(err) {
+		hasPythonPack = true
+
+		//if !venvCreated {
+		//	e.RunCommand("pipenv", "--python", "3")
+		//	abortIfFailed(t)
+		//}
+		//
+		//pythonPackRequirements := filepath.Join(pythonPackDir, "requirements.txt")
+		//if _, err := os.Stat(pythonPackRequirements); !os.IsNotExist(err) {
+		//	e.RunCommand("pipenv", "run", "pip", "install", "-r", pythonPackRequirements)
+		//	abortIfFailed(t)
+		//}
+		//
+		//dep := filepath.Join("..", "..", "sdk", "python", "env", "src")
+		//dep, err = filepath.Abs(dep)
+		//assert.NoError(t, err)
+		//e.RunCommand("pipenv", "run", "pip", "install", "-e", dep)
+		//abortIfFailed(t)
+
+		// Change directory to the policy-pack
+		e.CWD = pythonPackDir
+
+		e.RunCommand("python", "-m", "venv", "venv")
+		abortIfFailed(t)
+
+		e.RunCommand("./venv/bin/python", "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel")
+		abortIfFailed(t)
+
+		dep := filepath.Join("..", "..", "sdk", "python", "env", "src")
+		dep, err = filepath.Abs(dep)
+		assert.NoError(t, err)
+		e.RunCommand("./venv/bin/python", "-m", "pip", "install", "-e", dep)
+		abortIfFailed(t)
+
+		// Change back to the program directory
+		e.CWD = programDir
+	}
 
 	var hasGoPack bool
 	goPackDir := filepath.Join(e.RootPath, "policy-pack-go")
@@ -284,12 +302,12 @@ func runPolicyPackIntegrationTest(
 			}
 		})
 	}
-	runScenarios(packDir)
-	//if hasPythonPack {
-	//	runScenarios(pythonPackDir)
-	//}
+	//runScenarios(packDir)
+	if hasPythonPack {
+		runScenarios(pythonPackDir)
+	}
 	if hasGoPack {
-		runScenarios(goPackDir)
+		//runScenarios(goPackDir)
 	}
 
 	e.T = t
