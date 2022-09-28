@@ -3,15 +3,32 @@ package policy
 import (
 	"context"
 	"fmt"
+	"os"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 )
 
-func PolicyPack(name string) error {
+type EnforcementLevel int32
+
+const (
+	EnforcementLevel_Advisory  EnforcementLevel = 0 // Displayed to users, but does not block deployment.
+	EnforcementLevel_Mandatory EnforcementLevel = 1 // Stops deployment, cannot be overridden.
+	EnforcementLevel_Disabled  EnforcementLevel = 2 // Disabled policies do not run during a deployment.
+)
+
+func Run(main func(config *config.Config) error) error {
+	// Make up the config for this policy project
+	project := os.Getenv("PULUMI_PROJECT")
+	config := config.New(nil, project)
+	return main(config)
+}
+
+func PolicyPack(name string, level EnforcementLevel) error {
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {

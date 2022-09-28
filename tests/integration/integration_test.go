@@ -304,10 +304,10 @@ func runPolicyPackIntegrationTest(
 	}
 	//runScenarios(packDir)
 	if hasPythonPack {
-		runScenarios(pythonPackDir)
+		//runScenarios(pythonPackDir)
 	}
 	if hasGoPack {
-		//runScenarios(goPackDir)
+		runScenarios(goPackDir)
 	}
 
 	e.T = t

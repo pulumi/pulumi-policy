@@ -4,7 +4,7 @@ package main
 
 import (
 	policy "github.com/pulumi/pulumi-policy/sdk/go"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 /*
@@ -336,11 +336,15 @@ const scenarios: TestScenario[] = [
 */
 
 func main() {
+	policy.Run(func(config *config.Config) error {
+		testScenario := config.RequireInt("scenario")
 
-	config := pulumi.Config()
-	testScenario := config.RequireNumber("scenario")
+		policy.PolicyPack(
+			"config-policy",
+			policy.EnforcementLevelMandatory)
 
-	policy.PolicyPack("config-policy")
+		return nil
+	})
 }
 
 /*
