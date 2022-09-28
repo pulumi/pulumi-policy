@@ -110,7 +110,7 @@ class PolicyPack:
         )
         analyzer_pb2_grpc.add_AnalyzerServicer_to_server(
             servicer, server)
-        port = server.add_insecure_port(address="0.0.0.0:0")
+        port = server.add_insecure_port(address="127.0.0.1:0")
         server.start()
         sys.stdout.buffer.write(f"{port}\n".encode())
         try:
