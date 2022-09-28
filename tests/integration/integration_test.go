@@ -94,9 +94,9 @@ func runPolicyPackIntegrationTest(
 	// If there is a testcomponent directory, update dependencies and set the PATH envvar.
 	testComponentDir := filepath.Join(e.RootPath, "testcomponent")
 	if _, err := os.Stat(testComponentDir); !os.IsNotExist(err) {
-		// Upgrade dependencies.
+		// Install dependencies.
 		e.CWD = testComponentDir
-		e.RunCommand("go", "get", "-u", "./...")
+		e.RunCommand("go", "mod", "tidy")
 		abortIfFailed(t)
 
 		// Set the PATH envvar to the path to the testcomponent so the provider is available
