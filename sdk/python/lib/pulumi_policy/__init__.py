@@ -34,3 +34,27 @@ from .policy import (
     StackValidationArgs,
     StackValidationPolicy,
 )
+
+import pulumi.runtime
+import os
+
+# If any config variables are present, parse and set them, so subsequent accesses are fast.
+config_env = pulumi.runtime.get_config_env()
+for k, v in config_env.items():
+    pulumi.runtime.set_config(k, v)
+
+# Configure the runtime so that the user program hooks up to Pulumi as appropriate.
+if (
+    "PULUMI_PROJECT" in os.environ
+    and "PULUMI_STACK" in os.environ
+    and "PULUMI_DRY_RUN" in os.environ
+):
+    pulumi.runtime.configure(
+        pulumi.runtime.Settings(
+            project=os.environ["PULUMI_PROJECT"],
+            stack=os.environ["PULUMI_STACK"],
+            dry_run=os.environ["PULUMI_DRY_RUN"] == "true",
+            # PULUMI_ORGANIZATION might not be set for filestate backends
+            organization=os.environ.get("PULUMI_ORGANIZATION", "organization"),
+        )
+    )

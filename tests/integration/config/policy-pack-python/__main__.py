@@ -16,8 +16,6 @@ schema = None
 initial_config = None
 verify = None
 
-print(os.environ["PULUMI_PROJECT"])
-
 test_scenario = pulumi.Config().require_int("scenario")
 
 if test_scenario == 1:
