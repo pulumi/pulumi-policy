@@ -55,7 +55,6 @@ describe("runtime", () => {
         it(
             "marshals secrets correctly",
             asyncTest(async () => {
-                (<any>runtime)._setTestModeEnabled(true);
                 const inputs: Inputs = {
                     secret1: secret(1),
                     secret2: secret(undefined),
@@ -67,7 +66,6 @@ describe("runtime", () => {
                 const result = deserializeProperties(transfer);
                 assert.equal(result.secret1, 1);
                 assert.equal(result.secret2, undefined);
-                (<any>runtime)._setTestModeEnabled(false);
             }),
         );
     });
