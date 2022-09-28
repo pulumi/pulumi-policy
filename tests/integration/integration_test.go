@@ -108,12 +108,12 @@ func runPolicyPackIntegrationTest(
 	packDir := filepath.Join(e.RootPath, "policy-pack")
 	e.CWD = packDir
 
-	// Get dependencies.
-	e.RunCommand("yarn", "install")
-	abortIfFailed(t)
-
 	// Link @pulumi/policy.
 	e.RunCommand("yarn", "link", "@pulumi/policy")
+	abortIfFailed(t)
+
+	// Get dependencies.
+	e.RunCommand("yarn", "install")
 	abortIfFailed(t)
 
 	// Change to the Pulumi program directory.
