@@ -8,6 +8,8 @@ require (
 	google.golang.org/grpc v1.29.1
 )
 
+replace github.com/pulumi/pulumi/sdk/v3 => /Users/vivek/code/pulumi/sdk
+
 require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
