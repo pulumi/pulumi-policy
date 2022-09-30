@@ -341,7 +341,7 @@ func main() {
 
 		policy.PolicyPack(
 			"config-policy",
-			policy.EnforcementLevelMandatory)
+			policy.EnforcementLevel_Mandatory)
 
 		return nil
 	})
