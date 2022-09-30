@@ -14,17 +14,19 @@
 
 import asyncio
 from concurrent import futures
+import os
 import re
 import sys
 import time
 
 from enum import Enum
-from inspect import isawaitable
+from inspect import isawaitable, signature
 from typing import Any, Awaitable, Callable, Dict, Mapping, List, NamedTuple, Optional, Union, cast
 from abc import ABC
 
 import grpc
 from google.protobuf import empty_pb2, json_format, struct_pb2
+import pulumi.runtime
 from pulumi.runtime import proto
 from pulumi.runtime.proto import analyzer_pb2_grpc
 
@@ -676,6 +678,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         property_dependencies: Dict[str, List[str]]
 
     def Analyze(self, request, context):
+        self._configure_runtime_settings()
+
         diagnostics: List[proto.AnalyzeDiagnostic] = []
         for policy in self.__policies:
             enforcement_level = self._get_enforcement_level(policy)
@@ -712,6 +716,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
     def AnalyzeStack(self, request, context):
+        self._configure_runtime_settings()
+
         diagnostics: List[proto.AnalyzeDiagnostic] = []
         for policy in self.__policies:
             enforcement_level = self._get_enforcement_level(policy)
@@ -945,6 +951,33 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             if config:
                 return config.copy()
         return None
+
+    def _configure_runtime_settings(self):
+        # If any config variables are present, parse and set them, so subsequent accesses are fast.
+        config_env = pulumi.runtime.get_config_env()
+        for k, v in config_env.items():
+            pulumi.runtime.set_config(k, v)
+
+        # Configure the runtime so that the user program hooks up to Pulumi as appropriate.
+        if (
+            "PULUMI_PROJECT" in os.environ
+            and "PULUMI_STACK" in os.environ
+            and "PULUMI_DRY_RUN" in os.environ
+        ):
+            settings_args = {
+                "project": os.environ["PULUMI_PROJECT"],
+                "stack": os.environ["PULUMI_STACK"],
+                "dry_run": os.environ["PULUMI_DRY_RUN"] == "true",
+            }
+            # Older versions of the Pulumi SDK don't support the organization arg,
+            # so only set it if it's supported.
+            settings_signature = signature(pulumi.runtime.Settings)
+            if "organization" in settings_signature.parameters:
+                # PULUMI_ORGANIZATION might not be set for filestate backends
+                settings_args["organization"] = os.environ.get("PULUMI_ORGANIZATION", "organization")
+
+            settings = pulumi.runtime.Settings(**settings_args)
+            pulumi.runtime.configure(settings)
 
 
 class _NormalizedConfigValue(NamedTuple):
