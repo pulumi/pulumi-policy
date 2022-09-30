@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/pulumi/pulumi-policy/sdk/go/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"os"
 	"regexp"
 
@@ -103,7 +104,7 @@ type Policy[T ValidationPolicy] struct {
 	Description      string
 	EnforcementLevel EnforcementLevel
 	ConfigSchema     *PolicyConfigSchema
-	ValidationPolicy T
+	ValidationPolicy func() T
 }
 
 type ResourceValidationArgs struct {
@@ -134,7 +135,7 @@ func Run(main func(config *config.Config) error) error {
 
 var policyPackNameRE = regexp.MustCompile(`^[a-zA-Z0-9-_.]{1,100}$`)
 
-func Pack[T ValidationPolicy](name string, enforcementLevel EnforcementLevel, policies Policies[T]) error {
+func Pack[T ValidationPolicy](name string, policies Policies[T]) error {
 	if name == "" || !policyPackNameRE.MatchString(name) {
 		logger.V(1).Infof("Invalid policy pack name %q. Policy pack names may only contain alphanumerics, hyphens, "+
 			"underscores, or periods.", name)
@@ -162,9 +163,8 @@ func Pack[T ValidationPolicy](name string, enforcementLevel EnforcementLevel, po
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			analyzer := &analyzerServer[T]{
-				policyPackName:   name,
-				enforcementLevel: enforcementLevel,
-				policies:         policies,
+				policyPackName: name,
+				policies:       policies,
 			}
 			pulumirpc.RegisterAnalyzerServer(srv, analyzer)
 			return nil
@@ -187,21 +187,20 @@ func Pack[T ValidationPolicy](name string, enforcementLevel EnforcementLevel, po
 
 type analyzerServer[T ValidationPolicy] struct {
 	analyzer         plugin.Analyzer
-	enforcementLevel EnforcementLevel
 	policyPackName   string
 	policies         Policies[T]
 	policyPackConfig map[string]interface{}
 }
 
 func (a *analyzerServer[T]) Analyze(ctx context.Context, req *pulumirpc.AnalyzeRequest) (*pulumirpc.AnalyzeResponse, error) {
-	switch f := any(a).(type) {
-	case ResourceValidationPolicy:
+	switch v := any(a).(type) {
+	case *analyzerServer[ResourceValidationPolicy]:
+		var ds []*pulumirpc.AnalyzeDiagnostic
 		for _, p := range a.policies {
-			var ds []*pulumirpc.AnalyzeDiagnostic
 			defaultReportViolation := func(message string, urn string) {
 				violationMessage := p.Description
 				if message != "" {
-					violationMessage += fmt.Sprintf(`\n%s`, message)
+					violationMessage += fmt.Sprintf("\n%s", message)
 				}
 
 				ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
@@ -226,26 +225,33 @@ func (a *analyzerServer[T]) Analyze(ctx context.Context, req *pulumirpc.AnalyzeR
 					PropertyDependencies: nil, /* TODO */
 				},
 			}
-			f(args, defaultReportViolation)
-			return &pulumirpc.AnalyzeResponse{
-				Diagnostics: ds,
-			}, nil
+			switch f := any(p.ValidationPolicy).(type) {
+			case func() ResourceValidationPolicy:
+				_, _ = fmt.Fprintf(os.Stderr, "Calling resource validation policy: %q on URN: %q\n", p.Name, req.GetUrn())
+				f()(args, defaultReportViolation)
+			default:
+				contract.Fail()
+			}
 		}
+		return &pulumirpc.AnalyzeResponse{
+			Diagnostics: ds,
+		}, nil
+	default:
+		return nil, fmt.Errorf("analyze unexpected on stack validation policypack: %q type: %T", a.policyPackName, v)
 	}
-	return nil, fmt.Errorf("analyze unexpected on stack validation policypack: %q", a.policyPackName)
 }
 
 func (a *analyzerServer[T]) AnalyzeStack(ctx context.Context, req *pulumirpc.AnalyzeStackRequest) (*pulumirpc.
-AnalyzeResponse,
+	AnalyzeResponse,
 	error) {
-	switch f := any(a).(type) {
-	case StackValidationPolicy:
+	switch any(a).(type) {
+	case *analyzerServer[StackValidationPolicy]:
+		var ds []*pulumirpc.AnalyzeDiagnostic
 		for _, p := range a.policies {
-			var ds []*pulumirpc.AnalyzeDiagnostic
 			defaultReportViolation := func(message string, urn string) {
 				violationMessage := p.Description
 				if message != "" {
-					violationMessage += fmt.Sprintf(`\n%s`, message)
+					violationMessage += fmt.Sprintf("\n%s", message)
 				}
 
 				ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
@@ -275,27 +281,41 @@ AnalyzeResponse,
 			args := StackValidationArgs{
 				Resources: resources,
 			}
-			f(args, defaultReportViolation)
-			return &pulumirpc.AnalyzeResponse{
-				Diagnostics: ds,
-			}, nil
+			switch f := any(p.ValidationPolicy).(type) {
+			case func() StackValidationPolicy:
+				f()(args, defaultReportViolation)
+			default:
+				contract.Fail()
+			}
 		}
+		return &pulumirpc.AnalyzeResponse{
+			Diagnostics: ds,
+		}, nil
+	default:
+		// Ignore since we seem to call analyze stack regardless.
+		return &pulumirpc.AnalyzeResponse{}, nil
 	}
-	return nil, fmt.Errorf("analyzeStack unexpected on resource validation policypack: %q", a.policyPackName)
+
 }
 
 func (a *analyzerServer[T]) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pulumirpc.AnalyzerInfo, error) {
 	var policies []*pulumirpc.PolicyInfo
 
 	for _, p := range a.policies {
-		props, err := plugin.MarshalProperties(resource.NewPropertyMap(p.ConfigSchema.Properties),
+		var required []string
+		configSchemaProps := resource.NewPropertyMapFromMap(nil)
+		if p.ConfigSchema != nil {
+			configSchemaProps = resource.NewPropertyMap(p.ConfigSchema.Properties)
+			required = p.ConfigSchema.Required
+		}
+		props, err := plugin.MarshalProperties(configSchemaProps,
 			plugin.MarshalOptions{KeepSecrets: true})
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal properties for policy pack: %q: %w", a.policyPackName, err)
 		}
 		configSchema := pulumirpc.PolicyConfigSchema{
 			Properties: props,
-			Required:   p.ConfigSchema.Required,
+			Required:   required,
 		}
 
 		policies = append(policies, &pulumirpc.PolicyInfo{

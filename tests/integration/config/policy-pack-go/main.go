@@ -336,15 +336,34 @@ const scenarios: TestScenario[] = [
 */
 
 func main() {
-	policy.Run(func(config *config.Config) error {
-		testScenario := config.RequireInt("scenario")
+	if err := policy.Run(func(config *config.Config) error {
+		//testScenario := config.RequireInt("scenario")
 
-		policy.PolicyPack(
+		if err := policy.Pack[policy.ResourceValidationPolicy](
 			"config-policy",
-			policy.EnforcementLevel_Mandatory)
+			policy.Policies[policy.ResourceValidationPolicy]{
+				{
+					Name:             "discouraged-ec2-public-ip-address",
+					Description:      "Associating public IP addresses is discouraged.",
+					EnforcementLevel: policy.EnforcementLevel_Advisory,
+					ValidationPolicy: func(args policy.ResourceValidationArgs, reportViolation policy.ReportViolation) {
+						if args.Resource.Type != "aws:ec2/instance:Instance" {
+							return
+						}
+						fields := args.Resource.Properties.GetFields()
+						if val, ok := fields["associatePublicIpAddress"]; ok && val.GetBoolValue() {
+							reportViolation("Consider not setting associatePublicIpAddress to true.", args.Resource.Urn)
+						}
+					},
+				},
+			}); err != nil {
+			return err
+		}
 
 		return nil
-	})
+	}); err != nil {
+		panic(err)
+	}
 }
 
 /*
