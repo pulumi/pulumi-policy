@@ -129,7 +129,7 @@ export function serve(
         getPluginInfo: getPluginInfoRpc,
         configure: configure,
     });
-    server.bindAsync("0.0.0.0:0", grpc.ServerCredentials.createInsecure(), (err, port) => {
+    server.bindAsync("127.0.0.1:0", grpc.ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
             console.error(err);
             process.exit(1);
