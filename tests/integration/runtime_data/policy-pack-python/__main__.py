@@ -5,7 +5,6 @@ import os
 
 from pulumi import Config, get_project, get_stack
 from pulumi.runtime import is_dry_run
-from pulumi.runtime.config import CONFIG
 from pulumi_aws import config as aws_config
 
 from pulumi_policy import (
@@ -44,7 +43,6 @@ def verify_data(r):
     assert get_stack() == r.props["getStack"]
 
     # Verify Config
-    assert json.dumps(CONFIG, sort_keys=True) == json.dumps(dict(r.props["allConfig"]), sort_keys=True)
     config = Config()
     value = config.require("aConfigValue")
     assert value == "this value is a value"
