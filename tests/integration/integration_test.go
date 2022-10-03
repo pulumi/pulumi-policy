@@ -484,6 +484,7 @@ func TestRuntimeData(t *testing.T) {
 
 // Test resource options.
 func TestResourceOptions(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi-policy/issues/291")
 	runPolicyPackIntegrationTest(t, "resource_options", NodeJS, nil, []policyTestScenario{
 		// Test scenario 1: test resource options.
 		{WantErrors: nil},
@@ -494,6 +495,7 @@ func TestResourceOptions(t *testing.T) {
 
 // Test parent and dependencies.
 func TestParentDependencies(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi-policy/issues/292")
 	runPolicyPackIntegrationTest(t, "parent_dependencies", NodeJS, nil, []policyTestScenario{
 		{WantErrors: nil},
 	})
