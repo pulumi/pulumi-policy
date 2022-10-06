@@ -3,6 +3,11 @@ _(none)_
 
 ---
 
+## 1.5.0 (2022-10-06)
+
+- Python: Workaround regression introduced by use of ContextVars in the Pulumi Python SDK
+  (https://github.com/pulumi/pulumi-policy/pull/288).
+
 ## 1.4.0 (2022-01-06)
 
 - Update @grpc/grpc-js dependency to 1.2.7
