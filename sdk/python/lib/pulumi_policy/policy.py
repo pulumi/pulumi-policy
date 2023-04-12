@@ -677,7 +677,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         dependencies: List[str]
         property_dependencies: Dict[str, List[str]]
 
-    def Analyze(self, request, context):
+    def Analyze(self, request, _context):
         self._configure_runtime_settings()
 
         diagnostics: List[proto.AnalyzeDiagnostic] = []
@@ -703,7 +703,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     loop.run_until_complete(result)
                     loop.close()
             except UnknownValueError as e:
-                diagnostics.append(proto.AnalyzeDiagnostic(
+                diagnostics.append(proto.AnalyzeDiagnostic(  # type: ignore
                     policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
                     policyPackVersion=self.__policy_pack_version,
@@ -715,7 +715,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
-    def AnalyzeStack(self, request, context):
+    def AnalyzeStack(self, request, _context):
         self._configure_runtime_settings()
 
         diagnostics: List[proto.AnalyzeDiagnostic] = []
@@ -790,7 +790,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
-    def GetAnalyzerInfo(self, request, context):
+    def GetAnalyzerInfo(self, _request, _context):
         policies: List[proto.PolicyInfo] = []
         for policy in self.__policies:
             enforcement_level = (policy.enforcement_level if policy.enforcement_level is not None
@@ -838,10 +838,10 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             initialConfig=initial_config,
         )
 
-    def GetPluginInfo(self, request, context):
+    def GetPluginInfo(self, _request, _context):
         return proto.PluginInfo(version=VERSION)
 
-    def Configure(self, request, context):
+    def Configure(self, request, _context):
         config, config_enforcement_level = {}, {}
         for k in request.policyConfig:
             v = request.policyConfig[k]
@@ -893,7 +893,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             if message:
                 violation_message += f"\n{message}"
 
-            diagnostics.append(proto.AnalyzeDiagnostic(
+            diagnostics.append(proto.AnalyzeDiagnostic(  # type: ignore
                 policyName=policy_name,
                 policyPackName=self.__policy_pack_name,
                 policyPackVersion=self.__policy_pack_version,
@@ -906,20 +906,20 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
     def _map_enforcement_level(self, enforcement_level: EnforcementLevel) -> int:
         if enforcement_level == EnforcementLevel.ADVISORY:
-            return proto.ADVISORY
+            return proto.ADVISORY  # type: ignore
         if enforcement_level == EnforcementLevel.MANDATORY:
-            return proto.MANDATORY
+            return proto.MANDATORY  # type: ignore
         if enforcement_level == EnforcementLevel.DISABLED:
-            return proto.DISABLED
+            return proto.DISABLED  # type: ignore
         raise AssertionError(
             f"unknown enforcement level: {enforcement_level}")
 
     def _convert_enforcement_level(self, enforcement_level: int) -> EnforcementLevel:
-        if enforcement_level == proto.ADVISORY:
+        if enforcement_level == proto.ADVISORY:  # type: ignore
             return EnforcementLevel.ADVISORY
-        if enforcement_level == proto.MANDATORY:
+        if enforcement_level == proto.MANDATORY:  # type: ignore
             return EnforcementLevel.MANDATORY
-        if enforcement_level == proto.DISABLED:
+        if enforcement_level == proto.DISABLED:  # type: ignore
             return EnforcementLevel.DISABLED
         raise AssertionError(
             f"unknown enforcement level: {enforcement_level}")
