@@ -13,7 +13,7 @@
         "@grpc/grpc-js": "^1.2.7",
         "@pulumi/pulumi": "^3.0.0",
         "google-protobuf": "^3.5.0",
-        "protobufjs": "^6.8.6"
+        "protobufjs": "^6.11.3"
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
