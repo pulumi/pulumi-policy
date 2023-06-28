@@ -3,6 +3,11 @@ _(none)_
 
 ---
 
+## 1.6.0 (2023-06-28)
+
+- Bump `protobufjs` to the latest 6.x minor version. Addresses [CVE-2022-25878](https://security.snyk.io/vuln/SNYK-JS-PROTOBUFJS-2441248)
+  (https://github.com/pulumi/pulumi-policy/pull/308).
+
 ## 1.5.0 (2022-10-06)
 
 - Python: Workaround regression introduced by use of ContextVars in the Pulumi Python SDK
