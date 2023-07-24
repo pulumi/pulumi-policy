@@ -3,6 +3,11 @@ _(none)_
 
 ---
 
+## 1.7.0 (2023-07-24)
+
+- Bump `protobufjs` to the latest 7.x major version. Addresses [CVE-2023-36665](https://security.snyk.io/vuln/SNYK-JS-PROTOBUFJS-5756498)
+  (https://github.com/pulumi/pulumi-policy/pull/313).
+
 ## 1.6.0 (2023-06-28)
 
 - Bump `protobufjs` to the latest 6.x minor version. Addresses [CVE-2022-25878](https://security.snyk.io/vuln/SNYK-JS-PROTOBUFJS-2441248)
