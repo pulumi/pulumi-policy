@@ -198,8 +198,6 @@ export function convertEnforcementLevel(el: number): EnforcementLevel | undefine
             return "mandatory";
         case analyzerproto.EnforcementLevel.DISABLED:
             return "disabled";
-        case analyzerproto.EnforcementLevel.DEFAULT:
-            return undefined;
         default:
             throw new Error(`Unknown enforcement level ${el}.`);
     }
@@ -270,6 +268,11 @@ export interface TransformResult {
      * The transformed resource's properties to use in place of the input ones.
      */
     properties: Record<string, any>;
+
+    /**
+     * An optional diagnostic string in the case that something went wrong.
+     */
+    diagnostic?: string;
 }
 
 /**
@@ -287,6 +290,7 @@ export function makeTransformResponse(ts: TransformResult[]) {
         transform.setPolicypackversion(t.policyPackVersion);
         transform.setDescription(t.description);
         transform.setProperties(structproto.Struct.fromJavaScript(t.properties));
+        transform.setDiagnostic(t.diagnostic);
         transforms.push(transform);
     }
     resp.setTransformsList(transforms);

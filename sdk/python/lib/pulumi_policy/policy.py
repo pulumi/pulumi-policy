@@ -917,8 +917,9 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             config = self._get_policy_config(remediation.name)
             args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider, config)
 
+            rpc_props = None
+            diagnostic = None
             try:
-                new_props = None
                 result = remediation.remediate(args)
                 if isawaitable(result):
                     loop = asyncio.new_event_loop()
@@ -934,31 +935,21 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     rpc_props = struct_pb2.Struct()
                     for k, v in ser_props.items():
                         rpc_props[k] = v
-                    remediations.append(proto.TransformResult(
-                        transformName=remediation.name,
-                        policyPackName=self.__policy_pack_name,
-                        policyPackVersion=self.__policy_pack_version,
-                        description=remediation.description,
-                        properties=rpc_props,
-                    ))
 
             except UnknownValueError as e:
-                # TODO - what to do here?
-                #diagnostics.append(proto.AnalyzeDiagnostic(  # type: ignore
-                #    transformName=remediation.name,
-                #    policyPackName=self.__policy_pack_name,
-                #    policyPackVersion=self.__policy_pack_version,
-                #    description=policy.description,
-                #    properties=None,
-                #))
+                diagnostic = f"can't run remediation '{remediation.name}' from policy pack {self.__policy_pack_name}@{self.__policy_pack_version} during preview: {e.message}"
                 pass
 
-            except:
-                # Extract the stack trace
-                stack_trace = traceback.format_exc()
-                # Log the stack trace (optional)
-                print(stack_trace)
-                raise
+            if rpc_props or diagnostic:
+                remediations.append(proto.TransformResult(
+                    transformName=remediation.name,
+                    policyPackName=self.__policy_pack_name,
+                    policyPackVersion=self.__policy_pack_version,
+                    description=remediation.description,
+                    properties=rpc_props,
+                    diagnostic=diagnostic,
+                ))
+
 
         return proto.TransformResponse(transforms=remediations)
 

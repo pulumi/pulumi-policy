@@ -592,20 +592,22 @@ export interface Transform {
      * ```
      */
     configSchema?: PolicyConfigSchema;
+
+    /**
+     * Takes a resource as input and optionally returns a transformed set of properties.
+     */
+    transformResource: ResourceTransformer;
 }
 
-export interface ResourceTransform extends Transform {
-    transformResource: ResourceTransformer | ResourceTransformer[];
-}
-
-export type ResourceTransformer = (args: ResourceTransformArgs) => Promise<Record<string, any>> | Record<string, any> | undefined;
+export type ResourceTransformer =
+    (args: ResourceTransformArgs) => Promise<Record<string, any>> | Record<string, any> | undefined;
 
 export type ResourceTransformArgs = ResourceValidationArgs;
 
 /**
  * An array of Transforms.
  */
-export type Transforms = ResourceTransform[];
+export type Transforms = Transform[];
 
 /**
  * A helper function that returns a strongly-typed resource validation function, used to check only resources of the
