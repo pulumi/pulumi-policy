@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2023, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import time
+import traceback
 
 from enum import Enum
 from inspect import isawaitable, signature
@@ -29,8 +30,9 @@ from google.protobuf import empty_pb2, json_format, struct_pb2
 import pulumi.runtime
 from pulumi.runtime import proto
 from pulumi.runtime.proto import analyzer_pb2_grpc
+from pulumi.runtime.rpc import serialize_properties
 
-from .deserialize import deserialize_properties
+from .serialize import deserialize_properties, serialize_properties
 from .proxy import UnknownValueError, unknown_checking_proxy
 from .version import VERSION
 
@@ -49,12 +51,14 @@ class PolicyPack:
 
     def __init__(self,
                  name: str,
-                 policies: List['Policy'],
+                 policies: Optional[List['Policy']] = None,
+                 remediations: Optional[List['Remediation']] = None,
                  enforcement_level: Optional['EnforcementLevel'] = None,
                  initial_config: Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] = None) -> None:
         """
         :param str name: The name of the policy pack.
-        :param List[Policy] policies: The policies associated with a policy pack.
+        :param Optional[List[Policy]] policies: The policies associated with a policy pack.
+        :param Optional[List[Remeediation]] remediations: The remediations associated with a policy pack.
         :param Optional[EnforcementLevel] enforcement_level: Indicates what to do on policy
                violation, e.g., block deployment but allow override with
                proper permissions. This is the default used for all policies in the policy pack.
@@ -71,15 +75,25 @@ class PolicyPack:
             raise TypeError(f"Invalid policy pack name {name}. Policy pack names may only contain " +
                             "alphanumerics, hyphens, underscores, or periods.")
         if not policies:
-            raise TypeError("Missing policies argument")
+            policies = []
         if not isinstance(policies, list):
             raise TypeError("Expected policies to be a list of policies")
         for policy in policies:
             if not isinstance(policy, Policy):
-                raise TypeError("Expected policies to be a list of policies")
+                raise TypeError("Expected each policy in policies to be a Policy")
+
+        if not remediations:
+            remediations = []
+        if not isinstance(remediations, list):
+            raise TypeError("Expected remediations to be a list of remediations")
+        for remediation in remediations:
+            if not isinstance(remediation, Remediation):
+                raise TypeError("Expected each remediation in remediations to be a Remediation")
+
         if enforcement_level is not None and not isinstance(enforcement_level, EnforcementLevel):
             raise TypeError(
                 "Expected enforcement_level to be an EnforcementLevel")
+
         if initial_config is not None:
             if not isinstance(initial_config, dict):
                 raise TypeError("Expected initial_config to be a dict")
@@ -102,6 +116,7 @@ class PolicyPack:
             name,
             version,
             policies,
+            remediations,
             enforcement_level if enforcement_level is not None else EnforcementLevel.ADVISORY,
             initial_config)
         server = grpc.server(
@@ -662,10 +677,99 @@ class StackValidationPolicy(Policy):
         self.__validate = validate # type: ignore
 
 
+ResourceRemediation = Callable[[ResourceValidationArgs], Optional[Awaitable]]
+"""
+ResourceRemediation is the callback signature for a `Remediation`. A resource remediation
+is passed `args` with more information about the resource it can return a new version of a
+resource's state for the engine to use instead.
+"""
+
+
+class Remediation(ABC):
+    """
+    A remediation for a policy issue, which transforms resource state on the fly so
+    that it is conforming. This is in contrast to a policy which issues a violation.
+    """
+
+    name: str
+    """
+    An ID for the remediation. Must be unique within the current policy pack.
+    """
+
+    description: str
+    """
+    A brief description of the remediation. e.g., "Auto-tag all AWS resources."
+    """
+
+    config_schema: Optional[PolicyConfigSchema]
+    """
+    This remediation's configuration schema.
+    """
+
+    __remediate: Optional[Union[ResourceRemediation, List[ResourceRemediation]]]
+    """
+    Private field holding the optional remediation callback.
+    """
+
+    def remediate(self, args: ResourceValidationArgs) -> Optional[Awaitable]:
+        if not self.__remediate:
+            raise NotImplementedError(f'`remediate must be overridden by remediation "{self.name}"'
+                                      + ' since `remediate was not specified')
+
+        result = self.__remediate(args)
+        if isawaitable(result):
+            return asyncio.wait(cast(Awaitable, result))
+
+        return result
+
+    def __init__(self,
+                 name: str,
+                 description: str,
+                 remediate: Optional[ResourceRemediation] = None,
+                 config_schema: Optional[PolicyConfigSchema] = None) -> None:
+        """
+        :param str name: An ID for the remediation. Must be unique within the current policy pack.
+        :param str description: A brief description of the remediation. e.g., "Auto-tag all AWS resources."
+        :param Optional[Union[ResourceValidation, List[ResourceValidation]]] remediate: A callback function
+               that performs a remediation by rewriting a resource's state if desired. A single callback function
+               can be specified, or multiple functions, which are called in order.
+        :param Optional[PolicyConfigSchema] config_schema: This remediation's configuration schema.
+        """
+        if not name:
+            raise TypeError("Missing name argument")
+        if not isinstance(name, str):
+            raise TypeError("Expected name to be a string")
+        if name == "all":
+            raise TypeError(
+                'Invalid policy name "all"; "all" is a reserved name')
+        if not description:
+            raise TypeError("Missing description argument")
+        if not isinstance(description, str):
+            raise TypeError("Expected description to be a string")
+        if config_schema is not None and not isinstance(config_schema, PolicyConfigSchema):
+            raise TypeError(
+                "Expected config_schema to be a PolicyConfigSchema")
+        self.name = name
+        self.description = description
+
+        # If this instance isn't a subclass, then remediate must be specified.
+        not_subclassed = type(self) is Remediation # pylint: disable=unidiomatic-typecheck
+        if not_subclassed and not remediate:
+            raise TypeError("Missing remediate argument")
+
+        if remediate and not callable(remediate):
+            raise TypeError("Expected remediate to be None or callable")
+
+        self.__remediate = remediate # type: ignore
+
+        self.config_schema = config_schema
+
+
 class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
     __policy_pack_name: str
     __policy_pack_version: str
     __policies: List[Policy]
+    __remediatioons: List[Remediation]
     __policy_pack_enforcement_level: EnforcementLevel
     __initial_config: Optional[Dict[str, Union[EnforcementLevel, Dict[str, Any]]]]
     __policy_pack_config: Dict[str, Dict[str, Any]]
@@ -790,6 +894,74 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
+    def Transform(self, request, _context):
+        self._configure_runtime_settings()
+
+        # Keep track of all remediations applied. The order here matters! The same resource may
+        # be rewritten multiple times by the same policy pack if there are multiple remediations
+        # that are paying attention to it. As such, its state may evolve over time from the first
+        # remediation until the last. Because of this, we unmarshal the request outside the loop.
+        remediations: List[proto.TransformResult] = []
+
+        deserialized = deserialize_properties(json_format.MessageToDict(request.properties))
+        props = unknown_checking_proxy(deserialized)
+        opts = self._get_resource_options(request)
+        provider = self._get_provider_resource(request)
+
+        # Run the remediation for every one in the list.
+        for remediation in self.__remediations:
+            enforcement_level = self._get_enforcement_level(remediation)
+            if enforcement_level == EnforcementLevel.DISABLED:
+                continue
+
+            config = self._get_policy_config(remediation.name)
+            args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider, config)
+
+            try:
+                new_props = None
+                result = remediation.remediate(args)
+                if isawaitable(result):
+                    loop = asyncio.new_event_loop()
+                    new_props = loop.run_until_complete(result)
+                    loop.close()
+                elif result is not None:
+                    new_props = result
+
+                # If new properties were returned, track and substitute them as a remediation.
+                if new_props:
+                    props = new_props
+                    ser_props = serialize_properties(new_props)
+                    rpc_props = struct_pb2.Struct()
+                    for k, v in ser_props.items():
+                        rpc_props[k] = v
+                    remediations.append(proto.TransformResult(
+                        transformName=remediation.name,
+                        policyPackName=self.__policy_pack_name,
+                        policyPackVersion=self.__policy_pack_version,
+                        description=remediation.description,
+                        properties=rpc_props,
+                    ))
+
+            except UnknownValueError as e:
+                # TODO - what to do here?
+                #diagnostics.append(proto.AnalyzeDiagnostic(  # type: ignore
+                #    transformName=remediation.name,
+                #    policyPackName=self.__policy_pack_name,
+                #    policyPackVersion=self.__policy_pack_version,
+                #    description=policy.description,
+                #    properties=None,
+                #))
+                pass
+
+            except:
+                # Extract the stack trace
+                stack_trace = traceback.format_exc()
+                # Log the stack trace (optional)
+                print(stack_trace)
+                raise
+
+        return proto.TransformResponse(transforms=remediations)
+
     def GetAnalyzerInfo(self, _request, _context):
         policies: List[proto.PolicyInfo] = []
         for policy in self.__policies:
@@ -855,17 +1027,20 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                  name: str,
                  version: str,
                  policies: List[Policy],
+                 remediations: List[Remediation],
                  enforcement_level: EnforcementLevel,
                  initial_config: Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] = None) -> None:
         assert name and isinstance(name, str)
         assert version and isinstance(version, str)
-        assert policies and isinstance(policies, list)
+        assert policies is None or isinstance(policies, list)
+        assert remediations is None or isinstance(remediations, list)
         assert enforcement_level and isinstance(
             enforcement_level, EnforcementLevel)
         assert initial_config is None or isinstance(initial_config, dict)
         self.__policy_pack_name = name
         self.__policy_pack_version = version
         self.__policies = policies
+        self.__remediations = remediations
         self.__policy_pack_enforcement_level = enforcement_level
         self.__initial_config = initial_config
         self.__policy_pack_config = {}

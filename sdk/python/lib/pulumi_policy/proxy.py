@@ -86,6 +86,8 @@ class _ListProxy(Sequence):
         self.__props_acc = props_acc
 
     def __getitem__(self, key):
+        if key == "__elems":
+            return self.__elems
         return _raise_if_unknown(key, self.__elems[key], self.__props_acc)
 
     def __len__(self):
@@ -98,7 +100,12 @@ class _DictProxy(Mapping):
         self.__props_acc = props_acc
 
     def __getitem__(self, key):
+        if key == "__map":
+            return self.__map
         return _raise_if_unknown(key, self.__map[key], self.__props_acc)
+
+    def __setitem__(self, key, value):
+        self.__map[key] = value
 
     def __len__(self):
         return self.__map.__len__()
