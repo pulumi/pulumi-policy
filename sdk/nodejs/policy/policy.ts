@@ -25,9 +25,14 @@ const defaultEnforcementLevel: EnforcementLevel = "advisory";
  */
 export interface PolicyPackArgs {
     /**
-     * The policies associated with a PolicyPack.
+     * The policies associated with a PolicyPack. These check for and enforce policies.
      */
-    policies: Policies;
+    policies?: Policies;
+
+    /**
+     * The transforms associated with a PolicyPack. These may rewrite resouce properties on the fly.
+     */
+    transforms?: Transforms;
 
     /**
      * Indicates what to do on policy violation, e.g., block deployment but allow override with
@@ -62,9 +67,11 @@ export interface PolicyPackArgs {
  */
 export class PolicyPack {
     private readonly policies: Policies;
+    private readonly transforms: Transforms;
 
     constructor(private name: string, args: PolicyPackArgs, initialConfig?: PolicyPackConfig) {
-        this.policies = args.policies;
+        this.policies = args.policies || [];
+        this.transforms = args.transforms || [];
 
         // Get package version from the package.json file.
         const cwd = process.cwd();
@@ -75,7 +82,7 @@ export class PolicyPack {
         }
 
         const enforcementLevel = args.enforcementLevel || defaultEnforcementLevel;
-        serve(this.name, version, enforcementLevel, this.policies, initialConfig);
+        serve(this.name, version, enforcementLevel, this.policies, this.transforms, initialConfig);
     }
 }
 
@@ -544,3 +551,89 @@ export function validateStackResourcesOfType<TResource extends Resource>(
  * ReportViolation is the callback signature used to report policy violations.
  */
 export type ReportViolation = (message: string, urn?: string) => void;
+
+/**
+ * A transform that optionally rewrites individual resources or entire stacks.
+ */
+export interface Transform {
+    /** An ID for the transform. Must be unique within the current policy set. */
+    name: string;
+
+    /**
+     * A brief description of the transform. e.g., "Auto-tag all AWS resources."
+     */
+    description: string;
+
+    /**
+     * This transform's configuration schema.
+     *
+     * For example:
+     *
+     * ```typescript
+     * {
+     *     configSchema: {
+     *         properties: {
+     *             tag: {
+     *                 type: "string",
+     *                 default: "ACMECorp",
+     *             },
+     *             identifier: {
+     *                 type: "number",
+     *             },
+     *         },
+     *     },
+     *
+     *     transformResource: (args, reportViolation) => {
+     *         const { tag, identifier } = args.getConfig<{ tag: string; identifier?: number; }>();
+     *
+     *         // ...
+     *     }),
+     * }
+     * ```
+     */
+    configSchema?: PolicyConfigSchema;
+}
+
+export interface ResourceTransform extends Transform {
+    transformResource: ResourceTransformer | ResourceTransformer[];
+}
+
+export type ResourceTransformer = (args: ResourceTransformArgs) => Promise<Record<string, any>> | Record<string, any> | undefined;
+
+export type ResourceTransformArgs = ResourceValidationArgs;
+
+/**
+ * An array of Transforms.
+ */
+export type Transforms = ResourceTransform[];
+
+/**
+ * A helper function that returns a strongly-typed resource validation function, used to check only resources of the
+ * specified resource class.
+ *
+ * For example:
+ *
+ * ```typescript
+ * validateResource: validateResourceOfType(aws.s3.Bucket, (bucket, args, reportViolation) => {
+ *     for (const bucket of buckets) {
+ *         // ...
+ *     }
+ * }),
+ * ```
+ *
+ * @param resourceClass Used to filter this check to only resources of the specified resource class.
+ * @param validate A callback function that validates if the resource definition violates a policy.
+ */
+export function transformResourceOfType<TResource extends Resource, TArgs>(
+    resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+    transformResource: (
+        props: Unwrap<NonNullable<TArgs>>,
+        args: ResourceTransformArgs) => Promise<Record<string, any>> | Record<string, any> | undefined,
+): ResourceTransformer {
+    return (args: ResourceTransformArgs) => {
+        if (args.isType(resourceClass)) {
+            return transformResource(args.props as Unwrap<NonNullable<TArgs>>, args);
+        }
+        return undefined;
+    };
+}

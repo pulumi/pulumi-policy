@@ -29,17 +29,23 @@ import {
     PolicyResource,
     PolicyResourceOptions,
     ReportViolation,
+    ResourceTransform,
+    ResourceTransformArgs,
     ResourceValidationArgs,
     ResourceValidationPolicy,
     StackValidationArgs,
     StackValidationPolicy,
+    Transform,
+    Transforms,
 } from "./policy";
 import {
     asGrpcError,
     convertEnforcementLevel,
     Diagnostic,
     makeAnalyzeResponse,
+    makeTransformResponse,
     makeAnalyzerInfo,
+    TransformResult,
 } from "./protoutil";
 import { unknownCheckingProxy, UnknownValueError } from "./proxy";
 import { version } from "./version";
@@ -84,6 +90,7 @@ export function serve(
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
     policies: Policies,
+    transforms: Transforms,
     initialConfig?: PolicyPackConfig,
 ): void {
     if (!policyPackName || !policyPackName.match(packNameRE)) {
@@ -125,6 +132,7 @@ export function serve(
     server.addService(analyzerrpc.AnalyzerService, {
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
+        transform: makeTransformRpcFun(policyPackName, policyPackVersion, transforms),
         getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies, initialConfig),
         getPluginInfo: getPluginInfoRpc,
         configure: configure,
@@ -558,6 +566,24 @@ function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
     return false;
 }
 
+// Type guard used to determine if the `Policy` is a `ResourceValidationPolicy`.
+function isResourceTransform(t: Transform): t is ResourceTransform {
+    const transformer = (t as ResourceTransform).transformResource;
+    if (typeof transformer === "function") {
+        return true;
+    }
+    if (Array.isArray(transformer)) {
+        for (const v of transformer) {
+            if (typeof v !== "function") {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+
 // Type guard used to determine if the `Policy` is a `StackValidationPolicy`.
 function isStackPolicy(p: Policy): p is StackValidationPolicy {
     return typeof (p as StackValidationPolicy).validateStack === "function";
@@ -572,4 +598,96 @@ function isTypeOf<TResource extends Resource>(
     return isInstance &&
         typeof isInstance === "function" &&
         isInstance({ __pulumiType: type }) === true;
+}
+
+// transform is the RPC call that will transform an individual resource, one at a time, called with the
+// "inputs" to the resource, before it is updated.
+function makeTransformRpcFun(
+    policyPackName: string,
+    policyPackVersion: string,
+    transforms: Transforms,
+) {
+    return async function(call: any, callback: any): Promise<void> {
+        // Prep to perform the analysis.
+        const req = call.request;
+
+        // Run the analysis for every analyzer in the global list, tracking any diagnostics.
+        const ts: TransformResult[] = [];
+        try {
+            for (const t of transforms) {
+                if (!isResourceTransform(t)) {
+                    continue;
+                }
+
+                const transformers = Array.isArray(t.transformResource)
+                    ? t.transformResource
+                    : [t.transformResource];
+
+                for (const transformer of transformers) {
+                    try {
+                        const type = req.getType();
+                        let props: any;
+                        if (ts.length) {
+                            // If we have been transforming already, use the latest properties.
+                            props = unknownCheckingProxy(ts[ts.length-1].properties);
+                        } else {
+                            // Otherwise, deserialize the RPC properties and use them to start.
+                            const deserd = deserializeProperties(req.getProperties());
+                            props = unknownCheckingProxy(deserd);
+                        }
+                        const args: ResourceTransformArgs = {
+                            type,
+                            urn: req.getUrn(),
+                            props,
+                            name: req.getName(),
+                            opts: getResourceOptions(req),
+
+                            isType: function <TResource extends Resource>(
+                                resourceClass: { new(...rest: any[]): TResource },
+                            ): boolean {
+                                return isTypeOf(type, resourceClass);
+                            },
+
+                            asType: function <TResource extends Resource, TArgs>(
+                                resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+                            ): Unwrap<NonNullable<TArgs>> | undefined {
+                                return isTypeOf(type, resourceClass)
+                                    ? props as Unwrap<NonNullable<TArgs>>
+                                    : undefined;
+                            },
+
+                            getConfig: makeGetConfigFun(t.name),
+                        };
+                        const provider = getProviderResource(req);
+                        if (provider) {
+                            args.provider = provider;
+                        }
+
+                        // Pass the result of the validate call to Promise.resolve.
+                        // If the value is a promise, that promise is returned; otherwise
+                        // the returned promise will be fulfilled with the value.
+                        const result = await Promise.resolve(transformer(args));
+                        if (result) {
+                            ts.push({
+                                transformName: t.name,
+                                policyPackName,
+                                policyPackVersion,
+                                description: t.description,
+                                properties: result,
+                            });
+                        }
+                    } catch (e) {
+                        // TODO - if (e instanceof UnknownValueError) {
+                        throw asGrpcError(e, `Error transforming resource with transform ${t.name}`);
+                    }
+                }
+            }
+        } catch (err) {
+            callback(err, undefined);
+            return;
+        }
+
+        // Now marshal the results into the response, and invoke the callback to finish.
+        callback(undefined, makeTransformResponse(ts));
+    };
 }

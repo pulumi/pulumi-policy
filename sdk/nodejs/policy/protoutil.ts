@@ -180,13 +180,17 @@ export function mapEnforcementLevel(el: EnforcementLevel) {
             return analyzerproto.EnforcementLevel.MANDATORY;
         case "disabled":
             return analyzerproto.EnforcementLevel.DISABLED;
+
+        // default intentionally omitted, since this is only ever called
+        // when we have a concrete enforcement level.
+
         default:
             throw new UnknownEnforcementLevelError(el);
     }
 }
 
 /** @internal */
-export function convertEnforcementLevel(el: number): EnforcementLevel {
+export function convertEnforcementLevel(el: number): EnforcementLevel | undefined {
     switch (el) {
         case analyzerproto.EnforcementLevel.ADVISORY:
             return "advisory";
@@ -194,6 +198,8 @@ export function convertEnforcementLevel(el: number): EnforcementLevel {
             return "mandatory";
         case analyzerproto.EnforcementLevel.DISABLED:
             return "disabled";
+        case analyzerproto.EnforcementLevel.DEFAULT:
+            return undefined;
         default:
             throw new Error(`Unknown enforcement level ${el}.`);
     }
@@ -238,4 +244,52 @@ class UnknownEnforcementLevelError extends Error {
     constructor(el: never) {
         super(`Unknown enforcement level type '${el}'`);
     }
+}
+
+/**
+ * TransformResult conveys the policy transform's effects on a resource, if any.
+ * @internal
+ */
+export interface TransformResult {
+    /** Name of the transform executed. */
+    transformName: string;
+
+    /** Name of the policy pack that the transform was a part of. */
+    policyPackName: string;
+
+    /** Version of the Policy Pack. */
+    policyPackVersion: string;
+
+    /**
+     * A brief description of the transform. e.g., "S3 buckets should have default encryption
+     * enabled."
+     */
+    description: string;
+
+    /**
+     * The transformed resource's properties to use in place of the input ones.
+     */
+    properties: Record<string, any>;
+}
+
+/**
+ * makeTransformResponse creates a protobuf encoding the returned property bag.
+ * @internal
+ */
+export function makeTransformResponse(ts: TransformResult[]) {
+    const resp = new analyzerproto.TransformResponse();
+
+    const transforms = [];
+    for (const t of ts) {
+        const transform = new analyzerproto.TransformResult();
+        transform.setTransformname(t.transformName);
+        transform.setPolicypackname(t.policyPackName);
+        transform.setPolicypackversion(t.policyPackVersion);
+        transform.setDescription(t.description);
+        transform.setProperties(structproto.Struct.fromJavaScript(t.properties));
+        transforms.push(transform);
+    }
+    resp.setTransformsList(transforms);
+
+    return resp;
 }
