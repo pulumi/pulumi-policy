@@ -88,8 +88,6 @@ def _deserialize_archive(prop: Dict[str, Any]) -> pulumi.Archive:
         return pulumi.RemoteArchive(prop["uri"])
     raise AssertionError("Invalid archive encountered when unmarshaling resource property")
 
-## TODO - WHAT to do about proxy?
-
 def serialize_properties(props: Dict[str, Any]) -> Dict[str, Any]:
     """
     Serializes properties in preparation for a gRPC call.
@@ -130,9 +128,6 @@ def _serialize_property(prop: Any) -> Any:
         return { [SPECIAL_SIG_KEY]: SPECIAL_ARCHIVE_SIG, "path": _serialize_property(prop["path"]) }
     if isinstance(prop, pulumi.RemoteArchive):
         return { [SPECIAL_SIG_KEY]: SPECIAL_ARCHIVE_SIG, "uri": _serialize_property(prop["uri"]) }
-
-    # Check for secrets:
-    # TODO -  uhoh, I don't think we are round tripping secrets! Do we need to handle in the engine?
 
     if isinstance(prop, dict):
         return serialize_properties(prop)

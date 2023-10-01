@@ -180,17 +180,13 @@ export function mapEnforcementLevel(el: EnforcementLevel) {
             return analyzerproto.EnforcementLevel.MANDATORY;
         case "disabled":
             return analyzerproto.EnforcementLevel.DISABLED;
-
-        // default intentionally omitted, since this is only ever called
-        // when we have a concrete enforcement level.
-
         default:
             throw new UnknownEnforcementLevelError(el);
     }
 }
 
 /** @internal */
-export function convertEnforcementLevel(el: number): EnforcementLevel | undefined {
+export function convertEnforcementLevel(el: number): EnforcementLevel {
     switch (el) {
         case analyzerproto.EnforcementLevel.ADVISORY:
             return "advisory";
