@@ -29,22 +29,19 @@ import {
     PolicyResource,
     PolicyResourceOptions,
     ReportViolation,
-    ResourceTransformArgs,
     ResourceValidationArgs,
     ResourceValidationPolicy,
     StackValidationArgs,
     StackValidationPolicy,
-    Transform,
-    Transforms,
 } from "./policy";
 import {
     asGrpcError,
     convertEnforcementLevel,
     Diagnostic,
     makeAnalyzeResponse,
-    makeTransformResponse,
+    makeRemediateResponse,
     makeAnalyzerInfo,
-    TransformResult,
+    Remediation,
 } from "./protoutil";
 import { unknownCheckingProxy, UnknownValueError } from "./proxy";
 import { version } from "./version";
@@ -89,7 +86,6 @@ export function serve(
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
     policies: Policies,
-    transforms: Transforms,
     initialConfig?: PolicyPackConfig,
 ): void {
     if (!policyPackName || !policyPackName.match(packNameRE)) {
@@ -131,7 +127,7 @@ export function serve(
     server.addService(analyzerrpc.AnalyzerService, {
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
-        transform: makeTransformRpcFun(policyPackName, policyPackVersion, transforms),
+        remediate: makeRemediateRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies, initialConfig),
         getPluginInfo: getPluginInfoRpc,
         configure: configure,
@@ -215,9 +211,8 @@ function makeAnalyzeRpcFun(
             for (const p of policies) {
                 const enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
-
-                if (enforcementLevel === "disabled" || !isResourcePolicy(p)) {
-                    continue;
+                if (enforcementLevel === "disabled" || !isResourcePolicy(p) || !p.validateResource) {
+                       continue;
                 }
 
                 const reportViolation: ReportViolation = (message, urn) => {
@@ -341,7 +336,6 @@ function makeAnalyzeStackRpcFun(
             for (const p of policies) {
                 const enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
-
                 if (enforcementLevel === "disabled" || !isStackPolicy(p)) {
                     continue;
                 }
@@ -554,6 +548,7 @@ function getPropertyDependencies(r: any): Record<string, string[]> {
 
 // Type guard used to determine if the `Policy` is a `ResourceValidationPolicy`.
 function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
+    // If the policy has a validate routine, it is a resource policy:
     const validation = (p as ResourceValidationPolicy).validateResource;
     if (typeof validation === "function") {
         return true;
@@ -566,6 +561,13 @@ function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
         }
         return true;
     }
+
+    // Alternatively, if the policy has a remediation routine, it is also a resource policy.
+    const remediation = (p as ResourceValidationPolicy).remediateResource;
+    if (typeof remediation === "function") {
+        return true;
+    }
+
     return false;
 }
 
@@ -585,32 +587,40 @@ function isTypeOf<TResource extends Resource>(
         isInstance({ __pulumiType: type }) === true;
 }
 
-// transform is the RPC call that will transform an individual resource, one at a time, called with the
+// Remediate is the RPC call that will remediate an individual resource, one at a time, called with the
 // "inputs" to the resource, before it is updated.
-function makeTransformRpcFun(
+function makeRemediateRpcFun(
     policyPackName: string,
     policyPackVersion: string,
-    transforms: Transforms,
+    policyPackEnforcementLevel: EnforcementLevel,
+    policies: Policies,
 ) {
     return async function(call: any, callback: any): Promise<void> {
         // Prep to perform the analysis.
         const req = call.request;
 
-        // Pluck out all of the values common across all transformers. We need to potentially maintain
-        // mutations across many transforms.
+        // Pluck out all of the values common across all remediations. We need to maintain
+        // mutations across many remediations which could affect the same resource.
         const urn = req.getUrn();
         const name = req.getName();
         const type = req.getType();
         const opts = getResourceOptions(req);
         let props: any = unknownCheckingProxy(deserializeProperties(req.getProperties()));
 
-        // Run the analysis for every analyzer in the global list, tracking any diagnostics.
-        const ts: TransformResult[] = [];
+        // Run any remediations in our policy list.
+        const rs: Remediation[] = [];
         try {
-            for (const t of transforms) {
-                const args: ResourceTransformArgs = {
+            for (const p of policies) {
+                // Only run remediations that are enabled.
+                const enforcementLevel: EnforcementLevel =
+                    policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
+                if (enforcementLevel !== "remediate" || !isResourcePolicy(p) || !p.remediateResource) {
+                    continue;
+                }
+
+                const args: ResourceValidationArgs = {
                     urn, name, type, opts, props,
-                    getConfig: makeGetConfigFun(t.name),
+                    getConfig: makeGetConfigFun(p.name),
                     isType: function <TResource extends Resource>(
                         resourceClass: { new(...rest: any[]): TResource },
                     ): boolean {
@@ -629,33 +639,38 @@ function makeTransformRpcFun(
                     args.provider = provider;
                 }
 
-                // Attempt to run the transform; wrap this in a try block in case the user code throws.
+                // Attempt to run the remediation; wrap this in a try block in case the user code throws.
                 let result: any = undefined;
                 let diagnostic: string | undefined = undefined;
                 try {
                     // Pass the result of the validate call to Promise.resolve.
                     // If the value is a promise, that promise is returned; otherwise
                     // the returned promise will be fulfilled with the value.
-                    result = await Promise.resolve(t.transformResource(args));
+                    result = await Promise.resolve(p.remediateResource(args));
                     if (result) {
                         props = result;
                     }
                 } catch (e) {
                     const policyPack = `'${policyPackName}@${policyPackVersion}'`;
-                    const policyFrom = `transform '${t.name}' from policy pack ${policyPack}`;
+                    const policyFrom = `remediation '${p.name}' from policy pack ${policyPack}`;
                     if (e instanceof UnknownValueError) {
                         diagnostic = `can't run ${policyFrom} during preview: ${e.message}`;
                     } else {
-                        throw asGrpcError(e, `Error transforming resource with ${policyFrom}`);
+                        throw asGrpcError(e, `Error remediating resource with ${policyFrom}`);
                     }
                 }
 
                 if (result || diagnostic) {
-                    ts.push({
-                        transformName: t.name,
+                    // Remove the proxiness if it is there, to avoid unknowns causing issues.
+                    if (result && result.getOriginalTarget) {
+                        result = result.getOriginalTarget();
+                    }
+
+                    rs.push({
+                        policyName: p.name,
                         policyPackName,
                         policyPackVersion,
-                        description: t.description,
+                        description: p.description,
                         properties: result,
                         diagnostic: diagnostic,
                     });
@@ -667,6 +682,6 @@ function makeTransformRpcFun(
         }
 
         // Now marshal the results into the response, and invoke the callback to finish.
-        callback(undefined, makeTransformResponse(ts));
+        callback(undefined, makeRemediateResponse(rs));
     };
 }

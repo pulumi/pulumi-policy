@@ -178,6 +178,8 @@ export function mapEnforcementLevel(el: EnforcementLevel) {
             return analyzerproto.EnforcementLevel.ADVISORY;
         case "mandatory":
             return analyzerproto.EnforcementLevel.MANDATORY;
+        case "remediate":
+            return analyzerproto.EnforcementLevel.REMEDIATE;
         case "disabled":
             return analyzerproto.EnforcementLevel.DISABLED;
         default:
@@ -192,6 +194,8 @@ export function convertEnforcementLevel(el: number): EnforcementLevel {
             return "advisory";
         case analyzerproto.EnforcementLevel.MANDATORY:
             return "mandatory";
+        case analyzerproto.EnforcementLevel.REMEDIATE:
+            return "remediate";
         case analyzerproto.EnforcementLevel.DISABLED:
             return "disabled";
         default:
@@ -241,27 +245,26 @@ class UnknownEnforcementLevelError extends Error {
 }
 
 /**
- * TransformResult conveys the policy transform's effects on a resource, if any.
+ * Remediation conveys the policy remediation's effects on a resource, if any.
  * @internal
  */
-export interface TransformResult {
-    /** Name of the transform executed. */
-    transformName: string;
+export interface Remediation {
+    /** Name of the policy doing the remediation. */
+    policyName: string;
 
-    /** Name of the policy pack that the transform was a part of. */
+    /** Name of the policy pack that the policy was a part of. */
     policyPackName: string;
 
     /** Version of the Policy Pack. */
     policyPackVersion: string;
 
     /**
-     * A brief description of the transform. e.g., "S3 buckets should have default encryption
-     * enabled."
+     * A brief description of the policy remediation. e.g., "Auto-tag S3 buckets."
      */
     description: string;
 
     /**
-     * The transformed resource's properties to use in place of the input ones.
+     * The remediated resource's properties to use in place of the input ones.
      */
     properties: Record<string, any>;
 
@@ -272,24 +275,24 @@ export interface TransformResult {
 }
 
 /**
- * makeTransformResponse creates a protobuf encoding the returned property bag.
+ * makeRemediateResponse creates a protobuf encoding the returned property bag.
  * @internal
  */
-export function makeTransformResponse(ts: TransformResult[]) {
-    const resp = new analyzerproto.TransformResponse();
+export function makeRemediateResponse(rs: Remediation[]) {
+    const resp = new analyzerproto.RemediateResponse();
 
-    const transforms = [];
-    for (const t of ts) {
-        const transform = new analyzerproto.TransformResult();
-        transform.setTransformname(t.transformName);
-        transform.setPolicypackname(t.policyPackName);
-        transform.setPolicypackversion(t.policyPackVersion);
-        transform.setDescription(t.description);
-        transform.setProperties(structproto.Struct.fromJavaScript(t.properties));
-        transform.setDiagnostic(t.diagnostic);
-        transforms.push(transform);
+    const remediations = [];
+    for (const r of rs) {
+        const remediation = new analyzerproto.Remediation();
+        remediation.setPolicyname(r.policyName);
+        remediation.setPolicypackname(r.policyPackName);
+        remediation.setPolicypackversion(r.policyPackVersion);
+        remediation.setDescription(r.description);
+        remediation.setProperties(structproto.Struct.fromJavaScript(r.properties));
+        remediation.setDiagnostic(r.diagnostic);
+        remediations.push(remediation);
     }
-    resp.setTransformsList(transforms);
+    resp.setRemediationsList(remediations);
 
     return resp;
 }

@@ -30,11 +30,6 @@ export interface PolicyPackArgs {
     policies?: Policies;
 
     /**
-     * The transforms associated with a PolicyPack. These may rewrite resouce properties on the fly.
-     */
-    transforms?: Transforms;
-
-    /**
      * Indicates what to do on policy violation, e.g., block deployment but allow override with
      * proper permissions. Default for all policies in the PolicyPack. Individual policies can
      * override.
@@ -67,11 +62,9 @@ export interface PolicyPackArgs {
  */
 export class PolicyPack {
     private readonly policies: Policies;
-    private readonly transforms: Transforms;
 
     constructor(private name: string, args: PolicyPackArgs, initialConfig?: PolicyPackConfig) {
         this.policies = args.policies || [];
-        this.transforms = args.transforms || [];
 
         // Get package version from the package.json file.
         const cwd = process.cwd();
@@ -82,14 +75,14 @@ export class PolicyPack {
         }
 
         const enforcementLevel = args.enforcementLevel || defaultEnforcementLevel;
-        serve(this.name, version, enforcementLevel, this.policies, this.transforms, initialConfig);
+        serve(this.name, version, enforcementLevel, this.policies, initialConfig);
     }
 }
 
 /**
  * Indicates the impact of a policy violation.
  */
-export type EnforcementLevel = "advisory" | "mandatory" | "disabled";
+export type EnforcementLevel = "advisory" | "mandatory" | "remediate" | "disabled";
 
 /**
  * Represents configuration for the policy pack.
@@ -170,6 +163,14 @@ export interface PolicyConfigSchema {
  */
 export type Policies = (ResourceValidationPolicy | StackValidationPolicy)[];
 
+/*
+ * ResourceRemediation is a callback responsible for remediating a resource policy violation. It can either return
+ * new resource properties to be substituted for the old ones, or undefined if no remediation took place.
+ */
+export type ResourceRemediation =
+    (args: ResourceValidationArgs) =>
+        Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
+
 /**
  * ResourceValidationPolicy is a policy that validates a resource definition.
  *
@@ -192,12 +193,18 @@ export type Policies = (ResourceValidationPolicy | StackValidationPolicy)[];
  * ```
  */
 export interface ResourceValidationPolicy extends Policy {
-    /**
+   /**
+     * Takes a resource as input and optionally returns a remediated set of properties. Remediations
+     * run prior to validations, and give a policy a chance to fix the issue rather than just flag it.
+     */
+    remediateResource?: ResourceRemediation;
+
+   /**
      * A callback function that validates if a resource definition violates a policy (e.g. "S3 buckets
      * can't be public"). A single callback function can be specified, or multiple functions, which are
      * called in order.
      */
-    validateResource: ResourceValidation | ResourceValidation[];
+    validateResource?: ResourceValidation | ResourceValidation[];
 }
 
 /**
@@ -208,7 +215,8 @@ export interface ResourceValidationPolicy extends Policy {
  * The `reportViolation` signature accepts an optional `urn` argument, which is ignored when validating
  * resources (the `urn` of the resource being validated is always used).
  */
-export type ResourceValidation = (args: ResourceValidationArgs, reportViolation: ReportViolation) => Promise<void> | void;
+export type ResourceValidation =
+    (args: ResourceValidationArgs, reportViolation: ReportViolation) => Promise<void> | void;
 
 /**
  * ResourceValidationArgs is the argument bag passed to a resource validation.
@@ -362,6 +370,48 @@ export interface PolicyProviderResource {
 }
 
 /**
+ * TypedResourceRemediation is a callback responsible for remediating a resource policy violation; it is the
+ * typed equivalent to `ResourceRemediation` that carries strongly typed properties with it.
+ */
+export type TypedResourceRemediation<TProps> =
+    (props: TProps, args: ResourceValidationArgs) =>
+        Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
+
+/**
+ * A helper function that returns a strongly-typed resource remediation function, used to check only resources of
+ * the specified resource type.
+ *
+ * For example:
+ *
+ * ```typescript
+ * remediateResource: remediateResourceOfType(aws.s3.Bucket, (bucket, args) => {
+ *     bucket.tags = { "foo": "bar" };
+ *     return bucket;
+ * }),
+ * ```
+ *
+ * @param resourceClass Used to filter this check to only resources of the specified resource class.
+ * @param remediate A callback function that optionally remediates a resource if it violates a policy.
+ */
+export function remediateResourceOfType<TResource extends Resource, TArgs>(
+    resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+    remediate: TypedResourceRemediation<Unwrap<NonNullable<TArgs>>>,
+): ResourceRemediation {
+    return (args: ResourceValidationArgs) => {
+        if (args.isType(resourceClass)) {
+            return remediate(args.props as Unwrap<NonNullable<TArgs>>, args);
+        }
+    };
+}
+
+/**
+ * TypedResourceValidation is the callback signature for `validateResourceOfType`; it is equivlaent to
+ * the `ResourceValidation type except that it carries strongly typed properties with it.
+ */
+export type TypedResourceValidation<TProps> =
+    (props: TProps, args: ResourceValidationArgs, reportViolation: ReportViolation) => Promise<void> | void;
+
+/**
  * A helper function that returns a strongly-typed resource validation function, used to check only resources of the
  * specified resource class.
  *
@@ -380,15 +430,42 @@ export interface PolicyProviderResource {
  */
 export function validateResourceOfType<TResource extends Resource, TArgs>(
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
-    validate: (
-        props: Unwrap<NonNullable<TArgs>>,
-        args: ResourceValidationArgs,
-        reportViolation: ReportViolation) => Promise<void> | void,
+    validate: TypedResourceValidation<Unwrap<NonNullable<TArgs>>>,
 ): ResourceValidation {
     return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
         if (args.isType(resourceClass)) {
             return validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
         }
+    };
+}
+
+/**
+ * TypedResourceValidation is the callback signature for `validateResourceOfType`; it is equivlaent to
+ * the `ResourceValidation type except that it carries strongly typed properties with it.
+ */
+export type TypedResourceRemediationValidation<TProps> =
+    (props: TProps, args: ResourceValidationArgs, reportViolation: ReportViolation) =>
+        Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
+
+/**
+ * A helper function for the pattern where a single function wants to be able to remediate *and*
+ * validate depending on how it is called.
+ */
+export function remediateValidateResourceOfType<TResource extends Resource, TArgs>(
+    resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+    remediateValidate: TypedResourceRemediationValidation<Unwrap<NonNullable<TArgs>>>,
+): { remediateResource: ResourceRemediation, validateResource: ResourceValidation } {
+    return {
+        remediateResource: (args: ResourceValidationArgs) => {
+            if (args.isType(resourceClass)) {
+                return remediateValidate(args.props as Unwrap<NonNullable<TArgs>>, args, (_, __) => {});
+            }
+        },
+        validateResource: async (args: ResourceValidationArgs, reportViolation: ReportViolation): Promise<void> => {
+            if (args.isType(resourceClass)) {
+                await remediateValidate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
+            }
+        },
     };
 }
 
@@ -551,91 +628,3 @@ export function validateStackResourcesOfType<TResource extends Resource>(
  * ReportViolation is the callback signature used to report policy violations.
  */
 export type ReportViolation = (message: string, urn?: string) => void;
-
-/**
- * A transform that optionally rewrites individual resources or entire stacks.
- */
-export interface Transform {
-    /** An ID for the transform. Must be unique within the current policy set. */
-    name: string;
-
-    /**
-     * A brief description of the transform. e.g., "Auto-tag all AWS resources."
-     */
-    description: string;
-
-    /**
-     * This transform's configuration schema.
-     *
-     * For example:
-     *
-     * ```typescript
-     * {
-     *     configSchema: {
-     *         properties: {
-     *             tag: {
-     *                 type: "string",
-     *                 default: "ACMECorp",
-     *             },
-     *             identifier: {
-     *                 type: "number",
-     *             },
-     *         },
-     *     },
-     *
-     *     transformResource: (args, reportViolation) => {
-     *         const { tag, identifier } = args.getConfig<{ tag: string; identifier?: number; }>();
-     *
-     *         // ...
-     *     }),
-     * }
-     * ```
-     */
-    configSchema?: PolicyConfigSchema;
-
-    /**
-     * Takes a resource as input and optionally returns a transformed set of properties.
-     */
-    transformResource: ResourceTransformer;
-}
-
-export type ResourceTransformer =
-    (args: ResourceTransformArgs) => Promise<Record<string, any>> | Record<string, any> | undefined;
-
-export type ResourceTransformArgs = ResourceValidationArgs;
-
-/**
- * An array of Transforms.
- */
-export type Transforms = Transform[];
-
-/**
- * A helper function that returns a strongly-typed resource validation function, used to check only resources of the
- * specified resource class.
- *
- * For example:
- *
- * ```typescript
- * validateResource: validateResourceOfType(aws.s3.Bucket, (bucket, args, reportViolation) => {
- *     for (const bucket of buckets) {
- *         // ...
- *     }
- * }),
- * ```
- *
- * @param resourceClass Used to filter this check to only resources of the specified resource class.
- * @param validate A callback function that validates if the resource definition violates a policy.
- */
-export function transformResourceOfType<TResource extends Resource, TArgs>(
-    resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
-    transformResource: (
-        props: Unwrap<NonNullable<TArgs>>,
-        args: ResourceTransformArgs) => Promise<Record<string, any>> | Record<string, any> | undefined,
-): ResourceTransformer {
-    return (args: ResourceTransformArgs) => {
-        if (args.isType(resourceClass)) {
-            return transformResource(args.props as Unwrap<NonNullable<TArgs>>, args);
-        }
-        return undefined;
-    };
-}

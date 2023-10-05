@@ -39,6 +39,9 @@ function proxyHelper<T>(toProxy: any, propsAcc: (keyof T)[]): any {
 
     return new Proxy(toProxy, {
         get: (obj, prop: keyof T) => {
+            if (prop === 'getOriginalTarget') {
+                return () => obj;
+            }
             const newProps = propsAcc.concat([prop]);
             const field = obj[prop];
             if (isUnknown(field)) {
