@@ -52,13 +52,11 @@ class PolicyPack:
     def __init__(self,
                  name: str,
                  policies: Optional[List['Policy']] = None,
-                 remediations: Optional[List['Remediation']] = None,
                  enforcement_level: Optional['EnforcementLevel'] = None,
                  initial_config: Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] = None) -> None:
         """
         :param str name: The name of the policy pack.
         :param Optional[List[Policy]] policies: The policies associated with a policy pack.
-        :param Optional[List[Remeediation]] remediations: The remediations associated with a policy pack.
         :param Optional[EnforcementLevel] enforcement_level: Indicates what to do on policy
                violation, e.g., block deployment but allow override with
                proper permissions. This is the default used for all policies in the policy pack.
@@ -81,14 +79,6 @@ class PolicyPack:
         for policy in policies:
             if not isinstance(policy, Policy):
                 raise TypeError("Expected each policy in policies to be a Policy")
-
-        if not remediations:
-            remediations = []
-        if not isinstance(remediations, list):
-            raise TypeError("Expected remediations to be a list of remediations")
-        for remediation in remediations:
-            if not isinstance(remediation, Remediation):
-                raise TypeError("Expected each remediation in remediations to be a Remediation")
 
         if enforcement_level is not None and not isinstance(enforcement_level, EnforcementLevel):
             raise TypeError(
@@ -116,7 +106,6 @@ class PolicyPack:
             name,
             version,
             policies,
-            remediations,
             enforcement_level if enforcement_level is not None else EnforcementLevel.ADVISORY,
             initial_config)
         server = grpc.server(
@@ -142,6 +131,7 @@ class EnforcementLevel(Enum):
 
     ADVISORY = "advisory"
     MANDATORY = "mandatory"
+    REMEDIATE = "remediate"
     DISABLED = "disabled"
 
 
@@ -454,6 +444,21 @@ resources (the `urn` of the resource being validated is always used).
 """
 
 
+ResourceRemediation = Callable[[ResourceValidationArgs], Optional[Awaitable[Mapping[str, Any]]]]
+"""
+ResourceRemediation is the callback signature for a `Remediation`. A resource remediation
+is passed `args` with more information about the resource it can return a new version of a
+resource's state for the engine to use instead.
+"""
+
+
+ResourceRemediationValidation = Callable[[ResourceValidationArgs, ReportViolation], Optional[Awaitable[Mapping[str, Any]]]]
+"""
+ResourceRemediationValidation is the callback signature for a single function that acts as
+both a validation and a remediation all at once.
+"""
+
+
 class ResourceValidationPolicy(Policy):
     """
     ResourceValidationPolicy is a policy that validates a resource definition.
@@ -464,10 +469,15 @@ class ResourceValidationPolicy(Policy):
     Private field holding the optional validation callback.
     """
 
+    __remediate: Optional[ResourceRemediation]
+    """
+    Private field holding the optional remediation callback.
+    """
+
     def validate(self, args: ResourceValidationArgs, report_violation: ReportViolation) -> Optional[Awaitable]:
+        # If there is no validation to be done, exit early.
         if not self.__validate:
-            raise NotImplementedError(f'`validate must be overridden by policy "{self.name}"'
-                                      + ' since `validate was not specified')
+            return None
 
         awaitable_results: List[Awaitable] = []
 
@@ -484,12 +494,33 @@ class ResourceValidationPolicy(Policy):
 
         return None
 
+    def has_validation(self) -> bool:
+        return (self.__validate or
+                getattr(ResourceValidationPolicy, "validate", None) != getattr(type(self), "validate", None))
+
+    def remediate(self, args: ResourceValidationArgs) -> Optional[Awaitable[Mapping[str, Any]]]:
+        # If there is no remediation to be done, exit early.
+        if not self.__remediate:
+            return None
+
+        result = self.__remediate(args)
+        if isawaitable(result):
+            return asyncio.wait(cast(Awaitable, result))
+
+        return result
+
+    def has_remediation(self) -> bool:
+        return (self.__remediate or
+                getattr(ResourceValidationPolicy, "remediate", None) != getattr(type(self), "remediate", None))
+
     def __init__(self,
                  name: str,
                  description: str,
                  validate: Optional[Union[ResourceValidation, List[ResourceValidation]]] = None,
                  enforcement_level: Optional[EnforcementLevel] = None,
-                 config_schema: Optional[PolicyConfigSchema] = None) -> None:
+                 config_schema: Optional[PolicyConfigSchema] = None,
+                 remediate: Optional[ResourceRemediation] = None,
+                 validate_remediate: Optional[ResourceRemediationValidation] = None) -> None:
         """
         :param str name: An ID for the policy. Must be unique within the current policy set.
         :param str description: A brief description of the policy rule. e.g., "S3 buckets should have
@@ -497,6 +528,10 @@ class ResourceValidationPolicy(Policy):
         :param Optional[Union[ResourceValidation, List[ResourceValidation]]] validate: A callback function
                that validates if a resource definition violates a policy (e.g. "S3 buckets can't be public").
                A single callback function can be specified, or multiple functions, which are called in order.
+        :param Optional[ResourceRemediation] remediate: A callback function that is given an opportunity to
+               rewrite resource state in the event of a policy issue (e.g., "Auto-tag S3 buckets").
+        :param Optional[ResourceRemediation] validate_remediate: A callback function that can act as both
+               a policy validation as well as a remediation.
         :param Optional[EnforcementLevel] enforcement_level: Indicates what to do on policy violation,
                e.g., block deployment but allow override with proper permissions.
         :param Optional[PolicyConfigSchema] config_schema: This policy's configuration schema.
@@ -505,8 +540,14 @@ class ResourceValidationPolicy(Policy):
 
         # If this instance isn't a subclass, then validate must be specified.
         not_subclassed = type(self) is ResourceValidationPolicy # pylint: disable=unidiomatic-typecheck
-        if not_subclassed and not validate:
-            raise TypeError("Missing validate argument")
+        if not_subclassed and not validate and not remediate and not validate_remediate:
+            raise TypeError("Must pass either validate or remediate argument")
+
+        if validate_remediate:
+            if validate or remediate:
+                raise TypeError("Cannot supply validate or remediate in addition to validate_remediate")
+            validate = validate_remediate
+            remediate = lambda args: validate_remediate(args, lambda msg, urn = None: None)
 
         if validate:
             if not callable(validate) and not isinstance(validate, list):
@@ -514,7 +555,12 @@ class ResourceValidationPolicy(Policy):
             if isinstance(validate, list) and any(not callable(v) for v in validate):
                 raise TypeError("Expected validate to be callable or a list of callables")
 
+        if remediate:
+            if not callable(remediate):
+                raise TypeError("Expected remediate to be callable")
+
         self.__validate = validate # type: ignore
+        self.__remediate = remediate #type: ignore
 
 
 class PolicyResource:
@@ -677,99 +723,10 @@ class StackValidationPolicy(Policy):
         self.__validate = validate # type: ignore
 
 
-ResourceRemediation = Callable[[ResourceValidationArgs], Optional[Awaitable]]
-"""
-ResourceRemediation is the callback signature for a `Remediation`. A resource remediation
-is passed `args` with more information about the resource it can return a new version of a
-resource's state for the engine to use instead.
-"""
-
-
-class Remediation(ABC):
-    """
-    A remediation for a policy issue, which transforms resource state on the fly so
-    that it is conforming. This is in contrast to a policy which issues a violation.
-    """
-
-    name: str
-    """
-    An ID for the remediation. Must be unique within the current policy pack.
-    """
-
-    description: str
-    """
-    A brief description of the remediation. e.g., "Auto-tag all AWS resources."
-    """
-
-    config_schema: Optional[PolicyConfigSchema]
-    """
-    This remediation's configuration schema.
-    """
-
-    __remediate: Optional[Union[ResourceRemediation, List[ResourceRemediation]]]
-    """
-    Private field holding the optional remediation callback.
-    """
-
-    def remediate(self, args: ResourceValidationArgs) -> Optional[Awaitable]:
-        if not self.__remediate:
-            raise NotImplementedError(f'`remediate must be overridden by remediation "{self.name}"'
-                                      + ' since `remediate was not specified')
-
-        result = self.__remediate(args)
-        if isawaitable(result):
-            return asyncio.wait(cast(Awaitable, result))
-
-        return result
-
-    def __init__(self,
-                 name: str,
-                 description: str,
-                 remediate: Optional[ResourceRemediation] = None,
-                 config_schema: Optional[PolicyConfigSchema] = None) -> None:
-        """
-        :param str name: An ID for the remediation. Must be unique within the current policy pack.
-        :param str description: A brief description of the remediation. e.g., "Auto-tag all AWS resources."
-        :param Optional[Union[ResourceValidation, List[ResourceValidation]]] remediate: A callback function
-               that performs a remediation by rewriting a resource's state if desired. A single callback function
-               can be specified, or multiple functions, which are called in order.
-        :param Optional[PolicyConfigSchema] config_schema: This remediation's configuration schema.
-        """
-        if not name:
-            raise TypeError("Missing name argument")
-        if not isinstance(name, str):
-            raise TypeError("Expected name to be a string")
-        if name == "all":
-            raise TypeError(
-                'Invalid policy name "all"; "all" is a reserved name')
-        if not description:
-            raise TypeError("Missing description argument")
-        if not isinstance(description, str):
-            raise TypeError("Expected description to be a string")
-        if config_schema is not None and not isinstance(config_schema, PolicyConfigSchema):
-            raise TypeError(
-                "Expected config_schema to be a PolicyConfigSchema")
-        self.name = name
-        self.description = description
-
-        # If this instance isn't a subclass, then remediate must be specified.
-        not_subclassed = type(self) is Remediation # pylint: disable=unidiomatic-typecheck
-        if not_subclassed and not remediate:
-            raise TypeError("Missing remediate argument")
-
-        if remediate and not callable(remediate):
-            raise TypeError("Expected remediate to be None or callable")
-
-        self.__remediate = remediate # type: ignore
-
-        self.config_schema = config_schema
-
-
 class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
     __policy_pack_name: str
     __policy_pack_version: str
     __policies: List[Policy]
-    __remediatioons: List[Remediation]
     __policy_pack_enforcement_level: EnforcementLevel
     __initial_config: Optional[Dict[str, Union[EnforcementLevel, Dict[str, Any]]]]
     __policy_pack_config: Dict[str, Dict[str, Any]]
@@ -787,7 +744,9 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         diagnostics: List[proto.AnalyzeDiagnostic] = []
         for policy in self.__policies:
             enforcement_level = self._get_enforcement_level(policy)
-            if enforcement_level == EnforcementLevel.DISABLED or not isinstance(policy, ResourceValidationPolicy):
+            if (enforcement_level == EnforcementLevel.DISABLED or
+                    not isinstance(policy, ResourceValidationPolicy) or
+                    not policy.has_validation()):
                 continue
 
             report_violation = self._create_report_violation(diagnostics, policy.name,
@@ -894,14 +853,14 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
         return proto.AnalyzeResponse(diagnostics=diagnostics)
 
-    def Transform(self, request, _context):
+    def Remediate(self, request, _context):
         self._configure_runtime_settings()
 
         # Keep track of all remediations applied. The order here matters! The same resource may
         # be rewritten multiple times by the same policy pack if there are multiple remediations
         # that are paying attention to it. As such, its state may evolve over time from the first
         # remediation until the last. Because of this, we unmarshal the request outside the loop.
-        remediations: List[proto.TransformResult] = []
+        remediations: List[proto.Remediation] = []
 
         deserialized = deserialize_properties(json_format.MessageToDict(request.properties))
         props = unknown_checking_proxy(deserialized)
@@ -909,18 +868,21 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         provider = self._get_provider_resource(request)
 
         # Run the remediation for every one in the list.
-        for remediation in self.__remediations:
-            enforcement_level = self._get_enforcement_level(remediation)
-            if enforcement_level == EnforcementLevel.DISABLED:
+        for policy in self.__policies:
+            enforcement_level = self._get_enforcement_level(policy)
+            if (enforcement_level != EnforcementLevel.REMEDIATE or
+                    not isinstance(policy, ResourceValidationPolicy) or
+                    not policy.has_remediation()):
                 continue
 
-            config = self._get_policy_config(remediation.name)
+            config = self._get_policy_config(policy.name)
             args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider, config)
 
             rpc_props = None
             diagnostic = None
             try:
-                result = remediation.remediate(args)
+                new_props = None
+                result = policy.remediate(args)
                 if isawaitable(result):
                     loop = asyncio.new_event_loop()
                     new_props = loop.run_until_complete(result)
@@ -931,27 +893,26 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 # If new properties were returned, track and substitute them as a remediation.
                 if new_props:
                     props = new_props
-                    ser_props = serialize_properties(new_props)
+                    ser_props = serialize_properties(new_props["__map"])
                     rpc_props = struct_pb2.Struct()
                     for k, v in ser_props.items():
                         rpc_props[k] = v
 
             except UnknownValueError as e:
-                diagnostic = f"can't run remediation '{remediation.name}' from policy pack {self.__policy_pack_name}@{self.__policy_pack_version} during preview: {e.message}"
+                diagnostic = f"can't run remediation '{policy.name}' from policy pack {self.__policy_pack_name}@{self.__policy_pack_version} during preview: {e.message}"
                 pass
 
             if rpc_props or diagnostic:
-                remediations.append(proto.TransformResult(
-                    transformName=remediation.name,
+                remediations.append(proto.Remediation(
+                    policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
                     policyPackVersion=self.__policy_pack_version,
-                    description=remediation.description,
+                    description=policy.description,
                     properties=rpc_props,
                     diagnostic=diagnostic,
                 ))
 
-
-        return proto.TransformResponse(transforms=remediations)
+        return proto.RemediateResponse(remediations=remediations)
 
     def GetAnalyzerInfo(self, _request, _context):
         policies: List[proto.PolicyInfo] = []
@@ -1018,20 +979,17 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                  name: str,
                  version: str,
                  policies: List[Policy],
-                 remediations: List[Remediation],
                  enforcement_level: EnforcementLevel,
                  initial_config: Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] = None) -> None:
         assert name and isinstance(name, str)
         assert version and isinstance(version, str)
         assert policies is None or isinstance(policies, list)
-        assert remediations is None or isinstance(remediations, list)
         assert enforcement_level and isinstance(
             enforcement_level, EnforcementLevel)
         assert initial_config is None or isinstance(initial_config, dict)
         self.__policy_pack_name = name
         self.__policy_pack_version = version
         self.__policies = policies
-        self.__remediations = remediations
         self.__policy_pack_enforcement_level = enforcement_level
         self.__initial_config = initial_config
         self.__policy_pack_config = {}
@@ -1075,6 +1033,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             return proto.ADVISORY  # type: ignore
         if enforcement_level == EnforcementLevel.MANDATORY:
             return proto.MANDATORY  # type: ignore
+        if enforcement_level == EnforcementLevel.REMEDIATE:
+            return proto.REMEDIATE  # type: ignore
         if enforcement_level == EnforcementLevel.DISABLED:
             return proto.DISABLED  # type: ignore
         raise AssertionError(
@@ -1085,6 +1045,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             return EnforcementLevel.ADVISORY
         if enforcement_level == proto.MANDATORY:  # type: ignore
             return EnforcementLevel.MANDATORY
+        if enforcement_level == proto.REMEDIATE:  # type: ignore
+            return EnforcementLevel.REMEDIATE
         if enforcement_level == proto.DISABLED:  # type: ignore
             return EnforcementLevel.DISABLED
         raise AssertionError(
