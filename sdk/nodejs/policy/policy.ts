@@ -440,10 +440,10 @@ export function validateResourceOfType<TResource extends Resource, TArgs>(
 }
 
 /**
- * TypedResourceValidation is the callback signature for `validateResourceOfType`; it is equivlaent to
- * the `ResourceValidation type except that it carries strongly typed properties with it.
+ * TypedResourceValidationRemediation is the callback signature for `validateRemediateResourceOfType`; it is
+ * equivlaent to the `ResourceValidation type except that it carries strongly typed properties with it.
  */
-export type TypedResourceRemediationValidation<TProps> =
+export type TypedResourceValidationRemediation<TProps> =
     (props: TProps, args: ResourceValidationArgs, reportViolation: ReportViolation) =>
         Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
 
@@ -451,19 +451,19 @@ export type TypedResourceRemediationValidation<TProps> =
  * A helper function for the pattern where a single function wants to be able to remediate *and*
  * validate depending on how it is called.
  */
-export function remediateValidateResourceOfType<TResource extends Resource, TArgs>(
+export function validateRemediateResourceOfType<TResource extends Resource, TArgs>(
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
-    remediateValidate: TypedResourceRemediationValidation<Unwrap<NonNullable<TArgs>>>,
-): { remediateResource: ResourceRemediation, validateResource: ResourceValidation } {
+    validateRemediate: TypedResourceValidationRemediation<Unwrap<NonNullable<TArgs>>>,
+): { validateResource: ResourceValidation, remediateResource: ResourceRemediation } {
     return {
-        remediateResource: (args: ResourceValidationArgs) => {
-            if (args.isType(resourceClass)) {
-                return remediateValidate(args.props as Unwrap<NonNullable<TArgs>>, args, (_, __) => {});
-            }
-        },
         validateResource: async (args: ResourceValidationArgs, reportViolation: ReportViolation): Promise<void> => {
             if (args.isType(resourceClass)) {
-                await remediateValidate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
+                await validateRemediate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
+            }
+        },
+        remediateResource: (args: ResourceValidationArgs) => {
+            if (args.isType(resourceClass)) {
+                return validateRemediate(args.props as Unwrap<NonNullable<TArgs>>, args, (_, __) => {});
             }
         },
     };
