@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { isSpecialProxy, getSpecialProxyTarget } from "./proxy";
 import { specialSecretSig, specialSigKey } from "@pulumi/pulumi/runtime/rpc";
+import { isSpecialProxy, getSpecialProxyTarget } from "./proxy";
 
 /**
  * `secretsPreservingProxy` is a helper that takes an input and ensures any properties

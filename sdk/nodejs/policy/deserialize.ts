@@ -177,8 +177,8 @@ async function serializeProperty(prop: any): Promise<any> {
     }
     if (prop instanceof asset.AssetArchive) {
         const assets: any[] = [];
-        for (const asset of Object.keys(await prop.assets)) {
-            assets.push(await serializeProperty(asset));
+        for (const a of Object.keys(await prop.assets)) {
+            assets.push(await serializeProperty(a));
         }
         return { [specialSigKey]: specialArchiveSig, assets };
     }

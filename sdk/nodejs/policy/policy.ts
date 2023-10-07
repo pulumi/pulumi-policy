@@ -169,7 +169,7 @@ export type Policies = (ResourceValidationPolicy | StackValidationPolicy)[];
  */
 export type ResourceRemediation =
     (args: ResourceValidationArgs) =>
-        Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
+    Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
 
 /**
  * ResourceValidationPolicy is a policy that validates a resource definition.
@@ -193,13 +193,13 @@ export type ResourceRemediation =
  * ```
  */
 export interface ResourceValidationPolicy extends Policy {
-   /**
+    /**
      * Takes a resource as input and optionally returns a remediated set of properties. Remediations
      * run prior to validations, and give a policy a chance to fix the issue rather than just flag it.
      */
     remediateResource?: ResourceRemediation;
 
-   /**
+    /**
      * A callback function that validates if a resource definition violates a policy (e.g. "S3 buckets
      * can't be public"). A single callback function can be specified, or multiple functions, which are
      * called in order.
@@ -375,7 +375,7 @@ export interface PolicyProviderResource {
  */
 export type TypedResourceRemediation<TProps> =
     (props: TProps, args: ResourceValidationArgs) =>
-        Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
+    Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
 
 /**
  * A helper function that returns a strongly-typed resource remediation function, used to check only resources of
@@ -445,7 +445,7 @@ export function validateResourceOfType<TResource extends Resource, TArgs>(
  */
 export type TypedResourceValidationRemediation<TProps> =
     (props: TProps, args: ResourceValidationArgs, reportViolation: ReportViolation) =>
-        Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
+    Promise<Record<string, any>> | Record<string, any> | Promise<void> | void | undefined;
 
 /**
  * A helper function for the pattern where a single function wants to be able to remediate *and*
@@ -454,7 +454,7 @@ export type TypedResourceValidationRemediation<TProps> =
 export function validateRemediateResourceOfType<TResource extends Resource, TArgs>(
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     validateRemediate: TypedResourceValidationRemediation<Unwrap<NonNullable<TArgs>>>,
-): { validateResource: ResourceValidation, remediateResource: ResourceRemediation } {
+): { validateResource: ResourceValidation; remediateResource: ResourceRemediation } {
     return {
         validateResource: async (args: ResourceValidationArgs, reportViolation: ReportViolation): Promise<void> => {
             if (args.isType(resourceClass)) {
@@ -463,7 +463,7 @@ export function validateRemediateResourceOfType<TResource extends Resource, TArg
         },
         remediateResource: (args: ResourceValidationArgs) => {
             if (args.isType(resourceClass)) {
-                return validateRemediate(args.props as Unwrap<NonNullable<TArgs>>, args, (_, __) => {});
+                return validateRemediate(args.props as Unwrap<NonNullable<TArgs>>, args, (_, __) => { /* ignore */ });
             }
         },
     };
