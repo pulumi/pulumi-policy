@@ -279,7 +279,7 @@ function makeAnalyzeRpcFun(
                         // the returned promise will be fulfilled with the value.
                         await Promise.resolve(validation(args, reportViolation));
                     } catch (e) {
-                        const policyPack = `'${policyPackName}@${policyPackVersion}'`;
+                        const policyPack = `'${policyPackName}@v${policyPackVersion}'`;
                         const policyFrom = `policy '${p.name}' from policy pack ${policyPack}`;
                         if (e instanceof UnknownValueError) {
                             const { validateResource, name, ...diag } = p;
@@ -446,7 +446,7 @@ function makeAnalyzeStackRpcFun(
                     // the returned promise will be fulfilled with the value.
                     await Promise.resolve(p.validateStack(args, reportViolation));
                 } catch (e) {
-                    const policyPack = `'${policyPackName}@${policyPackVersion}'`;
+                    const policyPack = `'${policyPackName}@v${policyPackVersion}'`;
                     const policyFrom = `policy '${p.name}' from policy pack ${policyPack}`;
                     if (e instanceof UnknownValueError) {
                         const { validateStack, name, ...diag } = p;
@@ -656,7 +656,7 @@ function makeRemediateRpcFun(
                         props = result;
                     }
                 } catch (e) {
-                    const policyPack = `'${policyPackName}@${policyPackVersion}'`;
+                    const policyPack = `'${policyPackName}@v${policyPackVersion}'`;
                     const policyFrom = `remediation '${p.name}' from policy pack ${policyPack}`;
                     if (e instanceof UnknownValueError) {
                         diagnostic = `can't run ${policyFrom} during preview: ${e.message}`;

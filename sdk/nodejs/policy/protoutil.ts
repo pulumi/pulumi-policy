@@ -266,7 +266,7 @@ export interface Remediation {
     /**
      * The remediated resource's properties to use in place of the input ones.
      */
-    properties: Record<string, any>;
+    properties?: Record<string, any>;
 
     /**
      * An optional diagnostic string in the case that something went wrong.
@@ -283,6 +283,10 @@ export function makeRemediateResponse(rs: Remediation[]) {
 
     const remediations = [];
     for (const r of rs) {
+        if (!r.properties && !r.diagnostic) {
+            throw new Error("Expected a remediation to have either properties or a diagnostic");
+        }
+
         const remediation = new analyzerproto.Remediation();
         remediation.setPolicyname(r.policyName);
         remediation.setPolicypackname(r.policyPackName);

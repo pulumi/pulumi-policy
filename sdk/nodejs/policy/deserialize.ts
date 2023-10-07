@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { asset } from "@pulumi/pulumi";
+import { asset, Output } from "@pulumi/pulumi";
 import {
     specialArchiveSig,
     specialAssetSig,
@@ -147,8 +147,10 @@ export async function serializeProperties(obj: any): Promise<any> {
  * serialization semantics for policies which treat outputs and secrets with different semantics.
  */
 async function serializeProperty(prop: any): Promise<any> {
-    if (prop === undefined ||
-            prop === null ||
+    if (prop === undefined) {
+        return null;
+    }
+    if (prop === null ||
             typeof prop === "boolean" ||
             typeof prop === "number" ||
             typeof prop === "string") {
@@ -157,10 +159,14 @@ async function serializeProperty(prop: any): Promise<any> {
     if (prop[isSpecialProxy]) {
         return await serializeProperty(prop[getSpecialProxyTarget]);
     }
+    if (prop instanceof Promise) {
+        return serializeProperty(await prop);
+    }
     if (prop instanceof Array) {
         const elems: any[] = [];
         for (const e of prop) {
-            elems.push(await serializeProperty(e));
+            const se = await serializeProperty(e);
+            elems.push(se === undefined ? null : se);
         }
         return elems;
     }
@@ -196,9 +202,17 @@ async function serializeProperty(prop: any): Promise<any> {
         };
     }
 
+    // Unsupported types:
+    if (Output.isInstance(prop)) {
+        throw new Error("Serializing output values not supported from within a policy pack");
+    }
+
     const obj: any = {};
     for (const k of Object.keys(prop)) {
-        obj[k] = await serializeProperty(prop[k]);
+        const value = await serializeProperty(prop[k]);
+        if (value !== undefined) {
+            obj[k] = value;
+        }
     }
     return obj;
 }
