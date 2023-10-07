@@ -1,5 +1,6 @@
 ## HEAD (Unreleased)
-_(none)_
+
+- Add support for policy remediations (https://github.com/pulumi/pulumi-policy/pull/314).
 
 ---
 
