@@ -21,7 +21,7 @@ import {
 } from "@pulumi/pulumi/runtime/rpc";
 
 import { isSpecialProxy, getSpecialProxyTarget } from "./proxy";
-import { secretsPreservingProxy } from "./secret";
+import { Secret, secretsPreservingProxy } from "./secret";
 
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
@@ -112,11 +112,8 @@ function deserializeProperty(prop: any, proxySecrets: boolean): any {
                 case specialSecretSig:
                     let value = deserializeProperty(prop["value"], proxySecrets);
                     if (proxySecrets) {
-                        // Leave the special signature here, so that a proxy wrapper can detect it later on.
-                        value = {
-                            [specialSigKey]: specialSecretSig,
-                            value,
-                        };
+                        // Wrap the value so that a proxy wrapper can detect it later on.
+                        value = new Secret(value);
                     }
                     return value;
                 default:
@@ -188,13 +185,13 @@ async function serializeProperty(prop: any): Promise<any> {
     if (prop instanceof asset.RemoteArchive) {
         return { [specialSigKey]: specialArchiveSig, uri: await serializeProperty(prop.uri) };
     }
-    if (prop[specialSigKey] === specialSecretSig) {
+    if (prop instanceof Secret) {
         // Because of the way secrets proxying works, we very well may encounter a
         // secret in its raw form, since serialization explicitly unwraps the proxy and
         // accesses the raw underlying values.
         return {
             [specialSigKey]: specialSecretSig,
-            value: await serializeProperty(prop["value"]),
+            value: await serializeProperty(prop.value),
         };
     }
 
