@@ -50,12 +50,12 @@ class PolicyPack:
 
     def __init__(self,
                  name: str,
-                 policies: Optional[List['Policy']] = None,
+                 policies: List['Policy'],
                  enforcement_level: Optional['EnforcementLevel'] = None,
                  initial_config: Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] = None) -> None:
         """
         :param str name: The name of the policy pack.
-        :param Optional[List[Policy]] policies: The policies associated with a policy pack.
+        :param List[Policy] policies: The policies associated with a policy pack.
         :param Optional[EnforcementLevel] enforcement_level: Indicates what to do on policy
                violation, e.g., block deployment but allow override with
                proper permissions. This is the default used for all policies in the policy pack.
@@ -72,7 +72,7 @@ class PolicyPack:
             raise TypeError(f"Invalid policy pack name {name}. Policy pack names may only contain " +
                             "alphanumerics, hyphens, underscores, or periods.")
         if not policies:
-            policies = []
+            raise TypeError("Missing policies argument")
         if not isinstance(policies, list):
             raise TypeError("Expected policies to be a list of policies")
         for policy in policies:
@@ -986,7 +986,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                  initial_config: Optional[Dict[str, Union['EnforcementLevel', Dict[str, Any]]]] = None) -> None:
         assert name and isinstance(name, str)
         assert version and isinstance(version, str)
-        assert policies is None or isinstance(policies, list)
+        assert policies and isinstance(policies, list)
         assert enforcement_level and isinstance(
             enforcement_level, EnforcementLevel)
         assert initial_config is None or isinstance(initial_config, dict)

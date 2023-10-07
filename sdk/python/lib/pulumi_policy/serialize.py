@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Mapping, Union
 
 from .proxy import _DictProxy, _ListProxy
 from .secret import _DictSecretsProxy, _ListSecretsProxy, Secret, secrets_preserving_proxy
@@ -97,7 +97,7 @@ def _deserialize_archive(prop: Dict[str, Any]) -> pulumi.Archive:
         return pulumi.RemoteArchive(prop["uri"])
     raise AssertionError("Invalid archive encountered when unmarshaling resource property")
 
-def serialize_properties(props: Dict[str, Any]) -> Dict[str, Any]:
+def serialize_properties(props: Mapping[str, Any]) -> Mapping[str, Any]:
     """
     Serializes properties in preparation for a gRPC call.
     """
@@ -146,7 +146,7 @@ def _serialize_property(prop: Any) -> Any:
         # accesses the raw underlying value.
         return { SPECIAL_SIG_KEY: SPECIAL_SECRET_SIG, "value": _serialize_property(prop.value) }
 
-    if isinstance(prop, dict):
+    if isinstance(prop, Mapping):
         result: Dict[str, Any] = {}
         for key in prop:
             result[key] = _serialize_property(prop[key])

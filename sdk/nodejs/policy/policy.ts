@@ -27,7 +27,7 @@ export interface PolicyPackArgs {
     /**
      * The policies associated with a PolicyPack. These check for and enforce policies.
      */
-    policies?: Policies;
+    policies: Policies;
 
     /**
      * Indicates what to do on policy violation, e.g., block deployment but allow override with
@@ -64,7 +64,7 @@ export class PolicyPack {
     private readonly policies: Policies;
 
     constructor(private name: string, args: PolicyPackArgs, initialConfig?: PolicyPackConfig) {
-        this.policies = args.policies || [];
+        this.policies = args.policies;
 
         // Get package version from the package.json file.
         const cwd = process.cwd();
@@ -449,7 +449,19 @@ export type TypedResourceValidationRemediation<TProps> =
 
 /**
  * A helper function for the pattern where a single function wants to be able to remediate *and*
- * validate depending on how it is called.
+ * validate depending on how it is called. It returns both the validateResource and remediateResource
+ * functions which can be passed directly to the like-named properties on the policy class.
+ *
+ * This is typically used in combination with a spread operator. For example:
+ *
+ * ```typescript
+ * policies: [{
+ *     name: "...",
+ *     ...validateRemediateResourceOfType(aws.s3.Bucket, (bucket, args, reportViolation) => {
+ *         ... change bucket state *and* reportViolations ...
+ *     },
+ * }]
+ * ```
  */
 export function validateRemediateResourceOfType<TResource extends Resource, TArgs>(
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
