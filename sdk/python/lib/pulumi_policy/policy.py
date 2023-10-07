@@ -18,7 +18,6 @@ import os
 import re
 import sys
 import time
-import traceback
 
 from enum import Enum
 from inspect import isawaitable, signature
@@ -748,11 +747,15 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     not isinstance(policy, ResourceValidationPolicy) or
                     not policy.has_validation()):
                 continue
+            if enforcement_level == EnforcementLevel.REMEDIATE:
+                # If we ran a remediation, but we are still somehow triggering a violation,
+                # "downgrade" the level we report from remediate to mandatory.
+                enforcement_level = EnforcementLevel.MANDATORY
 
             report_violation = self._create_report_violation(diagnostics, policy.name,
                                                              policy.description, enforcement_level)
 
-            deserialized = deserialize_properties(json_format.MessageToDict(request.properties))
+            deserialized = deserialize_properties(json_format.MessageToDict(request.properties), False)
             props = unknown_checking_proxy(deserialized)
             opts = self._get_resource_options(request)
             provider = self._get_provider_resource(request)
@@ -792,7 +795,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
             intermediates: List[_PolicyAnalyzerServicer.IntermediateStackResource] = []
             for r in request.resources:
-                deserialized = deserialize_properties(json_format.MessageToDict(r.properties))
+                deserialized = deserialize_properties(json_format.MessageToDict(r.properties), False)
                 props = unknown_checking_proxy(deserialized)
                 opts = self._get_resource_options(r)
                 provider = self._get_provider_resource(r)
@@ -862,7 +865,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         # remediation until the last. Because of this, we unmarshal the request outside the loop.
         remediations: List[proto.Remediation] = []
 
-        deserialized = deserialize_properties(json_format.MessageToDict(request.properties))
+        deserialized = deserialize_properties(json_format.MessageToDict(request.properties), True)
         props = unknown_checking_proxy(deserialized)
         opts = self._get_resource_options(request)
         provider = self._get_provider_resource(request)
@@ -893,7 +896,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 # If new properties were returned, track and substitute them as a remediation.
                 if new_props:
                     props = new_props
-                    ser_props = serialize_properties(new_props["__map"])
+                    ser_props = serialize_properties(new_props)
                     rpc_props = struct_pb2.Struct()
                     for k, v in ser_props.items():
                         rpc_props[k] = v
@@ -1069,7 +1072,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         if not request.HasField("provider"):
             return None
         prov = request.provider
-        deserialized = deserialize_properties(json_format.MessageToDict(prov.properties))
+        deserialized = deserialize_properties(json_format.MessageToDict(prov.properties), False)
         props = unknown_checking_proxy(deserialized)
         return PolicyProviderResource(prov.type, props, prov.urn, prov.name)
 

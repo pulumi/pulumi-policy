@@ -81,37 +81,37 @@ def unknown_checking_proxy(props: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class _ListProxy(Sequence):
-    def __init__(self, elems: List[Any], props_acc: List[str]):
-        self.__elems = elems
+    def __init__(self, target: List[Any], props_acc: List[str]):
+        self.__target = target
         self.__props_acc = props_acc
 
     def __getitem__(self, key):
-        if key == "__elems":
-            return self.__elems
-        return _raise_if_unknown(key, self.__elems[key], self.__props_acc)
+        if key == "__target":
+            return self.__target
+        return _raise_if_unknown(key, self.__target[key], self.__props_acc)
 
     def __len__(self):
-        return len(self.__elems)
+        return len(self.__target)
 
 
 class _DictProxy(Mapping):
-    def __init__(self, d: Dict[str, Any], props_acc: List[str]):
-        self.__map = d
+    def __init__(self, target: Dict[str, Any], props_acc: List[str]):
+        self.__target = target
         self.__props_acc = props_acc
 
     def __getitem__(self, key):
-        if key == "__map":
-            return self.__map
-        return _raise_if_unknown(key, self.__map[key], self.__props_acc)
+        if key == "__target":
+            return self.__target
+        return _raise_if_unknown(key, self.__target[key], self.__props_acc)
 
     def __setitem__(self, key, value):
-        self.__map[key] = value
+        self.__target[key] = value
 
     def __len__(self):
-        return self.__map.__len__()
+        return self.__target.__len__()
 
     def __iter__(self):
-        return iter(self.__map)
+        return iter(self.__target)
 
 
 def _raise_if_unknown(key: Any, val: Any, props_acc: List[str]) -> Any:
