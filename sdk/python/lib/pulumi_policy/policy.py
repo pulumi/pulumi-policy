@@ -484,7 +484,10 @@ class ResourceValidationPolicy(Policy):
     def validate(self, args: ResourceValidationArgs, report_violation: ReportViolation) -> Optional[Awaitable]:
         # If there is no validation to be done, exit early.
         if not self.__validate:
-            return None
+            if self.__remediate:
+                return None
+            raise NotImplementedError(f'`validate or remediate must be overridden by policy "{self.name}"'
+                                      + ' since neither `validate nor `remediate was specified')
 
         awaitable_results: List[Awaitable] = []
 
@@ -758,7 +761,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             report_violation = self._create_report_violation(diagnostics, policy.name,
                                                              policy.description, enforcement_level)
 
-            deserialized = deserialize_properties(json_format.MessageToDict(request.properties), False)
+            deserialized = deserialize_properties(json_format.MessageToDict(request.properties))
             props = unknown_checking_proxy(deserialized)
             opts = self._get_resource_options(request)
             provider = self._get_provider_resource(request)
@@ -798,7 +801,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
             intermediates: List[_PolicyAnalyzerServicer.IntermediateStackResource] = []
             for r in request.resources:
-                deserialized = deserialize_properties(json_format.MessageToDict(r.properties), False)
+                deserialized = deserialize_properties(json_format.MessageToDict(r.properties))
                 props = unknown_checking_proxy(deserialized)
                 opts = self._get_resource_options(r)
                 provider = self._get_provider_resource(r)
@@ -1074,7 +1077,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         if not request.HasField("provider"):
             return None
         prov = request.provider
-        deserialized = deserialize_properties(json_format.MessageToDict(prov.properties), False)
+        deserialized = deserialize_properties(json_format.MessageToDict(prov.properties))
         props = unknown_checking_proxy(deserialized)
         return PolicyProviderResource(prov.type, props, prov.urn, prov.name)
 

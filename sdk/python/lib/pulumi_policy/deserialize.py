@@ -35,7 +35,7 @@ SPECIAL_ARCHIVE_SIG = "0def7320c3a5731c473e5ecbe6d01bc7"
 # See https://github.com/pulumi/pulumi/blob/master/sdk/go/common/resource/properties.go.
 SPECIAL_SECRET_SIG = "1b47061264138c4ac30d75fd1eb44270"
 
-def deserialize_properties(props: Dict[str, Any], proxy_secrets: bool) -> Dict[str, Any]:
+def deserialize_properties(props: Dict[str, Any], proxy_secrets: bool = False) -> Dict[str, Any]:
     """
     Deserializes properties from a gRPC call result.
     """
@@ -48,7 +48,7 @@ def deserialize_properties(props: Dict[str, Any], proxy_secrets: bool) -> Dict[s
 
     return result
 
-def _deserialize_property(prop: Any, proxy_secrets: bool) -> Any:
+def _deserialize_property(prop: Any, proxy_secrets: bool = False) -> Any:
     if isinstance(prop, list):
         elems: List[Any] = []
         for e in prop:
