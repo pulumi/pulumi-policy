@@ -30,7 +30,7 @@ import pulumi.runtime
 from pulumi.runtime import proto
 from pulumi.runtime.proto import analyzer_pb2_grpc
 
-from .serialize import deserialize_properties, serialize_properties
+from .deserialize import deserialize_properties, serialize_properties
 from .proxy import UnknownValueError, unknown_checking_proxy
 from .version import VERSION
 
