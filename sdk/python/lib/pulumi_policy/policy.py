@@ -29,7 +29,6 @@ from google.protobuf import empty_pb2, json_format, struct_pb2
 import pulumi.runtime
 from pulumi.runtime import proto
 from pulumi.runtime.proto import analyzer_pb2_grpc
-from pulumi.runtime.rpc import serialize_properties
 
 from .serialize import deserialize_properties, serialize_properties
 from .proxy import UnknownValueError, unknown_checking_proxy
@@ -451,11 +450,20 @@ resource's state for the engine to use instead.
 """
 
 
-ResourceRemediationValidation = Callable[[ResourceValidationArgs, ReportViolation], Optional[Awaitable[Mapping[str, Any]]]]
+ResourceValidationRemediation = Callable[[ResourceValidationArgs, ReportViolation], Optional[Awaitable[Mapping[str, Any]]]]
 """
-ResourceRemediationValidation is the callback signature for a single function that acts as
+ResourceValidationRemediation is the callback signature for a single function that acts as
 both a validation and a remediation all at once.
 """
+
+
+def empty_report_violation(msg: str, urn: Optional[str] = None) -> None:
+    # pylint: disable=unused-argument
+    return None
+
+
+def from_validate_remediate_to_remediate(validate_remediate: ResourceValidationRemediation) -> ResourceRemediation:
+    return lambda args: validate_remediate(args, empty_report_violation)
 
 
 class ResourceValidationPolicy(Policy):
@@ -494,22 +502,17 @@ class ResourceValidationPolicy(Policy):
         return None
 
     def has_validation(self) -> bool:
-        return (self.__validate or
+        return (self.__validate is not None or
                 getattr(ResourceValidationPolicy, "validate", None) != getattr(type(self), "validate", None))
 
     def remediate(self, args: ResourceValidationArgs) -> Optional[Awaitable[Mapping[str, Any]]]:
         # If there is no remediation to be done, exit early.
         if not self.__remediate:
             return None
-
-        result = self.__remediate(args)
-        if isawaitable(result):
-            return asyncio.wait(cast(Awaitable, result))
-
-        return result
+        return self.__remediate(args)
 
     def has_remediation(self) -> bool:
-        return (self.__remediate or
+        return (self.__remediate is not None or
                 getattr(ResourceValidationPolicy, "remediate", None) != getattr(type(self), "remediate", None))
 
     def __init__(self,
@@ -519,7 +522,7 @@ class ResourceValidationPolicy(Policy):
                  enforcement_level: Optional[EnforcementLevel] = None,
                  config_schema: Optional[PolicyConfigSchema] = None,
                  remediate: Optional[ResourceRemediation] = None,
-                 validate_remediate: Optional[ResourceRemediationValidation] = None) -> None:
+                 validate_remediate: Optional[ResourceValidationRemediation] = None) -> None:
         """
         :param str name: An ID for the policy. Must be unique within the current policy set.
         :param str description: A brief description of the policy rule. e.g., "S3 buckets should have
@@ -546,7 +549,7 @@ class ResourceValidationPolicy(Policy):
             if validate or remediate:
                 raise TypeError("Cannot supply validate or remediate in addition to validate_remediate")
             validate = validate_remediate
-            remediate = lambda args: validate_remediate(args, lambda msg, urn = None: None)
+            remediate = from_validate_remediate_to_remediate(validate_remediate)
 
         if validate:
             if not callable(validate) and not isinstance(validate, list):
@@ -903,7 +906,6 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
 
             except UnknownValueError as e:
                 diagnostic = f"can't run remediation '{policy.name}' from policy pack {self.__policy_pack_name}@{self.__policy_pack_version} during preview: {e.message}"
-                pass
 
             if rpc_props or diagnostic:
                 remediations.append(proto.Remediation(

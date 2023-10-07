@@ -16,7 +16,7 @@ from typing import Any, Dict, List
 from collections.abc import Mapping, Sequence
 
 
-def secrets_preserving_proxy(to_proxy: Dict[str, Any]) -> Dict[str, Any]:
+def secrets_preserving_proxy(to_proxy: Any) -> Any:
     """
     Proxies a set of resource inputs and ensures any properties that are secrets are (a) unwrapped
     to return raw values and (b) preserve seceretness upon writes. This ensures that secret values
@@ -50,9 +50,10 @@ class _ListSecretsProxy(Sequence):
         return secrets_preserving_proxy(value)
 
     def __setitem__(self, key, value):
-        prior = self.__target[key]
-        if is_raw_secret(prior):
-            value = Secret(value)
+        if key in self.__target:
+            # If the prior value is a secret, maintain it on the new value also.
+            if isinstance(self.__target[key], Secret):
+                value = Secret(value)
         self.__target[key] = value
 
     def __len__(self):
@@ -74,8 +75,8 @@ class _DictSecretsProxy(Mapping):
 
     def __setitem__(self, key, value):
         if key in self.__target:
-            prior = self.__target[key]
-            if is_raw_secret(prior):
+            # If the prior value is a secret, maintain it on the new value also.
+            if isinstance(self.__target[key], Secret):
                 value = Secret(value)
         self.__target[key] = value
 

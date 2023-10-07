@@ -14,10 +14,10 @@
 
 from typing import Any, Dict, List, Mapping, Union
 
+import pulumi
+
 from .proxy import _DictProxy, _ListProxy
 from .secret import _DictSecretsProxy, _ListSecretsProxy, Secret, secrets_preserving_proxy
-
-import pulumi
 
 # SPECIAL_SIG_KEY is sometimes used to encode type identity inside of a map.
 # See https://github.com/pulumi/pulumi/blob/master/sdk/go/common/resource/properties.go.
@@ -60,7 +60,7 @@ def _deserialize_property(prop: Any, proxy_secrets: bool) -> Any:
             if sig == SPECIAL_ASSET_SIG:
                 return _deserialize_asset(prop)
             if sig == SPECIAL_ARCHIVE_SIG:
-                return _deserialize_archive(prop)
+                return _deserialize_archive(prop, proxy_secrets)
             if sig == SPECIAL_SECRET_SIG:
                 if "value" not in prop:
                     raise AssertionError("Invalid secret encountered when unmarshaling resource property")
@@ -82,7 +82,7 @@ def _deserialize_asset(prop: Dict[str, Any]) -> pulumi.Asset:
         return pulumi.RemoteAsset(prop["uri"])
     raise AssertionError("Invalid asset encountered when unmarshaling resource property")
 
-def _deserialize_archive(prop: Dict[str, Any]) -> pulumi.Archive:
+def _deserialize_archive(prop: Dict[str, Any], proxy_secrets: bool) -> pulumi.Archive:
     if "assets" in prop:
         assets: Dict[str, Union[pulumi.Asset, pulumi.Archive]] = {}
         for key in prop["assets"]:
@@ -122,22 +122,22 @@ def _serialize_property(prop: Any) -> Any:
 
     # Check for assets:
     if isinstance(prop, pulumi.FileAsset):
-        return { SPECIAL_SIG_KEY: SPECIAL_ASSET_SIG, "path": _serialize_property(prop["path"]) }
+        return { SPECIAL_SIG_KEY: SPECIAL_ASSET_SIG, "path": _serialize_property(prop.path) }
     if isinstance(prop, pulumi.StringAsset):
-        return { SPECIAL_SIG_KEY: SPECIAL_ASSET_SIG, "text": _serialize_property(prop["text"]) }
+        return { SPECIAL_SIG_KEY: SPECIAL_ASSET_SIG, "text": _serialize_property(prop.text) }
     if isinstance(prop, pulumi.RemoteAsset):
-        return { SPECIAL_SIG_KEY: SPECIAL_ASSET_SIG, "uri": _serialize_property(prop["uri"]) }
+        return { SPECIAL_SIG_KEY: SPECIAL_ASSET_SIG, "uri": _serialize_property(prop.uri) }
 
     # Check for archives:
     if isinstance(prop, pulumi.AssetArchive):
         assets: Dict[str, Dict[str, Any]] = {}
-        for key in prop["assets"]:
-            assets[key] = _serialize_property(prop["assets"][key])
+        for key in prop.assets:
+            assets[key] = _serialize_property(prop.assets[key])
         return { SPECIAL_SIG_KEY: SPECIAL_ARCHIVE_SIG, "assets": assets }
     if isinstance(prop, pulumi.FileArchive):
-        return { SPECIAL_SIG_KEY: SPECIAL_ARCHIVE_SIG, "path": _serialize_property(prop["path"]) }
+        return { SPECIAL_SIG_KEY: SPECIAL_ARCHIVE_SIG, "path": _serialize_property(prop.path) }
     if isinstance(prop, pulumi.RemoteArchive):
-        return { SPECIAL_SIG_KEY: SPECIAL_ARCHIVE_SIG, "uri": _serialize_property(prop["uri"]) }
+        return { SPECIAL_SIG_KEY: SPECIAL_ARCHIVE_SIG, "uri": _serialize_property(prop.uri) }
 
     # Check for secrets:
     if isinstance(prop, Secret):
