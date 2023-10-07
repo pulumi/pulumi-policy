@@ -18,7 +18,7 @@ import * as grpc from "@grpc/grpc-js";
 import { Resource, Unwrap } from "@pulumi/pulumi";
 import * as q from "@pulumi/pulumi/queryable";
 
-import { deserializeProperties } from "./deserialize";
+import { deserializeProperties, serializeProperties } from "./deserialize";
 import {
     EnforcementLevel,
     Policies,
@@ -209,10 +209,15 @@ function makeAnalyzeRpcFun(
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                const enforcementLevel: EnforcementLevel =
+                let enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
                 if (enforcementLevel === "disabled" || !isResourcePolicy(p) || !p.validateResource) {
-                       continue;
+                    continue;
+                }
+                if (enforcementLevel === "remediate") {
+                    // If we ran a remediation, but we are still somehow triggering a violation,
+                    // "downgrade" the level we report from remediate to mandatory.
+                    enforcementLevel = "mandatory";
                 }
 
                 const reportViolation: ReportViolation = (message, urn) => {
@@ -239,7 +244,7 @@ function makeAnalyzeRpcFun(
                 for (const validation of validations) {
                     try {
                         const type = req.getType();
-                        const deserd = deserializeProperties(req.getProperties());
+                        const deserd = deserializeProperties(req.getProperties(), false);
                         const props = unknownCheckingProxy(deserd);
                         const args: ResourceValidationArgs = {
                             type,
@@ -361,7 +366,7 @@ function makeAnalyzeStackRpcFun(
                     const intermediates: IntermediateStackResource[] = [];
                     for (const r of req.getResourcesList()) {
                         const type = r.getType();
-                        const deserd = deserializeProperties(r.getProperties());
+                        const deserd = deserializeProperties(r.getProperties(), false);
                         const props = unknownCheckingProxy(deserd);
                         const resource: PolicyResource = {
                             type,
@@ -523,7 +528,7 @@ function getProviderResource(r: any): PolicyProviderResource | undefined {
     if (!prov) {
         return undefined;
     }
-    const deserd = deserializeProperties(prov.getProperties());
+    const deserd = deserializeProperties(prov.getProperties(), false);
     const props = unknownCheckingProxy(deserd);
     return {
         type: prov.getType(),
@@ -605,7 +610,7 @@ function makeRemediateRpcFun(
         const name = req.getName();
         const type = req.getType();
         const opts = getResourceOptions(req);
-        let props: any = unknownCheckingProxy(deserializeProperties(req.getProperties()));
+        let props: any = unknownCheckingProxy(deserializeProperties(req.getProperties(), true));
 
         // Run any remediations in our policy list.
         const rs: Remediation[] = [];
@@ -661,9 +666,9 @@ function makeRemediateRpcFun(
                 }
 
                 if (result || diagnostic) {
-                    // Remove the proxiness if it is there, to avoid unknowns causing issues.
-                    if (result && result.getOriginalTarget) {
-                        result = result.getOriginalTarget();
+                    // Serialize the result, which translates runtime objects, secrets, and removes proxies.
+                    if (result) {
+                        result = await serializeProperties(result);
                     }
 
                     rs.push({

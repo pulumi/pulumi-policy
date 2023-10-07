@@ -27,6 +27,18 @@ export function unknownCheckingProxy<T>(toProxy: any): any {
 }
 
 /**
+ * isSpecialProxy can be used to detect the presence of a special proxy.
+ * @internal
+ */
+export const isSpecialProxy = "__isSpecialProxy";
+
+/**
+ * getSpecialProxyTarget can be used to return the original underlying proxied object.
+ * @internal
+ */
+export const getSpecialProxyTarget = "__getSpecialProxyTarget";
+
+/**
  * `proxyHelper` is a helper for the `unknownCheckingProxy` function.
  * @param toProxy resource inputs to create a proxy for
  * @param propsAcc accumulates the property path, e.g., for `resc.foo.bar`, this would be `["foo","bar"]`
@@ -39,8 +51,10 @@ function proxyHelper<T>(toProxy: any, propsAcc: (keyof T)[]): any {
 
     return new Proxy(toProxy, {
         get: (obj, prop: keyof T) => {
-            if (prop === 'getOriginalTarget') {
-                return () => obj;
+            if (prop === isSpecialProxy) {
+                return true;
+            } else if (prop === getSpecialProxyTarget) {
+                return obj;
             }
             const newProps = propsAcc.concat([prop]);
             const field = obj[prop];

@@ -43,7 +43,7 @@ describe("runtime", () => {
                 const transfer = gstruct.Struct.fromJavaScript(
                     await runtime.serializeProperties("test", inputs),
                 );
-                const result = deserializeProperties(transfer);
+                const result = deserializeProperties(transfer, false);
                 assert.equal(result.aNum, 42);
                 assert.equal(result.bStr, "a string");
                 assert.equal(result.cUnd, undefined);
@@ -63,7 +63,7 @@ describe("runtime", () => {
                 const transfer = gstruct.Struct.fromJavaScript(
                     await runtime.serializeProperties("test", inputs),
                 );
-                const result = deserializeProperties(transfer);
+                const result = deserializeProperties(transfer, false);
                 assert.equal(result.secret1, 1);
                 assert.equal(result.secret2, undefined);
             }),
@@ -107,7 +107,7 @@ describe("runtime", () => {
                 ],
             });
 
-            const result = deserializeProperties(props);
+            const result = deserializeProperties(props, false);
 
             // Regular had no secrets in it, so it is returned as is.
             assert.equal(result.regular, "a normal value");
