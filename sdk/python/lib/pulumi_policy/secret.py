@@ -16,6 +16,18 @@ from typing import Any, Dict, List
 from collections.abc import Mapping, Sequence
 
 
+class Secret:
+    """
+    Secret allows values to be marked as sensitive, such that the Pulumi engine will encrypt them
+    as normal with Pulumi secrets upon seeing one returned from a remediation.
+    """
+    def __init__(self, value: Any):
+        """
+        :param Any value: The plaintext value to turn into a secret.
+        """
+        self.value = value
+
+
 def secrets_preserving_proxy(to_proxy: Any) -> Any:
     """
     Proxies a set of resource inputs and ensures any properties that are secrets are (a) unwrapped
@@ -28,13 +40,6 @@ def secrets_preserving_proxy(to_proxy: Any) -> Any:
         return _DictSecretsProxy(to_proxy)
     return to_proxy
 
-
-class Secret:
-    """
-    The internal runtime representation of a secret, so that we can round trip them.
-    """
-    def __init__(self, value: Any):
-        self.value = value
 
 class _ListSecretsProxy(Sequence):
     def __init__(self, target: List[Any]):

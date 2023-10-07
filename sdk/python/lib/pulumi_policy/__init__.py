@@ -35,6 +35,9 @@ from .policy import (
     StackValidationArgs,
     StackValidationPolicy,
 )
+from .secret import (
+    Secret,
+)
 
 __all__ = [
     "EnforcementLevel",
@@ -50,6 +53,7 @@ __all__ = [
     "ResourceValidation",
     "ResourceValidationArgs",
     "ResourceValidationPolicy",
+    "Secret",
     "StackValidation",
     "StackValidationArgs",
     "StackValidationPolicy",

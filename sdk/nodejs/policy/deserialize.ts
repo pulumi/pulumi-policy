@@ -20,8 +20,9 @@ import {
     specialSigKey,
 } from "@pulumi/pulumi/runtime/rpc";
 
+import { Secret } from "./policy";
 import { isSpecialProxy, getSpecialProxyTarget } from "./proxy";
-import { Secret, secretsPreservingProxy } from "./secret";
+import { secretsPreservingProxy } from "./secret";
 
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.

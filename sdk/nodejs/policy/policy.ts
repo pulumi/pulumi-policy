@@ -640,3 +640,22 @@ export function validateStackResourcesOfType<TResource extends Resource>(
  * ReportViolation is the callback signature used to report policy violations.
  */
 export type ReportViolation = (message: string, urn?: string) => void;
+
+/**
+ * Secret allows values to be marked as sensitive, such that the Pulumi engine will encrypt them
+ * as normal with Pulumi secrets upon seeing one returned from a remediation.
+ */
+export class Secret {
+    /**
+     * The underlying plaintext value.
+     */
+    public value: any;
+
+    /**
+     * Constructs a new secret value that will be encrypted.
+     * @param value The plaintext value to turn into a secret.
+     */
+    constructor(value: any) {
+        this.value = value;
+    }
+}

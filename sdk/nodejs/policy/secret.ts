@@ -12,18 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Secret } from "./policy";
 import { isSpecialProxy, getSpecialProxyTarget } from "./proxy";
-
-/**
- * Secret is the internal class that wraps secret values, enabling round-tripping.
- */
-export class Secret {
-    public value: any;
-
-    constructor(value: any) {
-        this.value = value;
-    }
-}
 
 /**
  * `secretsPreservingProxy` is a helper that takes an input and ensures any properties
