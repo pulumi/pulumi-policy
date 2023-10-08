@@ -14,6 +14,10 @@ def validate_resource(args, report_violation):
     verify(args)
 
 
+def remediate_resource(args):
+    verify(args)
+
+
 def validate_stack(args, report_violation):
     for r in args.resources:
         verify(r)
@@ -31,14 +35,16 @@ def verify(r):
 
 PolicyPack(
     name="unknown-values-policy",
-    enforcement_level=EnforcementLevel.MANDATORY,
     policies=[
         ResourceValidationPolicy(
+            enforcement_level=EnforcementLevel.REMEDIATE,
             name="unknown-values-resource-validation",
             description="Accessing unknown values during preview results in a violation.",
             validate=validate_resource,
+            remediate=remediate_resource,
         ),
         StackValidationPolicy(
+            enforcement_level=EnforcementLevel.MANDATORY,
             name="unknown-values-stack-validation",
             description="Accessing unknown values during preview results in a violation.",
             validate=validate_stack,

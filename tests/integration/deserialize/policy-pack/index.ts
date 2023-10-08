@@ -9,6 +9,7 @@ new PolicyPack("deserialize-policy", {
     enforcementLevel: "mandatory",
     policies: [
         {
+            enforcementLevel: "remediate",
             name: "resource-validation",
             description: "Verifies deserialized properties during resource validation.",
             validateResource: (args, reportViolation) => {

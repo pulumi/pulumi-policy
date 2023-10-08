@@ -20,6 +20,10 @@ def validate_resource(args, report_violation):
     validate(args)
 
 
+def remediate_resource(args):
+    validate(args)
+
+
 def validate_stack(args, report_violation):
     for r in args.resources:
         validate(r)
@@ -121,7 +125,12 @@ def validate_dynamic_resource(r):
             protect=False,
             ignore_changes=[],
             delete_before_replace=None,
-            aliases=[create_urn("pulumi-nodejs:dynamic:Resource", "old-name-for-aliased")],
+            # Note that the engine explicitly does not preserve aliases pointing to resources that no
+            # longer exist. Because we don't actually introduce real aliases here, "old-name-for-aliases"
+            # is not paired up with a resource, and so the aliases array will be empty. If the engine
+            # preserved these aliases, we would have instead checked for:
+            # aliases=[create_urn("pulumi-nodejs:dynamic:Resource", "old-name-for-aliased")],
+            aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
         ), r.opts)
@@ -193,6 +202,7 @@ PolicyPack(
             name="validate-resource",
             description="Validates resource options during `validateResource`.",
             validate=validate_resource,
+            remediate=remediate_resource,
         ),
         StackValidationPolicy(
             name="validate-stack",

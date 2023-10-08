@@ -458,16 +458,16 @@ func TestValidateStack(t *testing.T) {
 
 // Test that accessing unknown values returns an error during previews.
 func TestUnknownValues(t *testing.T) {
-	t.Skip("https://github.com/pulumi/pulumi-policy/issues/263")
 	runPolicyPackIntegrationTest(t, "unknown_values", NodeJS, map[string]string{
 		"aws:region": "us-west-2",
 	}, []policyTestScenario{
 		{
 			WantErrors: []string{
-				"[advisory]  unknown-values-policy v0.0.1  unknown-values-resource-validation (random:index/randomPet:RandomPet: pet)",
-				"can't run policy 'unknown-values-resource-validation' during preview: string value at .prefix can't be known during preview",
-				"[advisory]  unknown-values-policy v0.0.1  unknown-values-stack-validation",
-				"can't run policy 'unknown-values-stack-validation' during preview: string value at .prefix can't be known during preview",
+				"unknown-values-policy@v0.0.1",
+				"[advisory]  unknown-values-resource-validation  (random:index/randomPet:RandomPet: pet)",
+				"can't run policy 'unknown-values-resource-validation' from policy pack 'unknown-values-policy@v0.0.1' during preview: string value at .prefix can't be known during preview",
+				"[advisory]  unknown-values-stack-validation",
+				"can't run policy 'unknown-values-stack-validation' from policy pack 'unknown-values-policy@v0.0.1' during preview: string value at .prefix can't be known during preview",
 			},
 			Advisory: true,
 		},
@@ -484,7 +484,6 @@ func TestRuntimeData(t *testing.T) {
 
 // Test resource options.
 func TestResourceOptions(t *testing.T) {
-	t.Skip("https://github.com/pulumi/pulumi-policy/issues/291")
 	runPolicyPackIntegrationTest(t, "resource_options", NodeJS, nil, []policyTestScenario{
 		// Test scenario 1: test resource options.
 		{WantErrors: nil},
@@ -495,7 +494,6 @@ func TestResourceOptions(t *testing.T) {
 
 // Test parent and dependencies.
 func TestParentDependencies(t *testing.T) {
-	t.Skip("https://github.com/pulumi/pulumi-policy/issues/292")
 	runPolicyPackIntegrationTest(t, "parent_dependencies", NodeJS, nil, []policyTestScenario{
 		{WantErrors: nil},
 	})
@@ -853,8 +851,9 @@ func TestRemoteComponent(t *testing.T) {
 	runPolicyPackIntegrationTest(t, "remote_component", NodeJS, nil, []policyTestScenario{
 		{
 			WantErrors: []string{
+				"remote-component-policy@v0.0.1",
 				"[advisory]  remote-component-policy v0.0.1  resource-validation (random:index/randomString:RandomString: innerRandom)",
-				"can't run policy 'resource-validation' during preview: string value at .keepers.hi can't be known during preview",
+				"can't run policy 'resource-validation' from policy pack 'remote-component-policy@v0.0.1' during preview: string value at .keepers.hi can't be known during preview",
 			},
 			Advisory: true,
 		},

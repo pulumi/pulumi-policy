@@ -18,5 +18,8 @@ export class Provider implements pulumi.dynamic.ResourceProvider {
 export class Resource extends pulumi.dynamic.Resource {
     constructor(name: string, opts?: pulumi.CustomResourceOptions) {
         super(Provider.instance, name, {}, opts);
+        if (name === "aliased") {
+            console.log("OPTS = " + JSON.stringify(opts));
+        }
     }
 }

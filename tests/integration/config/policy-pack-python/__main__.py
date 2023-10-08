@@ -332,17 +332,24 @@ def validate(args, report_violation):
         verify(args.get_config())
 
 
+def remediate(args):
+    if verify is not None:
+        verify(args.get_config())
+
+
 PolicyPack(
     name="config-policy",
-    enforcement_level=EnforcementLevel.MANDATORY,
     policies=[
         ResourceValidationPolicy(
+            enforcement_level=EnforcementLevel.REMEDIATE,
             name="resource-validation",
             description="Verifies policy config during resource validation.",
             validate=validate,
+            remediate=remediate,
             config_schema=schema,
         ),
         StackValidationPolicy(
+            enforcement_level=EnforcementLevel.MANDATORY,
             name="stack-validation",
             description="Verifies policy config during stack validation.",
             validate=validate,

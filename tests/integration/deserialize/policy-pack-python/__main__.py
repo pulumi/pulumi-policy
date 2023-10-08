@@ -54,6 +54,7 @@ PolicyPack(
     enforcement_level=EnforcementLevel.MANDATORY,
     policies=[
         ResourceValidationPolicy(
+            enforcement_level=EnforcementLevel.REMEDIATE,
             name="resource-validation",
             description="Verifies deserialized properties during resource validation.",
             validate=validate_resource,
