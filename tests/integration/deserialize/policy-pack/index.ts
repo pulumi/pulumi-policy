@@ -14,6 +14,9 @@ new PolicyPack("deserialize-policy", {
             validateResource: (args, reportViolation) => {
                 verify(args);
             },
+            remediateResource: (args) => {
+                verify(args);
+            },
         },
         {
             name: "stack-validation",

@@ -14,6 +14,10 @@ def validate_resource(args, report_violation):
     verify(args)
 
 
+def remediate(args):
+    verify(args)
+
+
 def validate_stack(args, report_violation):
     for r in args.resources:
         verify(r)
@@ -53,6 +57,7 @@ PolicyPack(
             name="resource-validation",
             description="Verifies deserialized properties during resource validation.",
             validate=validate_resource,
+            remediate=remediate,
         ),
         StackValidationPolicy(
             name="stack-validation",

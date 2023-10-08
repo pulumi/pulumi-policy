@@ -4,23 +4,26 @@ import * as assert from "assert";
 
 import { PolicyPack } from "@pulumi/policy";
 
+function verify(args: any) {
+    if (args.name !== "innerRandom") {
+        return;
+    }
+
+    assert.strictEqual(args.props.keepers.hello, "world");
+
+    // Accessing `keepers.hi` is expected to result in a policy violation because its value is unknown
+    // during previews given the associated Pulumi program.
+    console.log(args.props.keepers.hi);
+}
+
 new PolicyPack("remote-component-policy", {
     enforcementLevel: "mandatory",
     policies: [
         {
             name: "resource-validation",
             description: "Verifies properties during resource validation.",
-            validateResource: (args, reportViolation) => {
-                if (args.name !== "innerRandom") {
-                    return;
-                }
-
-                assert.strictEqual(args.props.keepers.hello, "world");
-
-                // Accessing `keepers.hi` is expected to result in a policy violation because its value is unknown
-                // during previews given the associated Pulumi program.
-                console.log(args.props.keepers.hi);
-            },
+            validateResource: (args, reportViolation) => { verify(args); },
+            remediateResource: (args) => { verify(args); },
         },
 
     ],

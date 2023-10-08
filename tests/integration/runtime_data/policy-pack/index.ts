@@ -15,6 +15,9 @@ new PolicyPack("runtime-data-policy", {
             validateResource: (args, reportViolation) => {
                 verifyData(args);
             },
+            remediateResource: (args) => {
+                verifyData(args);
+            },
         },
         {
             name: "runtime-data-stack-validation",

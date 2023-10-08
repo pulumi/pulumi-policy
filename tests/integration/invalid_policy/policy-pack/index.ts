@@ -15,6 +15,7 @@ switch (testScenario) {
                     description: "Invalid policy name.",
                     enforcementLevel: "mandatory",
                     validateResource: (args, reportViolation) => { throw new Error("Should never run."); },
+                    remediateResource: (args) => { throw new Error("Should never run."); },
                 },
             ],
         });
@@ -33,6 +34,7 @@ switch (testScenario) {
                         },
                     },
                     validateResource: (args, reportViolation) => { throw new Error("Should never run."); },
+                    remediateResource: (args) => { throw new Error("Should never run."); },
                 },
             ],
         });
@@ -52,6 +54,7 @@ switch (testScenario) {
                         required: ["enforcementLevel"],
                     },
                     validateResource: (args, reportViolation) => { throw new Error("Should never run."); },
+                    remediateResource: (args) => { throw new Error("Should never run."); },
                 },
             ],
         });

@@ -7,7 +7,7 @@ from pulumi_policy import (
 )
 
 
-def validate_resource(args, report_violation):
+def verify(args):
     if args.name != "innerRandom":
         return
 
@@ -18,6 +18,14 @@ def validate_resource(args, report_violation):
     print(args.props["keepers"]["hi"])
 
 
+def validate_resource(args, report_violation):
+    verify(args)
+
+
+def remediate(args):
+    verify(args)
+
+
 PolicyPack(
     name="remote-component-policy",
     enforcement_level=EnforcementLevel.MANDATORY,
@@ -26,6 +34,7 @@ PolicyPack(
             name="resource-validation",
             description="Verifies properties during resource validation.",
             validate=validate_resource,
+            remediate=remediate,
         ),
     ],
 )

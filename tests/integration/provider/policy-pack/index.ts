@@ -14,6 +14,9 @@ new PolicyPack("resource-options-test-policy", {
             validateResource: (args, reportViolation) => {
                 validate(args);
             },
+            remediateResource: (args) => {
+                validate(args);
+            },
         },
         {
             name: "validate-stack",
