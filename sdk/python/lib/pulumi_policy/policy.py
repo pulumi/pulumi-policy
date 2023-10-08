@@ -779,7 +779,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
                     policyPackVersion=self.__policy_pack_version,
-                    message=f"can't run policy '{policy.name}' during preview: {e.message}",
+                    message=(f"can't run policy '{policy.name}' from policy pack "
+                             f"'{self.__policy_pack_name}@v{self.__policy_pack_version}' during preview: {e.message}"),
                     urn="",
                     description=policy.description,
                     enforcementLevel=self._map_enforcement_level(EnforcementLevel.ADVISORY),
@@ -854,7 +855,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
                     policyPackVersion=self.__policy_pack_version,
-                    message=f"can't run policy '{policy.name}' during preview: {e.message}",
+                    message=(f"can't run policy '{policy.name}' from policy pack "
+                             f"'{self.__policy_pack_name}@v{self.__policy_pack_version}' during preview: {e.message}"),
                     urn="",
                     description=policy.description,
                     enforcementLevel=self._map_enforcement_level(EnforcementLevel.ADVISORY),
@@ -908,7 +910,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                         rpc_props[k] = v
 
             except UnknownValueError as e:
-                diagnostic = f"can't run remediation '{policy.name}' from policy pack {self.__policy_pack_name}@{self.__policy_pack_version} during preview: {e.message}"
+                diagnostic=(f"can't run remediation '{policy.name}' from policy pack "
+                            f"'{self.__policy_pack_name}@v{self.__policy_pack_version}' during preview: {e.message}")
 
             if rpc_props or diagnostic:
                 remediations.append(proto.Remediation(

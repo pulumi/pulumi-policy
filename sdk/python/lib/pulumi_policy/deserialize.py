@@ -15,6 +15,7 @@
 from typing import Any, Dict, List, Mapping, Union
 
 import pulumi
+from pulumi.runtime.rpc import isLegalProtobufValue
 
 from .proxy import _DictProxy, _ListProxy
 from .secret import _DictSecretsProxy, _ListSecretsProxy, Secret, secrets_preserving_proxy
@@ -151,5 +152,8 @@ def _serialize_property(prop: Any) -> Any:
         for key in prop:
             result[key] = _serialize_property(prop[key])
         return result
+
+    if not isLegalProtobufValue(prop):
+        raise TypeError(f"Serializing values of type {type(prop).__name__} not supported from within a policy pack")
 
     return prop
