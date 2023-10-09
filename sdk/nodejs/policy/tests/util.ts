@@ -63,6 +63,7 @@ export async function runResourcePolicy(resPolicy: policy.ResourceValidationPoli
     return violations;
 }
 
+/** @internal */
 export type PolicyRemediation = Record<string, any> | undefined;
 
 // runResourceRemediation will run some basic checks for a policy's metadata, and then
