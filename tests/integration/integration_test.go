@@ -140,6 +140,7 @@ func runPolicyPackIntegrationTest(
 		e.RunCommand("pipenv", "run", "pip", "install", "-r", "requirements.txt")
 		abortIfFailed(t)
 		venvCreated = true
+
 	default:
 		t.Fatalf("Unexpected runtime value.")
 	}
