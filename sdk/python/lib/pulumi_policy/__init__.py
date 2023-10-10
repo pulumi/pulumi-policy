@@ -27,12 +27,16 @@ from .policy import (
     PolicyResource,
     PolicyResourceOptions,
     ReportViolation,
+    ResourceRemediation,
     ResourceValidation,
     ResourceValidationArgs,
     ResourceValidationPolicy,
     StackValidation,
     StackValidationArgs,
     StackValidationPolicy,
+)
+from .secret import (
+    Secret,
 )
 
 __all__ = [
@@ -45,9 +49,11 @@ __all__ = [
     "PolicyResource",
     "PolicyResourceOptions",
     "ReportViolation",
+    "ResourceRemediation",
     "ResourceValidation",
     "ResourceValidationArgs",
     "ResourceValidationPolicy",
+    "Secret",
     "StackValidation",
     "StackValidationArgs",
     "StackValidationPolicy",

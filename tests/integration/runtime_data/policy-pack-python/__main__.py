@@ -19,6 +19,10 @@ def validate_resource(args, report_violation):
     verify_data(args)
 
 
+def remediate_resource(args, report):
+    verify_data(args)
+
+
 def validate_stack(args, report_violation):
     for r in args.resources:
         verify_data(r)
@@ -57,6 +61,7 @@ PolicyPack(
             name="runtime-data-resource-validation",
             description="Verifies runtime data during resource validation.",
             validate=validate_resource,
+            remediate=remediate_resource,
         ),
         StackValidationPolicy(
             name="runtime-data-stack-validation",

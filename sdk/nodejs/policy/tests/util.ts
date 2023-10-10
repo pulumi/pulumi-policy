@@ -56,9 +56,27 @@ export async function runResourcePolicy(resPolicy: policy.ResourceValidationPoli
         ? resPolicy.validateResource
         : [resPolicy.validateResource];
     for (const validation of validations) {
-        await Promise.resolve(validation(args, report));
+        if (validation) {
+            await Promise.resolve(validation(args, report));
+        }
     }
     return violations;
+}
+
+/** @internal */
+export type PolicyRemediation = Record<string, any> | undefined;
+
+// runResourceRemediation will run some basic checks for a policy's metadata, and then
+// execute its remediations with the provided type and properties, returning the results.
+/** @internal */
+export async function runResourceRemediation(resPolicy: policy.ResourceValidationPolicy, args: policy.ResourceValidationArgs): Promise<PolicyRemediation> {
+    if (resPolicy.remediateResource) {
+        const result = await Promise.resolve(resPolicy.remediateResource(args));
+        if (result) {
+            return result;
+        }
+    }
+    return undefined;
 }
 
 // runStackPolicy will run some basic checks for a policy's metadata, and then

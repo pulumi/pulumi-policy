@@ -14,6 +14,9 @@ new PolicyPack("resource-options-test-policy", {
             validateResource: (args, reportViolation) => {
                 validate(args);
             },
+            remediateResource: (args) => {
+                validate(args);
+            },
         },
         {
             name: "validate-stack",
@@ -120,7 +123,12 @@ function validateDynamicResource(r: ResourceValidationArgs | PolicyResource) {
 
         case "aliased":
             assert.deepStrictEqual(r.opts, Object.assign({}, defaultOptions, {
-                aliases: [createURN("pulumi-nodejs:dynamic:Resource", "old-name-for-aliased")],
+                // Note that the engine explicitly does not preserve aliases pointing to resources that no
+                // longer exist. Because we don't actually introduce real aliases here, "old-name-for-aliases"
+                // is not paired up with a resource, and so the aliases array will be empty. If the engine
+                // preserved these aliases, we would have instead checked for:
+                // aliases: [createURN("pulumi-nodejs:dynamic:Resource", "old-name-for-aliased")],
+                aliases: [],
             }));
             break;
 

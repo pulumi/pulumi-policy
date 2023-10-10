@@ -16,13 +16,14 @@ import * as assert from "assert";
 
 import * as pulumi from "@pulumi/pulumi";
 import {
+    remediateResourceOfType,
     ResourceValidationPolicy,
     StackValidationPolicy,
     validateResourceOfType,
     validateStackResourcesOfType,
 } from "../policy";
 
-import { asyncTest, runResourcePolicy, runStackPolicy } from "./util";
+import { asyncTest, runResourcePolicy, runResourceRemediation, runStackPolicy } from "./util";
 
 function delay(t: number, v: string): Promise<string> {
     return new Promise((resolve) => {
@@ -77,6 +78,35 @@ describe("validateResourceOfType", () => {
         const violations = await runResourcePolicy(policy, args);
 
         assert.deepStrictEqual(violations, [{ message: "hi" }]);
+    }));
+});
+
+describe("remediateResourceOfType", () => {
+    it("works as expected with async policies", asyncTest(async () => {
+        const policy: ResourceValidationPolicy = {
+            name: "foo",
+            description: "A test remediation.",
+            enforcementLevel: "remediate",
+            remediateResource: remediateResourceOfType(Foo, async (_, __) => {
+                const response = await delay(100, "hi");
+                return { "message": "bonjour" };
+            }),
+        };
+
+        const args = {
+            isType: () => true,  // true so the validation function always runs.
+            asType: () => undefined,
+            getConfig: <T>() => <T>{},
+            type: "",
+            props: {},
+            urn: "",
+            name: "",
+            opts: empytOptions,
+        };
+
+        const remediation = await runResourceRemediation(policy, args);
+
+        assert.deepStrictEqual(remediation, { message: "bonjour" });
     }));
 });
 

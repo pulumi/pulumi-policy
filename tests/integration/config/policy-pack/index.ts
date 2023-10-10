@@ -3,7 +3,14 @@
 import * as assert from "assert";
 
 import * as pulumi from "@pulumi/pulumi";
-import { PolicyConfigSchema, PolicyPack, PolicyPackConfig } from "@pulumi/policy";
+import {
+    PolicyConfigSchema,
+    PolicyPack,
+    PolicyPackConfig,
+    remediateResourceOfType,
+    validateRemediateResourceOfType,
+    validateResourceOfType,
+} from "@pulumi/policy";
 
 interface TestScenario {
     schema: PolicyConfigSchema;
@@ -350,9 +357,12 @@ new PolicyPack("config-policy", {
         {
             name: "resource-validation",
             description: "Verifies policy config during resource validation.",
-            enforcementLevel: "mandatory",
+            enforcementLevel: "remediate",
             configSchema: scenarios[index].schema,
             validateResource: (args, reportViolation) => {
+                scenarios[index].verify?.(args);
+            },
+            remediateResource: (args) => {
                 scenarios[index].verify?.(args);
             },
         },

@@ -18,6 +18,10 @@ def validate_resource(args, report_violation):
     validate(args)
 
 
+def remediate(args):
+    validate(args)
+
+
 def validate_stack(args, report_violation):
     for r in args.resources:
         validate(r)
@@ -61,6 +65,7 @@ PolicyPack(
             name="validate-resource",
             description="Validates resource options during `validateResource`.",
             validate=validate_resource,
+            remediate=remediate,
         ),
         StackValidationPolicy(
             name="validate-stack",

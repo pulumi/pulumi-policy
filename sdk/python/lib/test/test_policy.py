@@ -14,7 +14,7 @@
 
 import asyncio
 from inspect import isawaitable
-from typing import List, Optional, Union
+from typing import Any, List, Mapping, Optional, Union
 import unittest
 
 from pulumi_policy import (
@@ -41,6 +41,15 @@ def run_policy(policy: Union[ResourceValidationPolicy, StackValidationPolicy]) -
         loop.close()
 
     return violations
+
+def run_remediation(policy: ResourceValidationPolicy) -> Union[Mapping[str, Any], None]:
+    result = policy.remediate(None)
+    if isawaitable(result):
+        loop = asyncio.new_event_loop()
+        result = loop.run_until_complete(result)
+        loop.close()
+
+    return result
 
 class PolicyPackTests(unittest.TestCase):
     def test_init_raises(self):
@@ -102,6 +111,7 @@ class ResourceValidationPolicyTests(unittest.TestCase):
         ResourceValidationPolicy("name", "desc", [NOP])
         ResourceValidationPolicy("name", "desc", NOP, EnforcementLevel.ADVISORY)
         ResourceValidationPolicy("name", "desc", NOP, EnforcementLevel.MANDATORY)
+        ResourceValidationPolicy("name", "desc", NOP, EnforcementLevel.REMEDIATE)
         ResourceValidationPolicy("name", "desc", NOP, EnforcementLevel.DISABLED)
 
     def test_async_validate(self):
@@ -173,6 +183,20 @@ class ResourceValidationPolicySubclassValidateOverrideTests(unittest.TestCase):
         self.assertEqual(["first", "second"], violations)
 
 
+class ResourceValidationPolicySubclassRemediateOverrideTests(unittest.TestCase):
+    class Subclass(ResourceValidationPolicy):
+        def remediate(self, args):
+            return {"foo": "bar"}
+
+        def __init__(self):
+            super().__init__("name", "desc")
+
+    def test_validate(self):
+        policy = self.Subclass()
+        remediation = run_remediation(policy)
+        self.assertEqual({"foo": "bar"}, remediation)
+
+
 class ResourceValidationPolicySubclassAsyncValidateTests(unittest.TestCase):
     class Subclass(ResourceValidationPolicy):
         async def validate(self, args, report_violation):
@@ -187,6 +211,21 @@ class ResourceValidationPolicySubclassAsyncValidateTests(unittest.TestCase):
         policy = self.Subclass()
         violations = run_policy(policy)
         self.assertEqual(["first", "second"], violations)
+
+
+class ResourceValidationPolicySubclassAsyncRemediateTests(unittest.TestCase):
+    class Subclass(ResourceValidationPolicy):
+        async def remediate(self, args):
+            await asyncio.sleep(0.1)
+            return {"foo": "bar"}
+
+        def __init__(self):
+            super().__init__("name", "desc")
+
+    def test_validate(self):
+        policy = self.Subclass()
+        remediation = run_remediation(policy)
+        self.assertEqual({"foo": "bar"}, remediation)
 
 
 class StackValidationPolicyTests(unittest.TestCase):

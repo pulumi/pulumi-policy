@@ -37,6 +37,14 @@ class ConfigTests(unittest.TestCase):
                 "config": {"policy": {"enforcementLevel": EnforcementLevel.ADVISORY, "foo": "bar"}},
                 "expected": {"policy": _NormalizedConfigValue(EnforcementLevel.ADVISORY, {"foo": "bar"})},
             },
+            {
+                "config": {"policy": {"enforcementLevel": EnforcementLevel.MANDATORY, "foo": "bar"}},
+                "expected": {"policy": _NormalizedConfigValue(EnforcementLevel.MANDATORY, {"foo": "bar"})},
+            },
+            {
+                "config": {"policy": {"enforcementLevel": EnforcementLevel.REMEDIATE, "foo": "bar"}},
+                "expected": {"policy": _NormalizedConfigValue(EnforcementLevel.REMEDIATE, {"foo": "bar"})},
+            },
         ]
 
         for test_case in test_cases:

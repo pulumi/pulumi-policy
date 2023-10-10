@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { asset } from "@pulumi/pulumi";
+import { asset, Output } from "@pulumi/pulumi";
 import {
     specialArchiveSig,
     specialAssetSig,
@@ -20,18 +20,25 @@ import {
     specialSigKey,
 } from "@pulumi/pulumi/runtime/rpc";
 
+import { Secret } from "./policy";
+import { isSpecialProxy, getSpecialProxyTarget } from "./proxy";
+import { secretsPreservingProxy } from "./secret";
+
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
  * @internal
  */
-export function deserializeProperties(outputsStruct: any): any {
-    const props: any = {};
+export function deserializeProperties(outputsStruct: any, proxySecrets: boolean): any {
+    let props: any = {};
     const outputs: any = outputsStruct.toJavaScript();
     for (const k of Object.keys(outputs)) {
         // We treat properties with undefined values as if they do not exist.
         if (outputs[k] !== undefined) {
-            props[k] = deserializeProperty(outputs[k]);
+            props[k] = deserializeProperty(outputs[k], proxySecrets);
         }
+    }
+    if (proxySecrets) {
+        props = secretsPreservingProxy(props);
     }
     return props;
 }
@@ -46,7 +53,7 @@ export function deserializeProperties(outputsStruct: any): any {
  * are not unpacked, every field in every resource type would have to be type `T | Secret<T>`, which
  * would severely detract from usability.
  */
-function deserializeProperty(prop: any): any {
+function deserializeProperty(prop: any, proxySecrets: boolean): any {
     if (prop === undefined) {
         throw new Error("unexpected undefined property value during deserialization");
     } else if (
@@ -59,7 +66,7 @@ function deserializeProperty(prop: any): any {
     } else if (prop instanceof Array) {
         const elems: any[] = [];
         for (const e of prop) {
-            elems.push(deserializeProperty(e));
+            elems.push(deserializeProperty(e, proxySecrets));
         }
 
         return elems;
@@ -85,7 +92,7 @@ function deserializeProperty(prop: any): any {
                     if (prop["assets"]) {
                         const assets: asset.AssetMap = {};
                         for (const name of Object.keys(prop["assets"])) {
-                            const a = deserializeProperty(prop["assets"][name]);
+                            const a = deserializeProperty(prop["assets"][name], proxySecrets);
                             if (!asset.Asset.isInstance(a) && !asset.Archive.isInstance(a)) {
                                 throw new Error(
                                     "Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects",
@@ -104,7 +111,12 @@ function deserializeProperty(prop: any): any {
                         );
                     }
                 case specialSecretSig:
-                    return deserializeProperty(prop["value"]);
+                    let value = deserializeProperty(prop["value"], proxySecrets);
+                    if (proxySecrets) {
+                        // Wrap the value so that a proxy wrapper can detect it later on.
+                        value = new Secret(value);
+                    }
+                    return value;
                 default:
                     throw new Error(
                         `Unrecognized signature '${sig}' when unmarshaling resource property`,
@@ -114,9 +126,93 @@ function deserializeProperty(prop: any): any {
 
         const obj: any = {};
         for (const k of Object.keys(prop)) {
-            obj[k] = deserializeProperty(prop[k]);
+            obj[k] = deserializeProperty(prop[k], proxySecrets);
         }
 
         return obj;
     }
+}
+
+/**
+ * serializeProperties serializes a runtime resource object to ready it for a gRPC call result.
+ * @internal
+ */
+export async function serializeProperties(obj: any): Promise<any> {
+    return serializeProperty(obj);
+}
+
+/**
+ * serializeProperty is partly based on, but not functionally or superficially identical to, the
+ * serialization code in `@pulumi/pulumi/runtime/rpc.ts`. It has to handle the slightly different
+ * serialization semantics for policies which treat outputs and secrets with different semantics.
+ */
+async function serializeProperty(prop: any): Promise<any> {
+    if (prop === undefined) {
+        return null;
+    }
+    if (prop === null ||
+            typeof prop === "boolean" ||
+            typeof prop === "number" ||
+            typeof prop === "string") {
+        return prop;
+    }
+    if (prop[isSpecialProxy]) {
+        return await serializeProperty(prop[getSpecialProxyTarget]);
+    }
+    if (prop instanceof Promise) {
+        return serializeProperty(await prop);
+    }
+    if (prop instanceof Array) {
+        const elems: any[] = [];
+        for (const e of prop) {
+            const se = await serializeProperty(e);
+            elems.push(se === undefined ? null : se);
+        }
+        return elems;
+    }
+    if (prop instanceof asset.FileAsset) {
+        return { [specialSigKey]: specialAssetSig, path: await serializeProperty(prop.path) };
+    }
+    if (prop instanceof asset.StringAsset) {
+        return { [specialSigKey]: specialAssetSig, text: await serializeProperty(prop.text) };
+    }
+    if (prop instanceof asset.RemoteAsset) {
+        return { [specialSigKey]: specialAssetSig, uri: await serializeProperty(prop.uri) };
+    }
+    if (prop instanceof asset.AssetArchive) {
+        const assets: any[] = [];
+        for (const a of Object.keys(await prop.assets)) {
+            assets.push(await serializeProperty(a));
+        }
+        return { [specialSigKey]: specialArchiveSig, assets };
+    }
+    if (prop instanceof asset.FileArchive) {
+        return { [specialSigKey]: specialArchiveSig, path: await serializeProperty(prop.path) };
+    }
+    if (prop instanceof asset.RemoteArchive) {
+        return { [specialSigKey]: specialArchiveSig, uri: await serializeProperty(prop.uri) };
+    }
+    if (prop instanceof Secret) {
+        // Because of the way secrets proxying works, we very well may encounter a
+        // secret in its raw form, since serialization explicitly unwraps the proxy and
+        // accesses the raw underlying values.
+        return {
+            [specialSigKey]: specialSecretSig,
+            value: await serializeProperty(prop.value),
+        };
+    }
+
+    // Unsupported types:
+    if (Output.isInstance(prop)) {
+        throw new Error("Serializing output values not supported from within a policy pack");
+    }
+
+    const obj: any = {};
+    for (const k of Object.keys(prop)) {
+        const value = await serializeProperty(prop[k]);
+        if (value !== undefined) {
+            obj[k] = value;
+        }
+    }
+    return obj;
 }

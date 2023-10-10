@@ -18,7 +18,7 @@ import * as grpc from "@grpc/grpc-js";
 import { Resource, Unwrap } from "@pulumi/pulumi";
 import * as q from "@pulumi/pulumi/queryable";
 
-import { deserializeProperties } from "./deserialize";
+import { deserializeProperties, serializeProperties } from "./deserialize";
 import {
     EnforcementLevel,
     Policies,
@@ -39,7 +39,9 @@ import {
     convertEnforcementLevel,
     Diagnostic,
     makeAnalyzeResponse,
+    makeRemediateResponse,
     makeAnalyzerInfo,
+    Remediation,
 } from "./protoutil";
 import { unknownCheckingProxy, UnknownValueError } from "./proxy";
 import { version } from "./version";
@@ -125,6 +127,7 @@ export function serve(
     server.addService(analyzerrpc.AnalyzerService, {
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
+        remediate: makeRemediateRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies, initialConfig),
         getPluginInfo: getPluginInfoRpc,
         configure: configure,
@@ -206,11 +209,15 @@ function makeAnalyzeRpcFun(
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                const enforcementLevel: EnforcementLevel =
+                let enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
-
-                if (enforcementLevel === "disabled" || !isResourcePolicy(p)) {
+                if (enforcementLevel === "disabled" || !isResourcePolicy(p) || !p.validateResource) {
                     continue;
+                }
+                if (enforcementLevel === "remediate") {
+                    // If we ran a remediation, but we are still somehow triggering a violation,
+                    // "downgrade" the level we report from remediate to mandatory.
+                    enforcementLevel = "mandatory";
                 }
 
                 const reportViolation: ReportViolation = (message, urn) => {
@@ -237,7 +244,7 @@ function makeAnalyzeRpcFun(
                 for (const validation of validations) {
                     try {
                         const type = req.getType();
-                        const deserd = deserializeProperties(req.getProperties());
+                        const deserd = deserializeProperties(req.getProperties(), false);
                         const props = unknownCheckingProxy(deserd);
                         const args: ResourceValidationArgs = {
                             type,
@@ -272,6 +279,8 @@ function makeAnalyzeRpcFun(
                         // the returned promise will be fulfilled with the value.
                         await Promise.resolve(validation(args, reportViolation));
                     } catch (e) {
+                        const policyPack = `'${policyPackName}@v${policyPackVersion}'`;
+                        const policyFrom = `policy '${p.name}' from policy pack ${policyPack}`;
                         if (e instanceof UnknownValueError) {
                             const { validateResource, name, ...diag } = p;
 
@@ -279,12 +288,12 @@ function makeAnalyzeRpcFun(
                                 policyName: name,
                                 policyPackName,
                                 policyPackVersion,
-                                message: `can't run policy '${name}' during preview: ${e.message}`,
+                                message: `can't run ${policyFrom} during preview: ${e.message}`,
                                 ...diag,
                                 enforcementLevel: "advisory",
                             });
                         } else {
-                            throw asGrpcError(e, `Error validating resource with policy ${p.name}`);
+                            throw asGrpcError(e, `Error validating resource with ${policyFrom}`);
                         }
                     }
                 }
@@ -332,7 +341,6 @@ function makeAnalyzeStackRpcFun(
             for (const p of policies) {
                 const enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
-
                 if (enforcementLevel === "disabled" || !isStackPolicy(p)) {
                     continue;
                 }
@@ -358,7 +366,7 @@ function makeAnalyzeStackRpcFun(
                     const intermediates: IntermediateStackResource[] = [];
                     for (const r of req.getResourcesList()) {
                         const type = r.getType();
-                        const deserd = deserializeProperties(r.getProperties());
+                        const deserd = deserializeProperties(r.getProperties(), false);
                         const props = unknownCheckingProxy(deserd);
                         const resource: PolicyResource = {
                             type,
@@ -438,6 +446,8 @@ function makeAnalyzeStackRpcFun(
                     // the returned promise will be fulfilled with the value.
                     await Promise.resolve(p.validateStack(args, reportViolation));
                 } catch (e) {
+                    const policyPack = `'${policyPackName}@v${policyPackVersion}'`;
+                    const policyFrom = `policy '${p.name}' from policy pack ${policyPack}`;
                     if (e instanceof UnknownValueError) {
                         const { validateStack, name, ...diag } = p;
 
@@ -445,12 +455,12 @@ function makeAnalyzeStackRpcFun(
                             policyName: name,
                             policyPackName,
                             policyPackVersion,
-                            message: `can't run policy '${name}' during preview: ${e.message}`,
+                            message: `can't run ${policyFrom} during preview: ${e.message}`,
                             ...diag,
                             enforcementLevel: "advisory",
                         });
                     } else {
-                        throw asGrpcError(e, `Error validating stack with policy ${p.name}`);
+                        throw asGrpcError(e, `Error validating resource with ${policyFrom}`);
                     }
                 }
             }
@@ -518,7 +528,7 @@ function getProviderResource(r: any): PolicyProviderResource | undefined {
     if (!prov) {
         return undefined;
     }
-    const deserd = deserializeProperties(prov.getProperties());
+    const deserd = deserializeProperties(prov.getProperties(), false);
     const props = unknownCheckingProxy(deserd);
     return {
         type: prov.getType(),
@@ -543,6 +553,7 @@ function getPropertyDependencies(r: any): Record<string, string[]> {
 
 // Type guard used to determine if the `Policy` is a `ResourceValidationPolicy`.
 function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
+    // If the policy has a validate routine, it is a resource policy:
     const validation = (p as ResourceValidationPolicy).validateResource;
     if (typeof validation === "function") {
         return true;
@@ -555,6 +566,13 @@ function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
         }
         return true;
     }
+
+    // Alternatively, if the policy has a remediation routine, it is also a resource policy.
+    const remediation = (p as ResourceValidationPolicy).remediateResource;
+    if (typeof remediation === "function") {
+        return true;
+    }
+
     return false;
 }
 
@@ -572,4 +590,103 @@ function isTypeOf<TResource extends Resource>(
     return isInstance &&
         typeof isInstance === "function" &&
         isInstance({ __pulumiType: type }) === true;
+}
+
+// Remediate is the RPC call that will remediate an individual resource, one at a time, called with the
+// "inputs" to the resource, before it is updated.
+function makeRemediateRpcFun(
+    policyPackName: string,
+    policyPackVersion: string,
+    policyPackEnforcementLevel: EnforcementLevel,
+    policies: Policies,
+) {
+    return async function(call: any, callback: any): Promise<void> {
+        // Prep to perform the analysis.
+        const req = call.request;
+
+        // Pluck out all of the values common across all remediations. We need to maintain
+        // mutations across many remediations which could affect the same resource.
+        const urn = req.getUrn();
+        const name = req.getName();
+        const type = req.getType();
+        const opts = getResourceOptions(req);
+        let props: any = unknownCheckingProxy(deserializeProperties(req.getProperties(), true));
+
+        // Run any remediations in our policy list.
+        const rs: Remediation[] = [];
+        try {
+            for (const p of policies) {
+                // Only run remediations that are enabled.
+                const enforcementLevel: EnforcementLevel =
+                    policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
+                if (enforcementLevel !== "remediate" || !isResourcePolicy(p) || !p.remediateResource) {
+                    continue;
+                }
+
+                const args: ResourceValidationArgs = {
+                    urn, name, type, opts, props,
+                    getConfig: makeGetConfigFun(p.name),
+                    isType: function <TResource extends Resource>(
+                        resourceClass: { new(...rest: any[]): TResource },
+                    ): boolean {
+                        return isTypeOf(type, resourceClass);
+                    },
+                    asType: function <TResource extends Resource, TArgs>(
+                        resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
+                    ): Unwrap<NonNullable<TArgs>> | undefined {
+                        return isTypeOf(type, resourceClass)
+                            ? props as Unwrap<NonNullable<TArgs>>
+                            : undefined;
+                    },
+                };
+                const provider = getProviderResource(req);
+                if (provider) {
+                    args.provider = provider;
+                }
+
+                // Attempt to run the remediation; wrap this in a try block in case the user code throws.
+                let result: any = undefined;
+                let diagnostic: string | undefined = undefined;
+                try {
+                    // Pass the result of the validate call to Promise.resolve.
+                    // If the value is a promise, that promise is returned; otherwise
+                    // the returned promise will be fulfilled with the value.
+                    result = await Promise.resolve(p.remediateResource(args));
+                    if (result) {
+                        props = result;
+                    }
+                } catch (e) {
+                    const policyPack = `'${policyPackName}@v${policyPackVersion}'`;
+                    const policyFrom = `remediation '${p.name}' from policy pack ${policyPack}`;
+                    if (e instanceof UnknownValueError) {
+                        diagnostic = `can't run ${policyFrom} during preview: ${e.message}`;
+                    } else {
+                        throw asGrpcError(e, `Error remediating resource with ${policyFrom}`);
+                    }
+                }
+
+                if (result || diagnostic) {
+                    // Serialize the result, which translates runtime objects, secrets, and removes proxies.
+                    if (result) {
+                        result = await serializeProperties(result);
+                    }
+
+                    rs.push({
+                        policyName: p.name,
+                        policyPackName,
+                        policyPackVersion,
+                        description: p.description,
+                        properties: result,
+                        diagnostic: diagnostic,
+                    });
+                }
+            }
+        } catch (err) {
+            callback(err, undefined);
+            return;
+        }
+
+        // Now marshal the results into the response, and invoke the callback to finish.
+        callback(undefined, makeRemediateResponse(rs));
+    };
 }

@@ -168,8 +168,6 @@ class PolicyPackTests(unittest.TestCase):
         def assertObj(obj):
             self.assertEqual(obj, "a secret value")
 
-        self.unmarshalls_fully(secret_value, assertObj)
-
     def unmarshalls_fully(self, obj: Any, assertObj: Callable[[Any], None]):
         props = {
             "regular": "a normal value",
@@ -185,31 +183,80 @@ class PolicyPackTests(unittest.TestCase):
                     "obj": obj,
                 },
             ],
+            "aFinalSecret": {
+                deserialize.SPECIAL_SIG_KEY: deserialize.SPECIAL_SECRET_SIG,
+                "value": "can you see me",
+            }
         }
 
-        result = deserialize.deserialize_properties(props)
+        # First, test unmarshaling.
+        for proxy_secrets in [False, True]:
+            u_result = deserialize.deserialize_properties(props, proxy_secrets)
 
-        # Regular is returned as is.
-        self.assertEqual(result["regular"], "a normal value")
+            # Regular is returned as is.
+            self.assertEqual(u_result["regular"], "a normal value")
 
-        # One of the elements in the list was a special object.
-        self.assertNotIn(deserialize.SPECIAL_SIG_KEY, result["list"])
-        self.assertEqual(result["list"][0], "a normal value")
-        self.assertEqual(result["list"][1], "another value")
-        assertObj(result["list"][2])
+            # One of the elements in the list was a special object.
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, u_result["list"])
+            self.assertEqual(u_result["list"][0], "a normal value")
+            self.assertEqual(u_result["list"][1], "another value")
+            assertObj(u_result["list"][2])
 
-        # One of the values of the map was a special object.
-        self.assertNotIn(deserialize.SPECIAL_SIG_KEY, result["map"])
-        self.assertEqual(result["map"]["regular"], "a normal value")
-        assertObj(result["map"]["obj"])
+            # One of the values of the map was a special object.
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, u_result["map"])
+            self.assertEqual(u_result["map"]["regular"], "a normal value")
+            assertObj(u_result["map"]["obj"])
 
-        # The nested map had a special object in one of the values.
-        self.assertNotIn(deserialize.SPECIAL_SIG_KEY, result["mapWithList"])
-        self.assertEqual(result["mapWithList"]["regular"], "a normal value")
-        self.assertEqual(result["mapWithList"]["list"][0], "a normal value")
-        assertObj(result["mapWithList"]["list"][1])
+            # The nested map had a special object in one of the values.
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, u_result["mapWithList"])
+            self.assertEqual(u_result["mapWithList"]["regular"], "a normal value")
+            self.assertEqual(u_result["mapWithList"]["list"][0], "a normal value")
+            assertObj(u_result["mapWithList"]["list"][1])
 
-        # An array element contained a special object (via a nested map).
-        self.assertNotIn(deserialize.SPECIAL_SIG_KEY, result["listWithMap"])
-        self.assertEqual(result["listWithMap"][0]["regular"], "a normal value")
-        assertObj(result["listWithMap"][0]["obj"])
+            # An array element contained a special object (via a nested map).
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, u_result["listWithMap"])
+            self.assertEqual(u_result["listWithMap"][0]["regular"], "a normal value")
+            assertObj(u_result["listWithMap"][0]["obj"])
+
+            # Secret values are revealed fully (thanks to the full deserialization or the proxy).
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, u_result["aFinalSecret"])
+            self.assertEqual("can you see me", u_result["aFinalSecret"])
+
+            # Next, test marshaling these same values.
+            m_result = deserialize.serialize_properties(u_result)
+
+            # Regular is returned as is.
+            self.assertEqual(m_result["regular"], "a normal value")
+
+            # One of the elements in the list was a special object.
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, m_result["list"])
+            self.assertEqual(m_result["list"][0], "a normal value")
+            self.assertEqual(m_result["list"][1], "another value")
+            self.assertEqual(obj, m_result["list"][2])
+
+            # One of the values of the map was a special object.
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, m_result["map"])
+            self.assertEqual(m_result["map"]["regular"], "a normal value")
+            self.assertEqual(obj, m_result["map"]["obj"])
+
+            # The nested map had a special object in one of the values.
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, m_result["mapWithList"])
+            self.assertEqual(m_result["mapWithList"]["regular"], "a normal value")
+            self.assertEqual(m_result["mapWithList"]["list"][0], "a normal value")
+            self.assertEqual(obj, m_result["mapWithList"]["list"][1])
+
+            # An array element contained a special object (via a nested map).
+            self.assertNotIn(deserialize.SPECIAL_SIG_KEY, m_result["listWithMap"])
+            self.assertEqual(m_result["listWithMap"][0]["regular"], "a normal value")
+            self.assertEqual(obj, m_result["listWithMap"][0]["obj"])
+
+            # Finally, the secret may or may not round trip depending on
+            # whether secrets were proxieid.
+            if proxy_secrets:
+                self.assertIn(deserialize.SPECIAL_SIG_KEY, m_result["aFinalSecret"])
+                self.assertEqual(deserialize.SPECIAL_SECRET_SIG, m_result["aFinalSecret"][deserialize.SPECIAL_SIG_KEY])
+                self.assertEqual("can you see me", m_result["aFinalSecret"]["value"])
+            else:
+                self.assertNotIn(deserialize.SPECIAL_SIG_KEY, m_result["aFinalSecret"])
+                self.assertEqual("can you see me", m_result["aFinalSecret"])
+

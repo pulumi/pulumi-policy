@@ -14,7 +14,13 @@
 
 import * as assert from "assert";
 
-import { makeAnalyzeResponse, makeAnalyzerInfo, mapEnforcementLevel, normalizeConfig } from "../protoutil";
+import {
+    makeAnalyzeResponse,
+    makeAnalyzerInfo,
+    makeRemediateResponse,
+    mapEnforcementLevel,
+    normalizeConfig,
+} from "../protoutil";
 
 const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 
@@ -37,6 +43,10 @@ describe("mapEnforcementLevel", () => {
             analyzerproto.EnforcementLevel.MANDATORY,
         );
         assert.strictEqual(
+            mapEnforcementLevel("remediate"),
+            analyzerproto.EnforcementLevel.REMEDIATE,
+        );
+        assert.strictEqual(
             mapEnforcementLevel("disabled"),
             analyzerproto.EnforcementLevel.DISABLED,
         );
@@ -54,6 +64,27 @@ describe("makeAnalyzerInfo", () => {
                     description: "Instances should use approved AMIs",
                     enforcementLevel: "mandatory",
                     validateResource: (args, reportViolation) => { return; },
+                },
+            ]);
+        });
+        assert.doesNotThrow(() => {
+            makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
+                {
+                    name: "approved-amis-by-id",
+                    description: "Instances should use approved AMIs",
+                    enforcementLevel: "remediate",
+                    validateResource: (args, reportViolation) => { return; },
+                    remediateResource: (args) => { return; },
+                },
+            ]);
+        });
+        assert.doesNotThrow(() => {
+            makeAnalyzerInfo("testRules", "1.0.0", "advisory", [
+                {
+                    name: "approved-amis-by-id",
+                    description: "Instances should use approved AMIs",
+                    enforcementLevel: "remediate",
+                    remediateResource: (args) => { return; },
                 },
             ]);
         });
@@ -152,6 +183,53 @@ describe("makeAnalyzeResponse", () => {
                     description: "Instances should use approved AMIs",
                     message: "Did not use approved AMI",
                     enforcementLevel: <any>"invalidEnforcementLevel",
+                },
+            ]);
+        });
+    });
+});
+
+describe("makeRemediateResponse", () => {
+    it("does not throw for reasonable remediation responses", () => {
+        assert.doesNotThrow(() => {
+            makeRemediateResponse([]);
+        });
+        assert.doesNotThrow(() => {
+            makeRemediateResponse([
+                {
+                    policyName: "approved-amis-by-id",
+                    policyPackName: "awsSecRules",
+                    policyPackVersion: "1.0.0",
+                    description: "Instances should use approved AMIs",
+                    properties: {
+                        "foo": "bar",
+                        "zed": 33,
+                        "zap": [ 99, 66, 11 ],
+                    },
+                },
+            ]);
+        });
+        assert.doesNotThrow(() => {
+            makeRemediateResponse([
+                {
+                    policyName: "approved-amis-by-id",
+                    policyPackName: "awsSecRules",
+                    policyPackVersion: "1.0.0",
+                    description: "Instances should use approved AMIs",
+                    diagnostic: "A warning was issued; remediate not performed.",
+                },
+            ]);
+        });
+    });
+
+    it("throws for missing properties OR diagnostic", () => {
+        assert.throws(() => {
+            makeRemediateResponse([
+                {
+                    policyName: "approved-amis-by-id",
+                    policyPackName: "awsSecRules",
+                    policyPackVersion: "1.0.0",
+                    description: "Instances should use approved AMIs",
                 },
             ]);
         });

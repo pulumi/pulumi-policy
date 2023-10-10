@@ -178,6 +178,8 @@ export function mapEnforcementLevel(el: EnforcementLevel) {
             return analyzerproto.EnforcementLevel.ADVISORY;
         case "mandatory":
             return analyzerproto.EnforcementLevel.MANDATORY;
+        case "remediate":
+            return analyzerproto.EnforcementLevel.REMEDIATE;
         case "disabled":
             return analyzerproto.EnforcementLevel.DISABLED;
         default:
@@ -192,6 +194,8 @@ export function convertEnforcementLevel(el: number): EnforcementLevel {
             return "advisory";
         case analyzerproto.EnforcementLevel.MANDATORY:
             return "mandatory";
+        case analyzerproto.EnforcementLevel.REMEDIATE:
+            return "remediate";
         case analyzerproto.EnforcementLevel.DISABLED:
             return "disabled";
         default:
@@ -238,4 +242,61 @@ class UnknownEnforcementLevelError extends Error {
     constructor(el: never) {
         super(`Unknown enforcement level type '${el}'`);
     }
+}
+
+/**
+ * Remediation conveys the policy remediation's effects on a resource, if any.
+ * @internal
+ */
+export interface Remediation {
+    /** Name of the policy doing the remediation. */
+    policyName: string;
+
+    /** Name of the policy pack that the policy was a part of. */
+    policyPackName: string;
+
+    /** Version of the Policy Pack. */
+    policyPackVersion: string;
+
+    /**
+     * A brief description of the policy remediation. e.g., "Auto-tag S3 buckets."
+     */
+    description: string;
+
+    /**
+     * The remediated resource's properties to use in place of the input ones.
+     */
+    properties?: Record<string, any>;
+
+    /**
+     * An optional diagnostic string in the case that something went wrong.
+     */
+    diagnostic?: string;
+}
+
+/**
+ * makeRemediateResponse creates a protobuf encoding the returned property bag.
+ * @internal
+ */
+export function makeRemediateResponse(rs: Remediation[]) {
+    const resp = new analyzerproto.RemediateResponse();
+
+    const remediations = [];
+    for (const r of rs) {
+        if (!r.properties && !r.diagnostic) {
+            throw new Error("Expected a remediation to have either properties or a diagnostic");
+        }
+
+        const remediation = new analyzerproto.Remediation();
+        remediation.setPolicyname(r.policyName);
+        remediation.setPolicypackname(r.policyPackName);
+        remediation.setPolicypackversion(r.policyPackVersion);
+        remediation.setDescription(r.description);
+        remediation.setProperties(structproto.Struct.fromJavaScript(r.properties));
+        remediation.setDiagnostic(r.diagnostic);
+        remediations.push(remediation);
+    }
+    resp.setRemediationsList(remediations);
+
+    return resp;
 }
