@@ -11,7 +11,6 @@ import {
     validateRemediateResourceOfType,
     validateResourceOfType,
 } from "@pulumi/policy";
-import * as random from "@pulumi/random";
 
 interface TestScenario {
     schema: PolicyConfigSchema;
