@@ -1,8 +1,10 @@
 ## HEAD (Unreleased)
 
-- Add support for policy remediations (https://github.com/pulumi/pulumi-policy/pull/314).
-
 ---
+
+## 1.8.0 (2023-10-10)
+
+- Add support for policy remediations (https://github.com/pulumi/pulumi-policy/pull/314).
 
 ## 1.7.0 (2023-07-24)
 
