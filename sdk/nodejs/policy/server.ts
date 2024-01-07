@@ -144,7 +144,6 @@ export function serve(
         // message loop alive.
         // We explicitly convert the number to a string so that Node doesn't colorize the output.
         console.log(port.toString());
-
     });
 }
 
