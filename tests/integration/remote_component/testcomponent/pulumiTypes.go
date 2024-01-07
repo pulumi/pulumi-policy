@@ -21,7 +21,7 @@ type BarInput interface {
 }
 
 type BarArgs struct {
-	Keepers pulumi.MapInput `pulumi:"keepers"`
+	Keepers pulumi.StringMapInput `pulumi:"keepers"`
 }
 
 func (BarArgs) ElementType() reflect.Type {
