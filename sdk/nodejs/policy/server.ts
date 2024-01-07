@@ -142,7 +142,8 @@ export function serve(
 
         // Emit the address so the monitor can read it to connect.  The gRPC server will keep the
         // message loop alive.
-        console.log(port);
+        // We explicitly convert the number to a string so that Node doesn't colorize the output.
+        console.log(port.toString());
     });
 }
 
