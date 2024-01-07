@@ -29,6 +29,10 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
