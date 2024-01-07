@@ -39,6 +39,6 @@ publish policy
 
 echo "Publishing Pip package to pypi.org:"
 twine upload \
-    -u pulumi -p "${PYPI_PASSWORD}" \
+    -u "${PYPI_USERNAME}" -p "${PYPI_PASSWORD}" \
     "${ROOT}/sdk/python/env/src/dist"/*.whl \
     --skip-existing \

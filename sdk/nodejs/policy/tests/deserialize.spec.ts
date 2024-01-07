@@ -255,68 +255,73 @@ describe("runtime", () => {
         it(
             "round-trips proxied secrets correctly",
             asyncTest(async () => {
-                // Enable secrets serialization.
-                (runtime as any)._setFeatureSupport("secrets", true);
-                try {
-                    // Start with a runtime representation of secrets.
-                    const inputs: Inputs = {
-                        secret1: secret(1),
-                        secret2: secret(undefined),
-                        secret3: {
-                            "deeply": {
-                                "nested": {
-                                    "secret": secret("youfoundme"),
-                                },
+                // Set mocks, which will enable secrets serialization.
+                runtime.setMocks({
+                    call: (_) => {
+                        throw new Error("unexpected call");
+                    },
+                    newResource: (args) => {
+                        return { id: `${args.name}_id`, state: {} };
+                    },
+                });
+
+                // Start with a runtime representation of secrets.
+                const inputs: Inputs = {
+                    secret1: secret(1),
+                    secret2: secret(undefined),
+                    secret3: {
+                        "deeply": {
+                            "nested": {
+                                "secret": secret("youfoundme"),
                             },
                         },
-                    };
-                    // Serialize using the runtime, deserialize (proxying secrets), re-serialize using the policy
-                    // serialization, and finally deserialize using runtime logic. This should preserve secretness.
-                    // This mimics the way a policy will work: it sends properties from its space, the policy engine
-                    // deserializes them, then a remediation can serialize new state, and finally the engine will
-                    // deserialize that state on its side.
-                    const runtimeSerialized = gstruct.Struct.fromJavaScript(
-                        await runtime.serializeProperties("test", inputs));
-                    console.log(JSON.stringify(await runtime.serializeProperties("test", inputs), null, 4));
-                    const policyDeserializedAndProxied = deserializeProperties(runtimeSerialized, true);
-                    assert.equal(policyDeserializedAndProxied.secret1, 1);
-                    assert.equal(policyDeserializedAndProxied.secret2, undefined);
-                    assert.deepEqual(policyDeserializedAndProxied.secret3, {
+                    },
+                };
+                // Serialize using the runtime, deserialize (proxying secrets), re-serialize using the policy
+                // serialization, and finally deserialize using runtime logic. This should preserve secretness.
+                // This mimics the way a policy will work: it sends properties from its space, the policy engine
+                // deserializes them, then a remediation can serialize new state, and finally the engine will
+                // deserialize that state on its side.
+                const runtimeSerialized = gstruct.Struct.fromJavaScript(
+                    await runtime.serializeProperties("test", inputs));
+                console.log(JSON.stringify(await runtime.serializeProperties("test", inputs), null, 4));
+                const policyDeserializedAndProxied = deserializeProperties(runtimeSerialized, true);
+                assert.equal(policyDeserializedAndProxied.secret1, 1);
+                assert.equal(policyDeserializedAndProxied.secret2, undefined);
+                assert.deepEqual(policyDeserializedAndProxied.secret3, {
+                    "deeply": {
+                        "nested": {
+                            "secret": "youfoundme",
+                        },
+                    },
+                });
+                const policySerialized = gstruct.Struct.fromJavaScript(
+                    await serializeProperties(policyDeserializedAndProxied));
+
+                console.log(JSON.stringify(await serializeProperties(policyDeserializedAndProxied), null, 4));
+
+                // The final result should include secrets.
+                const runtimeDeserialized = runtime.deserializeProperties(policySerialized);
+                console.log(JSON.stringify(runtimeDeserialized, null, 4));
+                assert.deepEqual(runtimeDeserialized.secret1, {
+                    [specialSigKey]: specialSecretSig,
+                    "value": 1,
+                });
+                assert.deepEqual(runtimeDeserialized.secret2, {
+                    [specialSigKey]: specialSecretSig,
+                    "value": null,
+                });
+                assert.deepEqual(runtimeDeserialized.secret3, {
+                    [specialSigKey]: specialSecretSig,
+                    "value": {
                         "deeply": {
                             "nested": {
                                 "secret": "youfoundme",
                             },
                         },
-                    });
-                    const policySerialized = gstruct.Struct.fromJavaScript(
-                        await serializeProperties(policyDeserializedAndProxied));
+                    },
+                });
 
-                    console.log(JSON.stringify(await serializeProperties(policyDeserializedAndProxied), null, 4));
-
-                    // The final result should include secrets.
-                    const runtimeDeserialized = runtime.deserializeProperties(policySerialized);
-                    console.log(JSON.stringify(runtimeDeserialized, null, 4));
-                    assert.deepEqual(runtimeDeserialized.secret1, {
-                        [specialSigKey]: specialSecretSig,
-                        "value": 1,
-                    });
-                    assert.deepEqual(runtimeDeserialized.secret2, {
-                        [specialSigKey]: specialSecretSig,
-                        "value": null,
-                    });
-                    assert.deepEqual(runtimeDeserialized.secret3, {
-                        [specialSigKey]: specialSecretSig,
-                        "value": {
-                            "deeply": {
-                                "nested": {
-                                    "secret": "youfoundme",
-                                },
-                            },
-                        },
-                    });
-                } finally {
-                    (runtime as any)._setFeatureSupport("secrets", false);
-                }
             }),
         );
     });
