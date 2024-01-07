@@ -2,7 +2,7 @@
 
 ---
 
-## 1.9.0 (2023-12-06)
+## 1.9.0 (2024-01-07)
 
 - Explicitly convert gRPC port number to string to prevent node output colorization (https://github.com/pulumi/pulumi-policy/pull/319).
 
