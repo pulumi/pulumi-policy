@@ -49,6 +49,11 @@ def large_resource(args: ResourceValidationArgs, report_violation: ReportViolati
             if result != expected:
                 report_violation(f"'longString' had expected length of {expected}, got {result}")
 
+def provider(args: ResourceValidationArgs, report_violation: ReportViolation):
+    if args.resource_type == "pulumi:providers:random":
+        if args.name == "foobar":
+            report_violation("Cannot create a random provider named 'foobar'.")
+
 
 PolicyPack(
     name="validate-resource-test-policy",
@@ -86,6 +91,11 @@ PolicyPack(
             name="large-resource",
             description="Ensures that large string properties are set properly.",
             validate=large_resource,
+        ),
+        ResourceValidationPolicy(
+            name="random-provider",
+            description="Prohibits creating a random provider named 'foobar'.",
+            validate=provider,
         )
     ],
 )

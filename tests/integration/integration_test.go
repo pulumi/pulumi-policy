@@ -367,6 +367,14 @@ func TestValidateResource(t *testing.T) {
 		{
 			WantErrors: nil,
 		},
+		// Test scenario 12: provider resource.
+		{
+			WantErrors: []string{
+				"[mandatory]  random-provider  (pulumi:providers:random: foobar)",
+				"Prohibits creating a random provider named 'foobar'.",
+				"Cannot create a random provider named 'foobar'.",
+			},
+		},
 	})
 }
 

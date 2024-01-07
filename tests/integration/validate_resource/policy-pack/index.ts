@@ -114,6 +114,17 @@ new PolicyPack("validate-resource-test-policy", {
                     }
                 }
             },
-        }
+        },
+        // Strongly-typed provider.
+        {
+            name: "random-provider",
+            description: "Prohibits creating a random provider named 'foobar'.",
+            enforcementLevel: "mandatory",
+            validateResource: validateResourceOfType(random.Provider, (it, args, reportViolation) => {
+                if (args.name === "foobar") {
+                    reportViolation("Cannot create a random provider named 'foobar'.")
+                }
+            }),
+        },
     ],
 });
