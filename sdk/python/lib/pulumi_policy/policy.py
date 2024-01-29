@@ -1028,7 +1028,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             if message:
                 violation_message += f"\n{message}"
 
-            diagnostics.append(proto.AnalyzeDiagnostic(  # type: ignore
+            diagnostics.append(proto.AnalyzeDiagnostic(
                 policyName=policy_name,
                 policyPackName=self.__policy_pack_name,
                 policyPackVersion=self.__policy_pack_version,
@@ -1039,15 +1039,15 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             ))
         return report_violation
 
-    def _map_enforcement_level(self, enforcement_level: EnforcementLevel) -> int:
+    def _map_enforcement_level(self, enforcement_level: EnforcementLevel) -> proto.EnforcementLevel.ValueType:
         if enforcement_level == EnforcementLevel.ADVISORY:
-            return proto.ADVISORY  # type: ignore
+            return proto.ADVISORY
         if enforcement_level == EnforcementLevel.MANDATORY:
-            return proto.MANDATORY  # type: ignore
+            return proto.MANDATORY
         if enforcement_level == EnforcementLevel.REMEDIATE:
-            return proto.REMEDIATE  # type: ignore
+            return proto.REMEDIATE
         if enforcement_level == EnforcementLevel.DISABLED:
-            return proto.DISABLED  # type: ignore
+            return proto.DISABLED
         raise AssertionError(
             f"unknown enforcement level: {enforcement_level}")
 
