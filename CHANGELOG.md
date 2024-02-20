@@ -1,5 +1,8 @@
 ## HEAD (Unreleased)
 
+- Python: Update `grpcio` dependency to match the `pulumi` package.
+  (https://github.com/pulumi/pulumi-policy/pull/335).
+
 ---
 
 ## 1.9.0 (2024-01-07)
