@@ -145,5 +145,26 @@ new PolicyPack("validate-stack-test-policy", {
                 }
             }),
         },
+        // Stack policies with an enforcement level of remediate are treated as mandatory.
+        {
+            name: "dynamic-no-foo-with-value-bar",
+            description: "Prohibits setting foo to 'bar' on dynamic resources.",
+            enforcementLevel: "remediate",
+            validateStack: (args, reportViolation) => {
+                for (const r of args.resources) {
+                    // FIXME: We don't have any outputs during previews and aren't merging
+                    // inputs, so just skip for now if we have an empty props.
+                    if (Object.keys(r.props).length === 0) {
+                        continue;
+                    }
+
+                    if (r.type === "pulumi-nodejs:dynamic:Resource") {
+                        if (r.props.foo === "bar") {
+                            reportViolation("'foo' must not have the value 'bar'.");
+                        }
+                    }
+                }
+            },
+        },
     ],
 });

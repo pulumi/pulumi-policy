@@ -455,6 +455,14 @@ func TestValidateStack(t *testing.T) {
 		{
 			WantErrors: nil,
 		},
+		// Test scenario 10: a stack validation with enforcement level of "remediate" is treated as "mandatory".
+		{
+			WantErrors: []string{
+				"[mandatory]  dynamic-no-foo-with-value-bar",
+				"Prohibits setting foo to 'bar' on dynamic resources.",
+				"'foo' must not have the value 'bar'.",
+			},
+		},
 	})
 }
 

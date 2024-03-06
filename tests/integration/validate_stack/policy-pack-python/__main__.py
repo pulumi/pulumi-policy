@@ -40,6 +40,12 @@ def no_randomstrings(args: StackValidationArgs, report_violation: ReportViolatio
         if r.resource_type == "random:index/randomString:RandomString":
             report_violation("RandomString resources are not allowed.")
 
+def dynamic_no_foo_with_value_bar(args: StackValidationArgs, report_violation: ReportViolation):
+    for r in args.resources:
+        if r.resource_type == "pulumi-nodejs:dynamic:Resource":
+            if "foo" in r.props and r.props["foo"] == "bar":
+                report_violation("'foo' must not have the value 'bar'.")
+
 PolicyPack(
     name="validate-stack-test-policy",
     enforcement_level=EnforcementLevel.MANDATORY,
@@ -70,6 +76,13 @@ PolicyPack(
             name="no-randomstrings",
             description="Prohibits RandomString resources.",
             validate=no_randomstrings,
+        ),
+        # Stack policies with an enforcement level of remediate are treated as mandatory.
+        StackValidationPolicy(
+            name="dynamic-no-foo-with-value-bar",
+            description="Prohibits setting foo to 'bar' on dynamic resources.",
+            enforcement_level=EnforcementLevel.REMEDIATE,
+            validate=dynamic_no_foo_with_value_bar,
         ),
     ],
 )

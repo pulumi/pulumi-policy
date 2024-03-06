@@ -340,10 +340,14 @@ function makeAnalyzeStackRpcFun(
         const ds: Diagnostic[] = [];
         try {
             for (const p of policies) {
-                const enforcementLevel: EnforcementLevel =
+                let enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
                 if (enforcementLevel === "disabled" || !isStackPolicy(p)) {
                     continue;
+                }
+                if (enforcementLevel === "remediate") {
+                    // Stack policies cannot be remediated, so treat the level as mandatory.
+                    enforcementLevel = "mandatory";
                 }
 
                 const reportViolation: ReportViolation = (message, urn) => {
