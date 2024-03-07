@@ -796,6 +796,9 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             enforcement_level = self._get_enforcement_level(policy)
             if enforcement_level == EnforcementLevel.DISABLED or not isinstance(policy, StackValidationPolicy):
                 continue
+            if enforcement_level == EnforcementLevel.REMEDIATE:
+                # Stack policies cannot be remediated, so treat the level as mandatory.
+                enforcement_level = EnforcementLevel.MANDATORY
 
             report_violation = self._create_report_violation(diagnostics, policy.name,
                                                              policy.description, enforcement_level)

@@ -58,4 +58,12 @@ switch (testScenario) {
         const y = new random.RandomInteger("y", { min: 0, max: 10 });
         const z = new random.RandomInteger("z", { min: 0, max: 10 });
         break;
+
+    case 10:
+        // Create a resource that will cause a stack policy with an
+        // enforcement level of "remediate" to report a violation
+        // successfully. It should be treated as "mandatory" rather
+        // than "remediate".
+        const d = new Resource("d", { foo: "bar" });
+        break;
 }

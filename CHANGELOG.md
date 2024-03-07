@@ -1,5 +1,8 @@
 ## HEAD (Unreleased)
 
+- Fix panic when a stack policy with a "remediate" level reports a violation
+  (https://github.com/pulumi/pulumi-policy/pull/339).
+
 ---
 
 ## 1.10.0 (2024-02-20)
