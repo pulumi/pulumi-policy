@@ -138,8 +138,6 @@ export function serve(
             process.exit(1);
         }
 
-        server.start();
-
         // Emit the address so the monitor can read it to connect.  The gRPC server will keep the
         // message loop alive.
         // We explicitly convert the number to a string so that Node doesn't colorize the output.

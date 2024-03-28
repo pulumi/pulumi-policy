@@ -10,7 +10,7 @@
     "homepage": "https://pulumi.io",
     "repository": "https://github.com/pulumi/pulumi-policy",
     "dependencies": {
-        "@grpc/grpc-js": "^1.8.16",
+        "@grpc/grpc-js": "^1.10.1",
         "@pulumi/pulumi": "^3.88.0",
         "google-protobuf": "^3.5.0",
         "protobufjs": "^7.2.4"
