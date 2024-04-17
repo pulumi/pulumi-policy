@@ -1,12 +1,14 @@
 ## HEAD (Unreleased)
 
+---
+
+## 1.11.0 (2024-04-17)
+
 - Fix panic when a stack policy with a "remediate" level reports a violation
   (https://github.com/pulumi/pulumi-policy/pull/339).
 
 - Node.js: Upgrade to `@grpc/grpc-js` 1.10.1 and remove calls to deprecated `server.start`
   (https://github.com/pulumi/pulumi-policy/pull/343).
-
----
 
 ## 1.10.0 (2024-02-20)
 
