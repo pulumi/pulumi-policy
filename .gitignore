@@ -7,3 +7,4 @@ vendor/
 **/yarn.lock
 .idea
 **/Pipfile.lock
+ci-scripts
