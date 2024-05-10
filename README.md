@@ -1,4 +1,4 @@
-![Build Status](https://github.com/pulumi/pulumi-policy/actions/workflows/master.yml/badge.svg)
+![Build Status](https://github.com/pulumi/pulumi-policy/actions/workflows/main.yml/badge.svg)
 
 # Pulumi Policy SDK
 
