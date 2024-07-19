@@ -2,6 +2,11 @@
 
 ---
 
+## Unreleased
+
+- Python: Indicate that the PyPi package doesn't have an associated Pulumi plugin
+  (https://github.com/pulumi/pulumi-policy/pull/358).
+
 ## 1.11.0 (2024-04-17)
 
 - Fix panic when a stack policy with a "remediate" level reports a violation
