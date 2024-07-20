@@ -2,5 +2,6 @@
 .mypy_cache/
 *.pyc
 /env/
-/*.egg-info
+*.egg-info/
 .venv/
+build/

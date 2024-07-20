@@ -16,12 +16,17 @@
 
 from setuptools import setup, find_packages
 
+VERSION = "1.0.0"
+
 def readme():
-    with open('README.md', encoding='utf-8') as f:
-        return f.read()
+    try:
+        with open('README.md', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Pulumi's Policy Python SDK - Development Version"
 
 setup(name='pulumi_policy',
-      version='${VERSION}',
+      version=VERSION,
       description='Pulumi\'s Policy Python SDK',
       long_description=readme(),
       long_description_content_type='text/markdown',
