@@ -36,7 +36,7 @@ setup(name='pulumi_policy',
       package_data={
           'pulumi_policy': [
               'py.typed',
-              'pulumiplugin.json'
+              'pulumi-plugin.json'
           ]
       },
       install_requires=[

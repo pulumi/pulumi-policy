@@ -26,6 +26,7 @@ import (
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type Runtime int
@@ -868,4 +869,31 @@ func TestRemoteComponent(t *testing.T) {
 			Advisory: true,
 		},
 	})
+}
+
+func TestPythonDoesNotTryToInstallPlugin(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	t.Log(e.RootPath)
+	defer e.DeleteIfNotFailed()
+
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	e.RunCommand("pulumi", "login", "--local")
+	e.RunCommand("pulumi", "new", "python", "--generate-only", "--yes", "--force")
+
+	requirementsTxtPath := filepath.Join(e.RootPath, "requirements.txt")
+
+	dep, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python", "lib"))
+	require.NoError(t, err)
+
+	file, err := os.OpenFile(requirementsTxtPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	require.NoError(t, err)
+	defer file.Close()
+	_, err = file.WriteString(dep)
+	require.NoError(t, err)
+
+	// Pulumi should not try to install a plugin for pulumi_policy.
+	// This command will fail if it tries to install the non-existent pulumi_policy plugin.
+	e.RunCommand("pulumi", "install")
 }
