@@ -2,7 +2,7 @@
 
 ---
 
-## Unreleased
+## 1.12.0 (2024-07-23)
 
 - Python: Indicate that the PyPi package doesn't have an associated Pulumi plugin
   (https://github.com/pulumi/pulumi-policy/pull/358).
