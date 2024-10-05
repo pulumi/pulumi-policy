@@ -4,11 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+# TODO: update minimum to the pulumi release with https://github.com/pulumi/pulumi/pull/17487
 pulumi = ">=3.88.0,<4.0.0"
 protobuf = "~=4.21"
 grpcio = "~=1.66.2"
 
 [dev-packages]
-pylint = ">=2.1"
-mypy = ">=0.77"
+pylint = ">=3.3.0"
+mypy = ">=1.1.0"
 types-protobuf = "*"
