@@ -42,6 +42,6 @@ setup(name='pulumi_policy',
       install_requires=[
           'pulumi>=3.88.0,<4.0.0',
           'protobuf~=4.21',
-          'grpcio~=1.60.1'
+          'grpcio~=1.66.2'
       ],
       zip_safe=False)
