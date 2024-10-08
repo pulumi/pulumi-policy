@@ -40,9 +40,7 @@ setup(name='pulumi_policy',
           ]
       },
       install_requires=[
-          # TODO: update minimum to the pulumi release with https://github.com/pulumi/pulumi/pull/17487
-          # 'pulumi>=3.88.0,<4.0.0',
-          'pulumi==3.135.2a1728293621',
+          'pulumi>=3.136.0,<4.0.0',
           'protobuf~=4.21',
           'grpcio~=1.66.2'
       ],
