@@ -324,6 +324,11 @@ export interface PolicyResourceOptions {
      * Outputs that should always be treated as secrets.
      */
     additionalSecretOutputs: string[];
+
+    /**
+     * An optional parent that this resource belongs to.
+     */
+    parent?: string;
 }
 
 /**
