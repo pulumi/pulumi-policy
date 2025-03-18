@@ -508,7 +508,7 @@ function getResourceOptions(r: any): PolicyResourceOptions {
         aliases: opts.getAliasesList(),
         customTimeouts: getCustomTimeouts(opts),
         additionalSecretOutputs: opts.getAdditionalsecretoutputsList(),
-        parent: opts.getParent(),
+        parent: opts?.getParent() ?? undefined,
     };
     if (opts.getDeletebeforereplacedefined()) {
         result.deleteBeforeReplace = opts.getDeletebeforereplace();

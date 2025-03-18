@@ -1083,7 +1083,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                                                 opts.customTimeouts.delete) if opts.HasField("customTimeouts")
                            else PolicyCustomTimeouts(0, 0, 0))
         additional_secret_outputs = opts.additionalSecretOutputs
-        parent = opts.parent
+        parent = opts.parent if opts.HasField("parent") else None
         return PolicyResourceOptions(
             protect, ignore_changes, delete_before_replace, aliases, custom_timeouts, additional_secret_outputs, parent)
 
