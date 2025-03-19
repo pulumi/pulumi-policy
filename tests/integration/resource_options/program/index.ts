@@ -67,3 +67,7 @@ const timeoutsDelete = new Resource("timeouts-delete", {
 const secrets = new Resource("secrets", {
     additionalSecretOutputs: ["foo"],
 });
+
+// Create a parent and child resource.
+const parent = new Resource("parent-res", {});
+const child = new Resource("child-res", { parent });

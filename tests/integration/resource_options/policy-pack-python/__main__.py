@@ -196,6 +196,26 @@ def validate_dynamic_resource(r):
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
             parent=create_stack_urn(),
         ), r.opts)
+    elif r.name == "parent-res":
+        options_equal(PolicyResourceOptions(
+            protect=False,
+            ignore_changes=[],
+            delete_before_replace=None,
+            aliases=[],
+            additional_secret_outputs=["foo"],
+            custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent=create_stack_urn(),
+        ), r.opts)
+    elif r.name == "child-res":
+        options_equal(PolicyResourceOptions(
+            protect=False,
+            ignore_changes=[],
+            delete_before_replace=None,
+            aliases=[],
+            additional_secret_outputs=["foo"],
+            custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent=create_urn("pulumi-nodejs:dynamic:Resource", "parent-res"),
+        ), r.opts)
     else:
         raise AssertionError(f"Unexpected resource with name: '{r.name}'.")
 

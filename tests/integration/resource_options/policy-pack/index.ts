@@ -180,6 +180,16 @@ function validateDynamicResource(r: ResourceValidationArgs | PolicyResource) {
             }));
             break;
 
+        case "parent-res":
+            assert.deepStrictEqual(r.opts, Object.assign({}, defaultOptions));
+            break;
+
+        case "child-res":
+            assert.deepStrictEqual(r.opts, Object.assign({}, defaultOptions, {
+                parent: createURN("pulumi-nodejs:dynamic:Resource", "parent-res"),
+            }));
+            break;
+
         default:
             throw Error(`Unexpected resource with name: '${r.name}'.`);
     }
