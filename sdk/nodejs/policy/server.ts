@@ -512,6 +512,9 @@ function getResourceOptions(r: any): PolicyResourceOptions {
     if (opts.getDeletebeforereplacedefined()) {
         result.deleteBeforeReplace = opts.getDeletebeforereplace();
     }
+    if (opts.getParent()) {
+        result.parent = opts.getParent();
+    }
     return result;
 }
 

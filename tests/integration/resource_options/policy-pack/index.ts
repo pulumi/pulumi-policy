@@ -73,6 +73,7 @@ function validate(r: ResourceValidationArgs | PolicyResource) {
                     updateSeconds: 0,
                     deleteSeconds: 0,
                 },
+                parent: stackURN(),
             });
             break;
 
@@ -92,6 +93,7 @@ function validateDynamicResource(r: ResourceValidationArgs | PolicyResource) {
             updateSeconds: 0,
             deleteSeconds: 0,
         },
+        parent: stackURN(),
     };
 
     switch (r.name) {
@@ -178,6 +180,16 @@ function validateDynamicResource(r: ResourceValidationArgs | PolicyResource) {
             }));
             break;
 
+        case "parent-res":
+            assert.deepStrictEqual(r.opts, Object.assign({}, defaultOptions));
+            break;
+
+        case "child-res":
+            assert.deepStrictEqual(r.opts, Object.assign({}, defaultOptions, {
+                parent: createURN("pulumi-nodejs:dynamic:Resource", "parent-res"),
+            }));
+            break;
+
         default:
             throw Error(`Unexpected resource with name: '${r.name}'.`);
     }
@@ -190,4 +202,11 @@ function validateDynamicResource(r: ResourceValidationArgs | PolicyResource) {
  */
 function createURN(type: string, name: string): string {
     return `urn:pulumi:${pulumi.getStack()}::${pulumi.getProject()}::${type}::${name}`;
+}
+
+/**
+ * Creates a Stack URN.
+ */
+function stackURN(): string {
+    return createURN("pulumi:pulumi:Stack", `${pulumi.getProject()}-${pulumi.getStack()}`);
 }

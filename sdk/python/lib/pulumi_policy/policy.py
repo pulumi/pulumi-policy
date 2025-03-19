@@ -351,19 +351,26 @@ class PolicyResourceOptions:
     Outputs that should always be treated as secrets.
     """
 
+    parent: Optional[str]
+    """
+    An optional parent that this resource belongs to.
+    """
+
     def __init__(self,
                  protect: bool,
                  ignore_changes: List[str],
                  delete_before_replace: Optional[bool],
                  aliases: List[str],
                  custom_timeouts: 'PolicyCustomTimeouts',
-                 additional_secret_outputs: List[str]) -> None:
+                 additional_secret_outputs: List[str],
+                 parent: Optional[str] = None) -> None:
         self.protect = protect
         self.ignore_changes = ignore_changes
         self.delete_before_replace = delete_before_replace
         self.aliases = aliases
         self.custom_timeouts = custom_timeouts
         self.additional_secret_outputs = additional_secret_outputs
+        self.parent = parent
 
 
 class PolicyCustomTimeouts:
@@ -1076,8 +1083,9 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                                                 opts.customTimeouts.delete) if opts.HasField("customTimeouts")
                            else PolicyCustomTimeouts(0, 0, 0))
         additional_secret_outputs = opts.additionalSecretOutputs
+        parent = opts.parent or None
         return PolicyResourceOptions(
-            protect, ignore_changes, delete_before_replace, aliases, custom_timeouts, additional_secret_outputs)
+            protect, ignore_changes, delete_before_replace, aliases, custom_timeouts, additional_secret_outputs, parent)
 
     def _get_provider_resource(self, request) -> Optional[PolicyProviderResource]:
         if not request.HasField("provider"):
