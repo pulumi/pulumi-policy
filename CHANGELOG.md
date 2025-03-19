@@ -1,9 +1,11 @@
 ## HEAD (Unreleased)
 
+---
+
+## 1.14.0 (2025-03-19)
+
 - Add parent to PolicyResourceOptions
   (https://github.com/pulumi/pulumi-policy/pull/368).
-
----
 
 ## 1.13.0 (2024-10-08)
 
