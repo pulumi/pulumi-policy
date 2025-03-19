@@ -44,7 +44,8 @@ function validate(r: ResourceValidationArgs | PolicyResource) {
             assert.strictEqual(r.provider!.type, "pulumi:providers:pulumi-nodejs");
             assert.strictEqual(r.provider!.name, "default");
             assert.strictEqual(r.provider!.urn, createURN("pulumi:providers:pulumi-nodejs", "default"));
-            assert.deepStrictEqual(r.provider!.props, {});
+            assert.notStrictEqual(r.provider!.props, undefined);
+            assert.ok("provider:scenario" in r.provider!.props, "Expected key 'provider:scenario'");
             break;
 
         case "random:index/randomUuid:RandomUuid":

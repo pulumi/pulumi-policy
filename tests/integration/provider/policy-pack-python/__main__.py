@@ -38,7 +38,8 @@ def validate(r):
         assert r.provider.resource_type == "pulumi:providers:pulumi-nodejs"
         assert r.provider.name == "default"
         assert r.provider.urn == create_urn("pulumi:providers:pulumi-nodejs", "default")
-        assert not r.provider.props
+        assert r.provider.props
+        assert r.provider.props["provider:scenario"]
     elif t == "random:index/randomUuid:RandomUuid":
         assert r.provider is not None
         assert r.provider.resource_type == "pulumi:providers:random"
