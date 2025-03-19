@@ -82,6 +82,9 @@ function validate(r: ResourceValidationArgs | PolicyResource) {
 }
 
 function validateDynamicResource(r: ResourceValidationArgs | PolicyResource) {
+    assert.ok("parent" in r.opts, "Expected key 'parent'");
+    r.opts.parent = "IGNORE" // The parent will be set, but ignore the exact value.
+
     const defaultOptions: PolicyResourceOptions = {
         protect: false,
         ignoreChanges: [],
@@ -92,6 +95,7 @@ function validateDynamicResource(r: ResourceValidationArgs | PolicyResource) {
             updateSeconds: 0,
             deleteSeconds: 0,
         },
+        parent: "IGNORE",
     };
 
     switch (r.name) {

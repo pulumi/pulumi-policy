@@ -66,6 +66,9 @@ def validate(r):
 
 
 def validate_dynamic_resource(r):
+    assert r.opts.parent
+    r.opts.parent = "IGNORE" # The parent will be set, but ignore the exact value.
+
     if r.name == "empty" or r.name == "parent" or r.name == "a":
         options_equal(PolicyResourceOptions(
             protect=False,
@@ -74,6 +77,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "protect":
         options_equal(PolicyResourceOptions(
@@ -83,6 +87,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "ignoreChanges":
         options_equal(PolicyResourceOptions(
@@ -92,6 +97,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "deleteBeforeReplaceNotSet":
         options_equal(PolicyResourceOptions(
@@ -101,6 +107,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "deleteBeforeReplaceTrue":
         options_equal(PolicyResourceOptions(
@@ -110,6 +117,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "deleteBeforeReplaceFalse":
         options_equal(PolicyResourceOptions(
@@ -119,6 +127,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "aliased":
         options_equal(PolicyResourceOptions(
@@ -133,6 +142,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "timeouts":
         options_equal(PolicyResourceOptions(
@@ -142,6 +152,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(60, 120, 180),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "timeouts-create":
         options_equal(PolicyResourceOptions(
@@ -151,6 +162,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(240, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "timeouts-update":
         options_equal(PolicyResourceOptions(
@@ -160,6 +172,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 300, 0),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "timeouts-delete":
         options_equal(PolicyResourceOptions(
@@ -169,6 +182,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=[],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 360),
+            parent="IGNORE",
         ), r.opts)
     elif r.name == "secrets":
         options_equal(PolicyResourceOptions(
@@ -178,6 +192,7 @@ def validate_dynamic_resource(r):
             aliases=[],
             additional_secret_outputs=["foo"],
             custom_timeouts=PolicyCustomTimeouts(0, 0, 0),
+            parent="IGNORE",
         ), r.opts)
     else:
         raise AssertionError(f"Unexpected resource with name: '{r.name}'.")
