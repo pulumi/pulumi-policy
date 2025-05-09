@@ -1,5 +1,8 @@
 ## HEAD (Unreleased)
 
+- Fix issues with new asyncio versions and setuptools
+  (https://github.com/pulumi/pulumi-policy/pull/376)
+
 ---
 
 ## 1.14.0 (2025-03-19)
