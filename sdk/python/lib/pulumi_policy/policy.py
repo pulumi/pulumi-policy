@@ -512,7 +512,7 @@ class ResourceValidationPolicy(Policy):
                     await result
                 except Exception as e:
                     # If any of the validations fail, we should raise an exception.
-                    raise RuntimeError(f"Validation failed: {e}") from e            
+                    raise RuntimeError(f"Validation failed: {e}") from e
 
         if awaitable_results:
             return await_all()
