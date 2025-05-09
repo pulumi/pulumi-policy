@@ -91,7 +91,9 @@ jobs:
         with:
           repo: pulumi/pulumictl
       - name: Install Pulumi CLI
-        run: curl -fsSL https://get.pulumi.com | sh -s #-- --version "PR#19477"
+        uses: pulumi/actions@v4
+        with:
+          pulumi-version: ">=3.157.0"
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
