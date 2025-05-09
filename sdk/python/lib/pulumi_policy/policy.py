@@ -506,8 +506,16 @@ class ResourceValidationPolicy(Policy):
             if result is not None and isawaitable(result):
                 awaitable_results.append(cast(Awaitable, result))
 
+        async def await_all():
+            for result in awaitable_results:
+                try:
+                    await result
+                except Exception as e:
+                    # If any of the validations fail, we should raise an exception.
+                    raise RuntimeError(f"Validation failed: {e}") from e            
+
         if awaitable_results:
-            return asyncio.wait(awaitable_results)
+            return await_all()
 
         return None
 
@@ -779,7 +787,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 result = policy.validate(args, report_violation)
                 if isawaitable(result):
                     loop = asyncio.new_event_loop()
-                    loop.run_until_complete(result)
+                    task = asyncio.Task(result, loop=loop)
+                    loop.run_until_complete(task)
                     loop.close()
             except UnknownValueError as e:
                 diagnostics.append(proto.AnalyzeDiagnostic(  # type: ignore
@@ -858,7 +867,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 result = policy.validate(args, report_violation)
                 if isawaitable(result):
                     loop = asyncio.new_event_loop()
-                    loop.run_until_complete(result)
+                    task = asyncio.Task(result, loop=loop)
+                    loop.run_until_complete(task)
                     loop.close()
             except UnknownValueError as e:
                 diagnostics.append(proto.AnalyzeDiagnostic(
@@ -906,7 +916,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 result = policy.remediate(args)
                 if isawaitable(result):
                     loop = asyncio.new_event_loop()
-                    new_props = loop.run_until_complete(result)
+                    task = asyncio.Task(result, loop=loop)
+                    new_props = loop.run_until_complete(task)
                     loop.close()
                 elif result is not None:
                     new_props = result

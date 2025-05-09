@@ -37,11 +37,9 @@ def run_policy(policy: Union[ResourceValidationPolicy, StackValidationPolicy]) -
     result = policy.validate(None, report)
     if isawaitable(result):
         loop = asyncio.new_event_loop()
-        fut = asyncio.Task(result, loop=loop)
-        loop.run_until_complete(fut)
-        val = fut.result()
+        task = asyncio.Task(result, loop=loop) if asyncio.iscoroutine(result) else result
+        loop.run_until_complete(task)
         loop.close()
-        return val
 
     return violations
 
@@ -49,9 +47,8 @@ def run_remediation(policy: ResourceValidationPolicy) -> Union[Mapping[str, Any]
     result = policy.remediate(None)
     if isawaitable(result):
         loop = asyncio.new_event_loop()
-        fut = asyncio.Task(result, loop=loop)
-        loop.run_until_complete(fut)
-        val = fut.result()
+        task = asyncio.Task(result, loop=loop)
+        val = loop.run_until_complete(task)
         loop.close()
         return val
 
