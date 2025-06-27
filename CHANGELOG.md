@@ -1,5 +1,9 @@
 ## HEAD (Unreleased)
 
+---
+
+## 1.16.0 (2025-06-27)
+
 - Relax protobuf dependency constraint
   (https://github.com/pulumi/pulumi-policy/pull/381)
 
