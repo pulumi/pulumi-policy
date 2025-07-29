@@ -1,7 +1,7 @@
 ## HEAD (Unreleased)
 
 - Relax grpcio dependency constraint
-  (https://github.com/pulumi/pulumi-policy/pull/YYY)
+  (https://github.com/pulumi/pulumi-policy/pull/384)
 
 ---
 
