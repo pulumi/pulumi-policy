@@ -1,5 +1,9 @@
 ## HEAD (Unreleased)
 
+---
+
+## 1.17.0 (2025-07-29)
+
 - Relax grpcio dependency constraint
   (https://github.com/pulumi/pulumi-policy/pull/384)
 
