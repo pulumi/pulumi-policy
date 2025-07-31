@@ -67,4 +67,10 @@ switch (testScenario) {
         // Create a resource with a large string property.
         const longString = "a".repeat(5 * 1024 * 1024);
         const largeStringResource = new Resource("large-resource", { state: 6, longString })
+        break;
+
+    case 12:
+        // Create a provider resource named 'foobar'.
+        new random.Provider("foobar");
+        break;
 }
