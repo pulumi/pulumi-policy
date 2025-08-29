@@ -1,0 +1,78 @@
+name: Daily Tests
+
+on:
+  schedule:
+    # 1130 UTC every weekday
+    - cron: "30 11 * * 1-5"
+  workflow_dispatch: {}
+
+env:
+  AWS_REGION: us-west-2
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: "on"
+  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  PROVIDER: policy
+  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+  PULUMI_API: https://api.pulumi-staging.io
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  PYPI_USERNAME: __token__
+  PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+  VERSION: ${{ github.event.client_payload.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v6
+        with:
+          pulumi-version: dev
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{matrix.node-version}}
+          registry-url: https://registry.npmjs.org
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{matrix.python-version}}
+      - name: Install pipenv
+        run: |
+          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet twine
+      - name: Ensure dependencies
+        run: make ensure
+      - name: Checkout Scripts Repo
+        uses: actions/checkout@v2
+        with:
+          path: ci-scripts
+          repository: pulumi/scripts
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: ${{ env.AWS_REGION }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+          role-session-name: ${{ env.PROVIDER }}@githubActions
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+      - name: Build SDK
+        run: make only_build
+      - name: Check worktree clean
+        run: ./ci-scripts/ci/check-worktree-is-clean
+      - name: Run Unit Tests
+        run: make only_test_fast
+      - name: Run Integration Tests
+        run: make test_all
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [ubuntu-latest]
+        go-version: [1.24.x]
+        python-version: [3.9.x]
+        node-version: [20.x]
