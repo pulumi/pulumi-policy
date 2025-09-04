@@ -11,9 +11,8 @@
     "repository": "https://github.com/pulumi/pulumi-policy",
     "dependencies": {
         "@grpc/grpc-js": "^1.10.1",
-        "@pulumi/pulumi": "^3.157.0",
-        "google-protobuf": "^3.5.0",
-        "protobufjs": "^7.2.4"
+        "@pulumi/pulumi": "^3.196.0",
+        "google-protobuf": "^3.21.4"
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",

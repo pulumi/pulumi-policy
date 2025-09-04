@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,36 @@ export interface PolicyPackArgs {
      * override.
      */
     enforcementLevel?: EnforcementLevel;
+
+    /**
+     * A brief description of the policy pack. This will override the description in PulumiPolicy.yaml.
+     */
+    description?: string;
+
+    /**
+     * An optional pretty name for the policy pack.
+     */
+    displayName?: string;
+
+    /**
+     * README text about the policy pack.
+     */
+    readme?: string;
+
+    /**
+     * The cloud provider/platform this policy pack is associated with, e.g. AWS, Azure, etc.
+     */
+    provider?: string;
+
+    /**
+     * Tags for this policy pack.
+     */
+    tags?: string[];
+
+    /**
+     * A URL to the repository where the policy pack is defined.
+     */
+    repository?: string;
 }
 
 /**
@@ -75,7 +105,7 @@ export class PolicyPack {
         }
 
         const enforcementLevel = args.enforcementLevel || defaultEnforcementLevel;
-        serve(this.name, version, enforcementLevel, this.policies, initialConfig);
+        serve(this.name, version, enforcementLevel, args, initialConfig);
     }
 }
 
@@ -83,6 +113,11 @@ export class PolicyPack {
  * Indicates the impact of a policy violation.
  */
 export type EnforcementLevel = "advisory" | "mandatory" | "remediate" | "disabled";
+
+/**
+ * Indicates the severity of a policy.
+ */
+export type Severity = "low" | "medium" | "high" | "critical";
 
 /**
  * Represents configuration for the policy pack.
@@ -139,6 +174,61 @@ export interface Policy {
      * ```
      */
     configSchema?: PolicyConfigSchema;
+
+    /**
+     * An optional pretty name for the policy.
+     */
+    displayName?: string;
+
+    /**
+     * The severity of the policy.
+     */
+    severity?: Severity;
+
+    /**
+     * The compliance framework that this policy belongs to.
+     */
+    framework?: PolicyComplianceFramework;
+
+    /**
+     * Tags associated with the policy.
+     */
+    tags?: string[];
+
+    /**
+     * A description of the steps to take to remediate a policy violation.
+     */
+    remediationSteps?: string;
+
+    /**
+     * An optional URL to more information about the policy.
+     */
+    url?: string;
+}
+
+/**
+ * Represents a compliance framework that a policy belongs to.
+ */
+export interface PolicyComplianceFramework {
+    /**
+     * The compliance framework name.
+     */
+    name: string;
+
+    /**
+     * The compliance framework version.
+     */
+    version: string;
+
+    /**
+     * The compliance framework reference.
+     */
+    reference: string;
+
+    /**
+     * The compliance framework specification.
+     */
+    specification: string;
 }
 
 /**
@@ -663,4 +753,42 @@ export class Secret {
     constructor(value: any) {
         this.value = value;
     }
+}
+
+/**
+ * Type guard used to determine if the `Policy` is a `ResourceValidationPolicy`.
+ *
+ * @internal
+ */
+export function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
+    // If the policy has a validate routine, it is a resource policy:
+    const validation = (p as ResourceValidationPolicy).validateResource;
+    if (typeof validation === "function") {
+        return true;
+    }
+    if (Array.isArray(validation)) {
+        for (const v of validation) {
+            if (typeof v !== "function") {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Alternatively, if the policy has a remediation routine, it is also a resource policy.
+    const remediation = (p as ResourceValidationPolicy).remediateResource;
+    if (typeof remediation === "function") {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Type guard used to determine if the `Policy` is a `StackValidationPolicy`.
+ *
+ * @internal
+ */
+export function isStackPolicy(p: Policy): p is StackValidationPolicy {
+    return typeof (p as StackValidationPolicy).validateStack === "function";
 }
