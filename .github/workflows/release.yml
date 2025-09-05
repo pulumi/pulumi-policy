@@ -63,9 +63,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Unshallow clone for tags
-        run: git fetch --prune --unshallow --tags
+        uses: actions/checkout@v5
+        with:
+          fetch-tags: true
+          fetch-depth: 0
       - name: Install Go
         uses: actions/setup-go@v4
         with:
