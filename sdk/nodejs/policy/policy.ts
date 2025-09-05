@@ -35,6 +35,36 @@ export interface PolicyPackArgs {
      * override.
      */
     enforcementLevel?: EnforcementLevel;
+
+    /**
+     * A brief description of the policy pack. A description in PulumiPolicy.yaml will override this value.
+     */
+    description?: string;
+
+    /**
+     * An optional pretty name for the policy pack.
+     */
+    displayName?: string;
+
+    /**
+     * README text about the policy pack.
+     */
+    readme?: string;
+
+    /**
+     * The cloud provider/platform this policy pack is associated with, e.g. AWS, Azure, etc.
+     */
+    provider?: string;
+
+    /**
+     * Tags for this policy pack.
+     */
+    tags?: string[];
+
+    /**
+     * A URL to the repository where the policy pack is defined.
+     */
+    repository?: string;
 }
 
 /**
@@ -83,6 +113,11 @@ export class PolicyPack {
  * Indicates the impact of a policy violation.
  */
 export type EnforcementLevel = "advisory" | "mandatory" | "remediate" | "disabled";
+
+/**
+ * Indicates the severity of a policy.
+ */
+export type Severity = "low" | "medium" | "high" | "critical";
 
 /**
  * Represents configuration for the policy pack.
@@ -139,6 +174,56 @@ export interface Policy {
      * ```
      */
     configSchema?: PolicyConfigSchema;
+
+    /**
+     * An optional pretty name for the policy.
+     */
+    displayName?: string;
+
+    /**
+     * The severity of the policy.
+     */
+    severity?: Severity;
+
+    /**
+     * The compliance framework that this policy belongs to.
+     */
+    framework?: PolicyComplianceFramework;
+
+    /**
+     * Tags associated with the policy.
+     */
+    tags?: string[];
+
+    /**
+     * A description of the steps to take to remediate a policy violation.
+     */
+    remediationSteps?: string;
+}
+
+/**
+ * Represents a compliance framework that a policy belongs to.
+ */
+export interface PolicyComplianceFramework {
+    /**
+     * The compliance framework name.
+     */
+    name: string;
+
+    /**
+     * The compliance framework version.
+     */
+    version: string;
+
+    /**
+     * The compliance framework reference.
+     */
+    reference: string;
+
+    /**
+     * The compliance framework specification.
+     */
+    specification: string;
 }
 
 /**
