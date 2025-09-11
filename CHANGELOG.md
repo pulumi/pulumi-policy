@@ -1,5 +1,8 @@
 ## HEAD (Unreleased)
 
+- Node.js: Fix internal serialization logic to handle `undefined` and `null` the same as `@pulumi/pulumi`
+  (https://github.com/pulumi/pulumi-policy/pull/400).
+
 ---
 
 ## 1.17.0 (2025-07-29)

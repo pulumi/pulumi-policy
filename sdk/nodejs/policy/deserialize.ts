@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -147,10 +147,8 @@ export async function serializeProperties(obj: any): Promise<any> {
  * serialization semantics for policies which treat outputs and secrets with different semantics.
  */
 async function serializeProperty(prop: any): Promise<any> {
-    if (prop === undefined) {
-        return null;
-    }
-    if (prop === null ||
+    if (prop === undefined ||
+            prop === null ||
             typeof prop === "boolean" ||
             typeof prop === "number" ||
             typeof prop === "string") {
@@ -196,9 +194,11 @@ async function serializeProperty(prop: any): Promise<any> {
         // Because of the way secrets proxying works, we very well may encounter a
         // secret in its raw form, since serialization explicitly unwraps the proxy and
         // accesses the raw underlying values.
+        const value = await serializeProperty(prop.value);
         return {
             [specialSigKey]: specialSecretSig,
-            value: await serializeProperty(prop.value),
+            // coerce 'undefined' to 'null' as required by the protobuf system.
+            value: value === undefined ? null : value,
         };
     }
 
