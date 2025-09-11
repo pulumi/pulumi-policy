@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,12 +36,6 @@ const (
 	Python
 )
 
-func abortIfFailed(t *testing.T) {
-	if t.Failed() {
-		t.Fatal("Aborting test as a result of unrecoverable error.")
-	}
-}
-
 type PolicyConfig map[string]interface{}
 
 // policyTestScenario describes an iteration of the
@@ -73,25 +67,22 @@ func runPolicyPackIntegrationTest(
 
 	// Get the directory for the policy pack to run.
 	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Error getting working directory")
-	}
+	require.NoError(t, err)
 	rootDir := filepath.Join(cwd, testDirName)
 
-	// The Pulumi project name matches the test dir name in these tests.
-	os.Setenv("PULUMI_TEST_PROJECT", testDirName)
-
 	stackName := fmt.Sprintf("%s-%d", testDirName, time.Now().Unix()%100000)
-	os.Setenv("PULUMI_TEST_STACK", stackName)
 
 	// Copy the root directory to /tmp and run various operations within that directory.
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(rootDir)
+
+	// Set some environment variables that the test policy packs will look at to assert
+	// expected values.
+	e.SetEnvVars(
+		fmt.Sprintf("PULUMI_TEST_PROJECT=%s", testDirName),
+		fmt.Sprintf("PULUMI_TEST_STACK=%s", stackName),
+	)
 
 	// If there is a testcomponent directory, update dependencies and set the PATH envvar.
 	testComponentDir := filepath.Join(e.RootPath, "testcomponent")
@@ -99,48 +90,37 @@ func runPolicyPackIntegrationTest(
 		// Install dependencies.
 		e.CWD = testComponentDir
 		e.RunCommand("go", "mod", "tidy")
-		abortIfFailed(t)
 
 		// Set the PATH envvar to the path to the testcomponent so the provider is available
 		// to the program.
-		e.Env = []string{pathEnvWith(testComponentDir)}
+		e.SetEnvVars(pathEnvWith(testComponentDir))
 	}
 
 	// Change to the Policy Pack directory.
 	packDir := filepath.Join(e.RootPath, "policy-pack")
 	e.CWD = packDir
 
-	// Link @pulumi/policy.
+	// Link @pulumi/policy and get dependencies.
 	e.RunCommand("yarn", "link", "@pulumi/policy")
-	abortIfFailed(t)
-
-	// Get dependencies.
 	e.RunCommand("yarn", "install")
-	abortIfFailed(t)
 
 	// Change to the Pulumi program directory.
 	programDir := filepath.Join(e.RootPath, "program")
 	e.CWD = programDir
 
-	// Create the stack.
-	e.RunCommand("pulumi", "login", "--local")
-	abortIfFailed(t)
-
+	// Login to the local environment directory and create the stack.
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	abortIfFailed(t)
 
 	// Get dependencies.
 	var venvCreated bool
 	switch runtime {
 	case NodeJS:
 		e.RunCommand("yarn", "install")
-		abortIfFailed(t)
 
 	case Python:
 		e.RunCommand("pipenv", "--python", "3")
-		abortIfFailed(t)
 		e.RunCommand("pipenv", "run", "pip", "install", "-r", "requirements.txt")
-		abortIfFailed(t)
 		venvCreated = true
 
 	default:
@@ -157,20 +137,17 @@ func runPolicyPackIntegrationTest(
 
 		if !venvCreated {
 			e.RunCommand("pipenv", "--python", "3")
-			abortIfFailed(t)
 		}
 
 		pythonPackRequirements := filepath.Join(pythonPackDir, "requirements.txt")
 		if _, err := os.Stat(pythonPackRequirements); !os.IsNotExist(err) {
 			e.RunCommand("pipenv", "run", "pip", "install", "-r", pythonPackRequirements)
-			abortIfFailed(t)
 		}
 
 		dep := filepath.Join("..", "..", "sdk", "python", "env", "src")
 		dep, err = filepath.Abs(dep)
 		assert.NoError(t, err)
 		e.RunCommand("pipenv", "run", "pip", "install", "-e", dep)
-		abortIfFailed(t)
 	}
 
 	// Initial configuration.
@@ -186,17 +163,14 @@ func runPolicyPackIntegrationTest(
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	}()
 
-	assert.True(t, len(scenarios) > 0, "no test scenarios provided")
+	require.NotEmpty(t, scenarios, "no test scenarios provided")
 	runScenarios := func(policyPackDirectoryPath string) {
 		t.Run(policyPackDirectoryPath, func(t *testing.T) {
 			e.T = t
 
 			// Clean up the stack after running through the scenarios, so that subsequent runs
 			// begin on a clean slate.
-			defer func() {
-				e.RunCommand("pulumi", "destroy", "--yes")
-				abortIfFailed(t)
-			}()
+			defer e.RunCommand("pulumi", "destroy", "--yes")
 
 			for idx, scenario := range scenarios {
 				// Create a sub-test so go test will output data incrementally, which will let
@@ -216,9 +190,7 @@ func runPolicyPackIntegrationTest(
 					if len(scenario.PolicyPackConfig) > 0 {
 						// Marshal the config to JSON, with indentation for easier debugging.
 						bytes, err := json.MarshalIndent(scenario.PolicyPackConfig, "", "    ")
-						if err != nil {
-							t.Fatalf("error marshalling policy config to JSON: %v", err)
-						}
+						require.NoError(t, err)
 
 						// Change to the config directory.
 						configDir := filepath.Join(e.RootPath, "config", scenarioName)
@@ -227,7 +199,6 @@ func runPolicyPackIntegrationTest(
 						// Write the JSON to a file.
 						filename := "policy-config.json"
 						e.WriteTestFile(filename, string(bytes))
-						abortIfFailed(t)
 
 						// Add the policy config argument.
 						policyConfigFile := filepath.Join(configDir, filename)
@@ -282,6 +253,8 @@ func runPolicyPackIntegrationTest(
 
 // Test invalid policies.
 func TestInvalidPolicy(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "invalid_policy", NodeJS, nil, []policyTestScenario{
 		{
 			WantErrors: []string{`Invalid policy name "all". "all" is a reserved name.`},
@@ -297,6 +270,8 @@ func TestInvalidPolicy(t *testing.T) {
 
 // Test basic resource validation.
 func TestValidateResource(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "validate_resource", NodeJS, nil, []policyTestScenario{
 		// Test scenario 1: no resources.
 		{
@@ -373,6 +348,8 @@ func TestValidateResource(t *testing.T) {
 
 // Test basic resource validation of a Python program.
 func TestValidatePythonResource(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "validate_python_resource", Python, nil, []policyTestScenario{
 		// Test scenario 1: violates the policy.
 		{
@@ -399,6 +376,8 @@ func TestValidatePythonResource(t *testing.T) {
 
 // Test basic stack validation.
 func TestValidateStack(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "validate_stack", NodeJS, nil, []policyTestScenario{
 		// Test scenario 1: no resources.
 		{
@@ -469,6 +448,8 @@ func TestValidateStack(t *testing.T) {
 
 // Test that accessing unknown values returns an error during previews.
 func TestUnknownValues(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "unknown_values", NodeJS, map[string]string{
 		"aws:region": "us-west-2",
 	}, []policyTestScenario{
@@ -487,6 +468,8 @@ func TestUnknownValues(t *testing.T) {
 
 // Test runtime data (Config, getStack, getProject, and isDryRun) is available to the Policy Pack.
 func TestRuntimeData(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "runtime_data", NodeJS, map[string]string{
 		"aConfigValue": "this value is a value",
 		"aws:region":   "us-west-2",
@@ -495,6 +478,8 @@ func TestRuntimeData(t *testing.T) {
 
 // Test resource options.
 func TestResourceOptions(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "resource_options", NodeJS, nil, []policyTestScenario{
 		// Test scenario 1: test resource options.
 		{WantErrors: nil},
@@ -505,6 +490,8 @@ func TestResourceOptions(t *testing.T) {
 
 // Test parent and dependencies.
 func TestParentDependencies(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "parent_dependencies", NodeJS, nil, []policyTestScenario{
 		{WantErrors: nil},
 	})
@@ -519,6 +506,8 @@ func TestProvider(t *testing.T) {
 
 // Test Policy Packs with enforcement levels set on the Policy Pack and individual policies.
 func TestEnforcementLevel(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "enforcementlevel", NodeJS, nil, []policyTestScenario{
 		// Test scenario 1: Policy Pack: advisory; Policy: advisory.
 		{
@@ -672,6 +661,8 @@ func TestEnforcementLevel(t *testing.T) {
 
 // Test Policy Pack configuration.
 func TestConfig(t *testing.T) {
+	t.Parallel()
+
 	const (
 		resourcePolicy = "resource-validation"
 		stackPolicy    = "stack-validation"
@@ -851,6 +842,8 @@ func TestConfig(t *testing.T) {
 
 // Test deserializing resource properties.
 func TestDeserialize(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "deserialize", NodeJS, nil, []policyTestScenario{
 		{WantErrors: nil},
 	})
@@ -859,6 +852,8 @@ func TestDeserialize(t *testing.T) {
 // Test using a remote component with a nested unknown, ensuring the unknown remains at the leaf position and does
 // not end up making the whole top-level property unknown.
 func TestRemoteComponent(t *testing.T) {
+	t.Parallel()
+
 	runPolicyPackIntegrationTest(t, "remote_component", NodeJS, nil, []policyTestScenario{
 		{
 			WantErrors: []string{
@@ -871,6 +866,7 @@ func TestRemoteComponent(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // sets PULUMI_HOME
 func TestPythonDoesNotTryToInstallPlugin(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	t.Log(e.RootPath)
