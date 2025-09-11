@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,9 +13,14 @@
 // limitations under the License.
 
 import * as process from "process";
+
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
+
 import * as grpc from "@grpc/grpc-js";
 
 import { Resource, Unwrap } from "@pulumi/pulumi";
+import * as analyzerrpc from "@pulumi/pulumi/proto/analyzer_grpc_pb";
+import * as plugproto from "@pulumi/pulumi/proto/plugin_pb";
 import * as q from "@pulumi/pulumi/queryable";
 
 import { deserializeProperties, serializeProperties } from "./deserialize";
@@ -46,9 +51,6 @@ import {
 import { unknownCheckingProxy, UnknownValueError } from "./proxy";
 import { version } from "./version";
 
-const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
-const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
-const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
 
 // ------------------------------------------------------------------------------------------------
 
@@ -185,8 +187,10 @@ async function configure(call: any, callback: any): Promise<void> {
         // but we can't use `Empty` from the module that this package depends on -- it must be from the module that
         // @pulumi/pulumi depends on, because there is an `arg instanceof google_protobuf_empty_pb.Empty` check that
         // will fail if `Empty` isn't from the same module. To workaround, we can simply use
-        // `AnalyzerService.configure.responseType`, which is set to `Empty` in @pulumi/pulumi.
-        callback(undefined, new analyzerrpc.AnalyzerService.configure.responseType());
+        // `AnalyzerService.configure.responseType`, which is set to `Empty` in @pulumi/pulumi, falling back to `Empty`
+        // from our copy of "google-protobuf/google/protobuf/empty_pb.js".
+        const Empty = (analyzerrpc.AnalyzerService.configure as any).responseType ?? emptyproto.Empty;
+        callback(undefined, new Empty());
     } catch (e) {
         callback(asGrpcError(e), undefined);
     }
