@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+
+import * as analyzerproto from "@pulumi/pulumi/proto/analyzer_pb";
+
 import { EnforcementLevel, Policies, PolicyPackConfig } from "./policy";
 
-const analyzerproto = require("@pulumi/pulumi/proto/analyzer_pb.js");
-const analyzerrpc = require("@pulumi/pulumi/proto/analyzer_grpc_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
-const plugproto = require("@pulumi/pulumi/proto/plugin_pb.js");
 
 /** @internal */
 export function asGrpcError(e: any, message?: string) {
@@ -114,7 +114,9 @@ export function makeAnalyzerInfo(
         if (policy.configSchema) {
             const schema = new analyzerproto.PolicyConfigSchema();
             schema.setProperties(structproto.Struct.fromJavaScript(policy.configSchema.properties));
-            schema.setRequiredList(policy.configSchema.required);
+            if (policy.configSchema.required) {
+                schema.setRequiredList(policy.configSchema.required);
+            }
             policyInfo.setConfigschema(schema);
         }
 
@@ -162,7 +164,9 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
         diagnostic.setDescription(d.description);
         diagnostic.setMessage(d.message);
         diagnostic.setEnforcementlevel(mapEnforcementLevel(d.enforcementLevel));
-        diagnostic.setUrn(d.urn);
+        if (d.urn) {
+            diagnostic.setUrn(d.urn);
+        }
 
         diagnostics.push(diagnostic);
     }
@@ -292,8 +296,12 @@ export function makeRemediateResponse(rs: Remediation[]) {
         remediation.setPolicypackname(r.policyPackName);
         remediation.setPolicypackversion(r.policyPackVersion);
         remediation.setDescription(r.description);
-        remediation.setProperties(structproto.Struct.fromJavaScript(r.properties));
-        remediation.setDiagnostic(r.diagnostic);
+        if (r.properties) {
+            remediation.setProperties(structproto.Struct.fromJavaScript(r.properties));
+        }
+        if (r.diagnostic) {
+            remediation.setDiagnostic(r.diagnostic);
+        }
         remediations.push(remediation);
     }
     resp.setRemediationsList(remediations);
