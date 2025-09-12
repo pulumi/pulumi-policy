@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as assert from "assert";
+import { strict as assert } from "assert";
 
-import { Inputs, isSecret, runtime, secret } from "@pulumi/pulumi";
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
+
+import { Inputs, runtime, secret } from "@pulumi/pulumi";
 import { specialSecretSig, specialSigKey } from "@pulumi/pulumi/runtime/rpc";
 
 import { deserializeProperties, serializeProperties } from "../deserialize";
 import { Secret } from "../policy";
 import { asyncTest } from "./util";
 
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
 async function runWithSerialization(inputs: Inputs, callback: (transfer: any) => void): Promise<void> {
     for (const usePolicySerialization of [false, true]) {
@@ -214,8 +215,8 @@ describe("runtime", () => {
                     urn: "bar",
                 };
 
-                const policySer = gstruct.Struct.fromJavaScript(await serializeProperties(inputs));
-                const runtimeSer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", inputs));
+                const policySer = await serializeProperties(inputs);
+                const runtimeSer = await runtime.serializeProperties("test", inputs);
                 assert.equal(policySer.aNum, runtimeSer.aNum);
                 assert.equal(policySer.bStr, runtimeSer.bStr);
                 assert.equal(policySer.cUnd, runtimeSer.cUnd);
@@ -227,6 +228,16 @@ describe("runtime", () => {
         it(
             "marshals secrets correctly",
             asyncTest(async () => {
+                // Set mocks, which will enable secrets serialization.
+                runtime.setMocks({
+                    call: (_) => {
+                        throw new Error("unexpected call");
+                    },
+                    newResource: (args) => {
+                        return { id: `${args.name}_id`, state: {} };
+                    },
+                });
+
                 const makeInputs = (secretFunc: (v: any) => any) => ({
                     secret1: secretFunc(1),
                     secret2: secretFunc(undefined),
@@ -241,10 +252,10 @@ describe("runtime", () => {
 
                 // Policy inputs uses the policy version of a Secret marker:
                 const policyInputs: Inputs = makeInputs((v: any) => new Secret(v));
-                const policySer = gstruct.Struct.fromJavaScript(await serializeProperties(policyInputs));
+                const policySer = await serializeProperties(policyInputs);
                 // While the runtime uses the normal Pulumi runtime version of a Secret marker:
                 const runtimeInputs: Inputs = makeInputs((v: any) => secret(v));
-                const runtimeSer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", runtimeInputs));
+                const runtimeSer = await runtime.serializeProperties("test", runtimeInputs);
 
                 // Both should lead to the same place.
                 assert.deepEqual(policySer.secret1, runtimeSer.secret1);
@@ -284,10 +295,9 @@ describe("runtime", () => {
                 // deserialize that state on its side.
                 const runtimeSerialized = gstruct.Struct.fromJavaScript(
                     await runtime.serializeProperties("test", inputs));
-                console.log(JSON.stringify(await runtime.serializeProperties("test", inputs), null, 4));
                 const policyDeserializedAndProxied = deserializeProperties(runtimeSerialized, true);
                 assert.equal(policyDeserializedAndProxied.secret1, 1);
-                assert.equal(policyDeserializedAndProxied.secret2, undefined);
+                assert.equal(policyDeserializedAndProxied.secret2, null);
                 assert.deepEqual(policyDeserializedAndProxied.secret3, {
                     "deeply": {
                         "nested": {
@@ -298,11 +308,8 @@ describe("runtime", () => {
                 const policySerialized = gstruct.Struct.fromJavaScript(
                     await serializeProperties(policyDeserializedAndProxied));
 
-                console.log(JSON.stringify(await serializeProperties(policyDeserializedAndProxied), null, 4));
-
                 // The final result should include secrets.
                 const runtimeDeserialized = runtime.deserializeProperties(policySerialized);
-                console.log(JSON.stringify(runtimeDeserialized, null, 4));
                 assert.deepEqual(runtimeDeserialized.secret1, {
                     [specialSigKey]: specialSecretSig,
                     "value": 1,
