@@ -19,6 +19,7 @@ import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as grpc from "@grpc/grpc-js";
 
 import { Resource, Unwrap } from "@pulumi/pulumi";
+import * as analyzerproto from "@pulumi/pulumi/proto/analyzer_pb";
 import * as analyzerrpc from "@pulumi/pulumi/proto/analyzer_grpc_pb";
 import * as plugproto from "@pulumi/pulumi/proto/plugin_pb";
 import * as q from "@pulumi/pulumi/queryable";
@@ -36,6 +37,7 @@ import {
     ReportViolation,
     ResourceValidationArgs,
     StackValidationArgs,
+    getPulumiType,
     isResourcePolicy,
     isStackPolicy,
 } from "./policy";
@@ -200,7 +202,8 @@ async function configure(call: any, callback: any): Promise<void> {
 
 // analyze is the RPC call that will analyze an individual resource, one at a time, called with the
 // "inputs" to the resource, before it is updated.
-function makeAnalyzeRpcFun(
+/** @internal */
+export function makeAnalyzeRpcFun(
     policyPackName: string,
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
@@ -208,21 +211,42 @@ function makeAnalyzeRpcFun(
 ) {
     return async function(call: any, callback: any): Promise<void> {
         // Prep to perform the analysis.
-        const req = call.request;
+        const req: analyzerproto.AnalyzeRequest = call.request;
+
+        const type = req.getType();
 
         // Run the analysis for every analyzer in the global list, tracking any diagnostics.
         const ds: Diagnostic[] = [];
+        let notApplicable: analyzerproto.PolicyNotApplicable[] | undefined = undefined;
         try {
             for (const p of policies) {
                 let enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
-                if (enforcementLevel === "disabled" || !isResourcePolicy(p) || !p.validateResource) {
+                if (enforcementLevel === "disabled" || !isResourcePolicy(p)) {
                     continue;
                 }
+                if (!p.validateResource) {
+                    // This is a remediation policy only, so report it as not applicable.
+                    const reason = "Policy does not implement validateResource";
+                    notApplicable = pushNotApplicable(notApplicable, p.name, reason);
+                    continue;
+                }
+
                 if (enforcementLevel === "remediate") {
                     // If we ran a remediation, but we are still somehow triggering a violation,
                     // "downgrade" the level we report from remediate to mandatory.
                     enforcementLevel = "mandatory";
+                }
+
+                // Fast check to see if the policy isn't applicable when we have a single validation function
+                // that has an attached Pulumi type.
+                if (!Array.isArray(p.validateResource)) {
+                    const pulumiType = getPulumiType(p.validateResource);
+                    if (pulumiType && type !== pulumiType) {
+                        const reason = `Policy only applies to resources of type '${pulumiType}'`;
+                        notApplicable = pushNotApplicable(notApplicable, p.name, reason);
+                        continue;
+                    }
                 }
 
                 const reportViolation: ReportViolation = (message, urn) => {
@@ -248,7 +272,6 @@ function makeAnalyzeRpcFun(
 
                 for (const validation of validations) {
                     try {
-                        const type = req.getType();
                         const deserd = deserializeProperties(req.getProperties(), false);
                         const props = unknownCheckingProxy(deserd);
                         const args: ResourceValidationArgs = {
@@ -273,6 +296,8 @@ function makeAnalyzeRpcFun(
                             },
 
                             getConfig: makeGetConfigFun(p.name),
+
+                            notApplicable: throwNotApplicable,
                         };
                         const provider = getProviderResource(req);
                         if (provider) {
@@ -297,6 +322,8 @@ function makeAnalyzeRpcFun(
                                 ...diag,
                                 enforcementLevel: "advisory",
                             });
+                        } else if (e instanceof NotApplicableError) {
+                            notApplicable = pushNotApplicable(notApplicable, p.name, e.reason);
                         } else {
                             throw asGrpcError(e, `Error validating resource with ${policyFrom}`);
                         }
@@ -309,7 +336,7 @@ function makeAnalyzeRpcFun(
         }
 
         // Now marshal the results into a resulting diagnostics list, and invoke the callback to finish.
-        callback(undefined, makeAnalyzeResponse(ds));
+        callback(undefined, makeAnalyzeResponse(ds, notApplicable));
     };
 }
 
@@ -330,7 +357,8 @@ interface IntermediateStackResource {
 
 // analyzeStack is the RPC call that will analyze all resources within a stack, at the end of a successful
 // preview or update. The provided resources are the "outputs", after any mutations have taken place.
-function makeAnalyzeStackRpcFun(
+/** @internal */
+export function makeAnalyzeStackRpcFun(
     policyPackName: string,
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
@@ -338,10 +366,13 @@ function makeAnalyzeStackRpcFun(
 ) {
     return async function(call: any, callback: any): Promise<void> {
         // Prep to perform the analysis.
-        const req = call.request;
+        const req: analyzerproto.AnalyzeStackRequest = call.request;
+
+        const resources = req.getResourcesList();
 
         // Run the analysis for every analyzer in the global list, tracking any diagnostics.
         const ds: Diagnostic[] = [];
+        let notApplicable: analyzerproto.PolicyNotApplicable[] | undefined = undefined;
         try {
             for (const p of policies) {
                 let enforcementLevel: EnforcementLevel =
@@ -352,6 +383,18 @@ function makeAnalyzeStackRpcFun(
                 if (enforcementLevel === "remediate") {
                     // Stack policies cannot be remediated, so treat the level as mandatory.
                     enforcementLevel = "mandatory";
+                }
+
+                // Fast check to see if the policy isn't applicable when we have a validation function
+                // that has an attached Pulumi type.
+                const pulumiType = getPulumiType(p.validateStack);
+                if (pulumiType) {
+                    const hasResourcesOfType = resources.some(r => r.getType() === pulumiType);
+                    if (!hasResourcesOfType) {
+                        const reason = `Policy only applies to resources of type '${pulumiType}'`;
+                        notApplicable = pushNotApplicable(notApplicable, p.name, reason);
+                        continue;
+                    }
                 }
 
                 const reportViolation: ReportViolation = (message, urn) => {
@@ -373,7 +416,7 @@ function makeAnalyzeStackRpcFun(
 
                 try {
                     const intermediates: IntermediateStackResource[] = [];
-                    for (const r of req.getResourcesList()) {
+                    for (const r of resources) {
                         const type = r.getType();
                         const deserd = deserializeProperties(r.getProperties(), false);
                         const props = unknownCheckingProxy(deserd);
@@ -448,6 +491,7 @@ function makeAnalyzeStackRpcFun(
                     const args: StackValidationArgs = {
                         resources: intermediates.map(r => r.resource),
                         getConfig: makeGetConfigFun(p.name),
+                        notApplicable: throwNotApplicable,
                     };
 
                     // Pass the result of the validate call to Promise.resolve.
@@ -468,6 +512,8 @@ function makeAnalyzeStackRpcFun(
                             ...diag,
                             enforcementLevel: "advisory",
                         });
+                    } else if (e instanceof NotApplicableError) {
+                        notApplicable = pushNotApplicable(notApplicable, p.name, e.reason);
                     } else {
                         throw asGrpcError(e, `Error validating resource with ${policyFrom}`);
                     }
@@ -479,7 +525,7 @@ function makeAnalyzeStackRpcFun(
         }
 
         // Now marshal the results into a resulting diagnostics list, and invoke the callback to finish.
-        callback(undefined, makeAnalyzeResponse(ds));
+        callback(undefined, makeAnalyzeResponse(ds, notApplicable));
     };
 }
 
@@ -568,7 +614,17 @@ function isTypeOf<TResource extends Resource>(
     type: string,
     resourceClass: { new(...rest: any[]): TResource },
 ): boolean {
-    const isInstance = (<any>resourceClass).isInstance;
+    // Fast check to see if resourceClass has an attached Pulumi type,
+    // which is the case for the vast majority of resources (e.g. those
+    // generated by SDKgen).
+    const pulumiType = getPulumiType(resourceClass);
+    if (pulumiType) {
+        return type === pulumiType;
+    }
+
+    // Otherwise, fallback to using `isInstance`, if it's available,
+    // which requires an object allocation.
+    const isInstance = (resourceClass as any).isInstance;
     return isInstance &&
         typeof isInstance === "function" &&
         isInstance({ __pulumiType: type }) === true;
@@ -576,7 +632,8 @@ function isTypeOf<TResource extends Resource>(
 
 // Remediate is the RPC call that will remediate an individual resource, one at a time, called with the
 // "inputs" to the resource, before it is updated.
-function makeRemediateRpcFun(
+/** @internal */
+export function makeRemediateRpcFun(
     policyPackName: string,
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
@@ -584,7 +641,7 @@ function makeRemediateRpcFun(
 ) {
     return async function(call: any, callback: any): Promise<void> {
         // Prep to perform the analysis.
-        const req = call.request;
+        const req: analyzerproto.AnalyzeRequest = call.request;
 
         // Pluck out all of the values common across all remediations. We need to maintain
         // mutations across many remediations which could affect the same resource.
@@ -596,12 +653,28 @@ function makeRemediateRpcFun(
 
         // Run any remediations in our policy list.
         const rs: Remediation[] = [];
+        let notApplicable: analyzerproto.PolicyNotApplicable[] | undefined = undefined;
         try {
             for (const p of policies) {
                 // Only run remediations that are enabled.
                 const enforcementLevel: EnforcementLevel =
                     policyPackConfig[p.name]?.enforcementLevel || p.enforcementLevel || policyPackEnforcementLevel;
-                if (enforcementLevel !== "remediate" || !isResourcePolicy(p) || !p.remediateResource) {
+                if (enforcementLevel !== "remediate" || !isResourcePolicy(p)) {
+                    continue;
+                }
+                if (!p.remediateResource) {
+                    // This is an analyze policy only, so report it as not applicable.
+                    const reason = "Policy does not implement remediateResource";
+                    notApplicable = pushNotApplicable(notApplicable, p.name, reason);
+                    continue;
+                }
+
+                // Fast check to see if the policy isn't applicable when we have a remediation function
+                // that has an attached Pulumi type.
+                const pulumiType = getPulumiType(p.remediateResource);
+                if (pulumiType && type !== pulumiType) {
+                    const reason = `Policy only applies to resources of type '${pulumiType}'`;
+                    notApplicable = pushNotApplicable(notApplicable, p.name, reason);
                     continue;
                 }
 
@@ -620,6 +693,7 @@ function makeRemediateRpcFun(
                             ? props as Unwrap<NonNullable<TArgs>>
                             : undefined;
                     },
+                    notApplicable: throwNotApplicable,
                 };
                 const provider = getProviderResource(req);
                 if (provider) {
@@ -642,6 +716,8 @@ function makeRemediateRpcFun(
                     const policyFrom = `remediation '${p.name}' from policy pack ${policyPack}`;
                     if (e instanceof UnknownValueError) {
                         diagnostic = `can't run ${policyFrom} during preview: ${e.message}`;
+                    } else if (e instanceof NotApplicableError) {
+                        notApplicable = pushNotApplicable(notApplicable, p.name, e.reason);
                     } else {
                         throw asGrpcError(e, `Error remediating resource with ${policyFrom}`);
                     }
@@ -669,6 +745,37 @@ function makeRemediateRpcFun(
         }
 
         // Now marshal the results into the response, and invoke the callback to finish.
-        callback(undefined, makeRemediateResponse(rs));
+        callback(undefined, makeRemediateResponse(rs, notApplicable));
     };
+}
+
+class NotApplicableError extends Error {
+    constructor(public readonly reason?: string) {
+        super(reason ?? "Policy does not apply");
+        this.reason = reason;
+    }
+}
+
+function throwNotApplicable(reason?: string): never {
+    throw new NotApplicableError(reason);
+}
+
+/**
+ * Helper for adding a not applicable item to the array, creating the array if needed.
+ */
+function pushNotApplicable(
+    notApplicable: analyzerproto.PolicyNotApplicable[] | undefined,
+    policyName: string,
+    reason?: string,
+): analyzerproto.PolicyNotApplicable[] {
+    if (!notApplicable) {
+        notApplicable = [];
+    }
+    const na = new analyzerproto.PolicyNotApplicable();
+    na.setPolicyName(policyName);
+    if (reason) {
+        na.setReason(reason);
+    }
+    notApplicable.push(na);
+    return notApplicable;
 }

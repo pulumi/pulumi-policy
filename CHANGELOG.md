@@ -6,6 +6,9 @@
 - Node.js: Add support for new metadata fields for policy packs and policies
   (https://github.com/pulumi/pulumi-policy/pull/397).
 
+- Node.js: Support `args.notApplicable(reason)`
+  (https://github.com/pulumi/pulumi-policy/pull/409).
+
 ---
 
 ## 1.17.0 (2025-07-29)

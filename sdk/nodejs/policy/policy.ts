@@ -378,6 +378,13 @@ export interface ResourceValidationArgs {
      * Returns configuration for the policy.
      */
     getConfig<T extends object>(): T;
+
+    /**
+     * Marks the policy as not applicable.
+     *
+     * @param reason An optional reason why the policy is not applicable.
+     */
+    notApplicable(reason?: string): never;
 }
 
 /**
@@ -492,11 +499,20 @@ export function remediateResourceOfType<TResource extends Resource, TArgs>(
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     remediate: TypedResourceRemediation<Unwrap<NonNullable<TArgs>>>,
 ): ResourceRemediation {
-    return (args: ResourceValidationArgs) => {
+    const fn = (args: ResourceValidationArgs) => {
         if (args.isType(resourceClass)) {
             return remediate(args.props as Unwrap<NonNullable<TArgs>>, args);
+        } else {
+            notApplicableType(args, resourceClass);
         }
     };
+
+    // If resourceClass has a Pulumi type, attach it to the function so it can be used for more efficient filtering.
+    const pulumiType = getPulumiType(resourceClass);
+    if (pulumiType) {
+        fn.__pulumiType = pulumiType;
+    }
+    return fn;
 }
 
 /**
@@ -527,11 +543,20 @@ export function validateResourceOfType<TResource extends Resource, TArgs>(
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     validate: TypedResourceValidation<Unwrap<NonNullable<TArgs>>>,
 ): ResourceValidation {
-    return (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
+    const fn = (args: ResourceValidationArgs, reportViolation: ReportViolation) => {
         if (args.isType(resourceClass)) {
             return validate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
+        } else {
+            notApplicableType(args, resourceClass);
         }
     };
+
+    // If resourceClass has a Pulumi type, attach it to the function so it can be used for more efficient filtering.
+    const pulumiType = getPulumiType(resourceClass);
+    if (pulumiType) {
+        fn.__pulumiType = pulumiType;
+    }
+    return fn;
 }
 
 /**
@@ -562,17 +587,32 @@ export function validateRemediateResourceOfType<TResource extends Resource, TArg
     resourceClass: { new(name: string, args: TArgs, ...rest: any[]): TResource },
     validateRemediate: TypedResourceValidationRemediation<Unwrap<NonNullable<TArgs>>>,
 ): { validateResource: ResourceValidation; remediateResource: ResourceRemediation } {
+    const validateResource = async (args: ResourceValidationArgs, reportViolation: ReportViolation): Promise<void> => {
+        if (args.isType(resourceClass)) {
+            await validateRemediate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
+        } else {
+            notApplicableType(args, resourceClass);
+        }
+    };
+
+    const remediateResource = (args: ResourceValidationArgs) => {
+        if (args.isType(resourceClass)) {
+            return validateRemediate(args.props as Unwrap<NonNullable<TArgs>>, args, (_, __) => { /* ignore */ });
+        } else {
+            notApplicableType(args, resourceClass);
+        }
+    };
+
+    // If resourceClass has a Pulumi type, attach it to the functions so it can be used for more efficient filtering.
+    const pulumiType = getPulumiType(resourceClass);
+    if (pulumiType) {
+        validateResource.__pulumiType = pulumiType;
+        remediateResource.__pulumiType = pulumiType;
+    }
+
     return {
-        validateResource: async (args: ResourceValidationArgs, reportViolation: ReportViolation): Promise<void> => {
-            if (args.isType(resourceClass)) {
-                await validateRemediate(args.props as Unwrap<NonNullable<TArgs>>, args, reportViolation);
-            }
-        },
-        remediateResource: (args: ResourceValidationArgs) => {
-            if (args.isType(resourceClass)) {
-                return validateRemediate(args.props as Unwrap<NonNullable<TArgs>>, args, (_, __) => { /* ignore */ });
-            }
-        },
+        validateResource,
+        remediateResource,
     };
 }
 
@@ -609,6 +649,13 @@ export interface StackValidationArgs {
      * Returns configuration for the policy.
      */
     getConfig<T extends object>(): T;
+
+    /**
+     * Marks the policy as not applicable.
+     *
+     * @param reason An optional reason why the policy is not applicable.
+     */
+    notApplicable(reason?: string): never;
 }
 
 /**
@@ -721,14 +768,23 @@ export function validateStackResourcesOfType<TResource extends Resource>(
         args: StackValidationArgs,
         reportViolation: ReportViolation) => Promise<void> | void,
 ): StackValidation {
-    return (args: StackValidationArgs, reportViolation: ReportViolation) => {
+    const fn = (args: StackValidationArgs, reportViolation: ReportViolation) => {
         const filtered = args.resources.filter(r => r.isType(resourceClass));
         if (filtered.length > 0) {
             const filteredTyped = filtered.map(r => r.props as q.ResolvedResource<TResource>);
-            const filteredArgs = { resources: filtered, getConfig: args.getConfig };
+            const filteredArgs = { ...args, resources: filtered };
             return validate(filteredTyped, filteredArgs, reportViolation);
+        } else {
+            notApplicableType(args, resourceClass);
         }
     };
+
+    // If resourceClass has a Pulumi type, attach it to the function so it can be used for more efficient filtering.
+    const pulumiType = getPulumiType(resourceClass);
+    if (pulumiType) {
+        fn.__pulumiType = pulumiType;
+    }
+    return fn;
 }
 
 /**
@@ -791,4 +847,32 @@ export function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
  */
 export function isStackPolicy(p: Policy): p is StackValidationPolicy {
     return typeof (p as StackValidationPolicy).validateStack === "function";
+}
+
+/**
+ * Helper for getting __pulumiType from an object, if it exists and is a non-empty string.
+ *
+ * @internal
+ */
+export function getPulumiType(obj: any | undefined): string | undefined {
+    const pulumiType = obj?.__pulumiType;
+    return (typeof pulumiType === "string" && pulumiType.length > 0) ? pulumiType : undefined;
+}
+
+/**
+ * Helper to indicate a policy is not applicable for a given resource type.
+ */
+function notApplicableType<TResource extends Resource>(
+    args: ResourceValidationArgs | StackValidationArgs,
+    resourceClass: { new(...rest: any[]): TResource },
+): never {
+    const pulumiType = getPulumiType(resourceClass);
+    if (pulumiType) {
+        return args.notApplicable(`Policy only applies to resources of type '${pulumiType}'`);
+    }
+    const resourceClassName = (resourceClass as any)?.name;
+    if (typeof resourceClassName === "string" && resourceClassName.length > 0) {
+        return args.notApplicable(`Policy only applies to '${resourceClassName}' resources`);
+    }
+    return args.notApplicable("Policy only applies to resources of a specific type");
 }
