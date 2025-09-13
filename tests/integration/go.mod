@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi-policy/tests
 
 go 1.22
 
-toolchain go1.24.1
-
 require (
 	github.com/pulumi/pulumi/sdk/v3 v3.157.0
 	github.com/stretchr/testify v1.10.0
