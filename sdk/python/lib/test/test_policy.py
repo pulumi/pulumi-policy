@@ -21,10 +21,14 @@ from pulumi_policy import (
     EnforcementLevel,
     PolicyConfigSchema,
     PolicyPack,
+    PolicyComplianceFramework,
     ReportViolation,
     ResourceValidationPolicy,
+    Severity,
     StackValidationPolicy,
 )
+from pulumi_policy.policy import _PolicyAnalyzerServicer
+from pulumi.runtime import proto
 
 NOP = lambda: None
 NOP_POLICY = ResourceValidationPolicy("nop", "nop", NOP)
@@ -331,3 +335,197 @@ class PolicyConfigSchemaTests(unittest.TestCase):
 
         PolicyConfigSchema({}, [])
         PolicyConfigSchema({}, ["foo"])
+
+
+class GetAnalyzerInfoTests(unittest.TestCase):
+    def test_get_analyzer_info_basic(self):
+        """Test GetAnalyzerInfo returns basic analyzer info"""
+        policies = [ResourceValidationPolicy("test-policy", "Test policy description", NOP)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.MANDATORY
+        )
+
+        result = analyzer.GetAnalyzerInfo(None, None)
+
+        self.assertEqual("test-pack", result.name)
+        self.assertEqual("1.0.0", result.version)
+        self.assertTrue(result.supportsConfig)
+        self.assertEqual(1, len(result.policies))
+        self.assertEqual("test-policy", result.policies[0].name)
+        self.assertEqual("Test policy description", result.policies[0].description)
+        self.assertEqual(proto.PolicyType.POLICY_TYPE_RESOURCE, result.policies[0].policy_type)
+
+    def test_get_analyzer_info_with_optional_fields(self):
+        """Test GetAnalyzerInfo with optional pack-level fields"""
+        policies = [ResourceValidationPolicy("test-policy", "Test policy", NOP)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.ADVISORY,
+            description="Test pack description",
+            display_name="Test Pack Display Name",
+            readme="Test README content",
+            provider="test-provider",
+            tags=["tag1", "tag2"],
+            repository="https://github.com/test/repo"
+        )
+
+        result = analyzer.GetAnalyzerInfo(None, None)
+
+        self.assertEqual("test-pack", result.name)
+        self.assertEqual("1.0.0", result.version)
+        self.assertTrue(result.supportsConfig)
+        self.assertEqual("Test pack description", result.description)
+        self.assertEqual("Test Pack Display Name", result.displayName)
+        self.assertEqual("Test README content", result.readme)
+        self.assertEqual("test-provider", result.provider)
+        self.assertEqual(["tag1", "tag2"], list(result.tags))
+        self.assertEqual("https://github.com/test/repo", result.repository)
+        self.assertEqual(1, len(result.policies))
+        self.assertEqual("test-policy", result.policies[0].name)
+        self.assertEqual("Test policy", result.policies[0].description)
+        self.assertEqual(proto.PolicyType.POLICY_TYPE_RESOURCE, result.policies[0].policy_type)
+
+    def test_get_analyzer_info_with_initial_config(self):
+        """Test GetAnalyzerInfo includes initial configuration"""
+        policies = [ResourceValidationPolicy("test-policy", "Test policy", NOP)]
+        initial_config = {
+            "policy1": EnforcementLevel.MANDATORY,
+            "policy2": {"prop1": "value1", "prop2": 42}
+        }
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.ADVISORY,
+            initial_config=initial_config
+        )
+
+        result = analyzer.GetAnalyzerInfo(None, None)
+
+        self.assertIn("policy1", result.initialConfig)
+        self.assertIn("policy2", result.initialConfig)
+        self.assertEqual(proto.EnforcementLevel.MANDATORY, result.initialConfig["policy1"].enforcementLevel)
+        self.assertIn("prop1", result.initialConfig["policy2"].properties)
+        self.assertIn("prop2", result.initialConfig["policy2"].properties)
+
+    def test_get_analyzer_info_multiple_policies(self):
+        """Test GetAnalyzerInfo with multiple policies"""
+        resource_policy = ResourceValidationPolicy(
+            name="resource-policy",
+            description="Resource policy description",
+            validate=NOP,
+            enforcement_level=EnforcementLevel.MANDATORY,
+            display_name="Resource Policy Display",
+            severity=Severity.HIGH,
+            framework=PolicyComplianceFramework(
+                name="SOC2",
+                version="1.0",
+                reference="ref-123",
+                specification="spec-456"
+            ),
+            tags=["security", "compliance"],
+            remediation_steps="Fix the resource",
+            url="https://example.com/policy"
+        )
+
+        stack_policy = StackValidationPolicy(
+            name="stack-policy",
+            description="Stack policy description",
+            validate=NOP,
+            enforcement_level=EnforcementLevel.ADVISORY
+        )
+
+        policies = [resource_policy, stack_policy]
+        analyzer = _PolicyAnalyzerServicer(
+            name="multi-policy-pack",
+            version="2.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.DISABLED
+        )
+
+        result = analyzer.GetAnalyzerInfo(None, None)
+
+        self.assertEqual(len(result.policies), 2)
+
+        # Check resource policy
+        resource_policy_info = next(p for p in result.policies if p.name == "resource-policy")
+        self.assertEqual("Resource policy description", resource_policy_info.description)
+        self.assertEqual(proto.EnforcementLevel.MANDATORY, resource_policy_info.enforcementLevel)
+        self.assertEqual("Resource Policy Display", resource_policy_info.displayName)
+        self.assertEqual(proto.PolicyType.POLICY_TYPE_RESOURCE, resource_policy_info.policy_type)
+        self.assertEqual(proto.PolicySeverity.POLICY_SEVERITY_HIGH, resource_policy_info.severity)
+        self.assertEqual("SOC2", resource_policy_info.framework.name)
+        self.assertEqual("1.0", resource_policy_info.framework.version)
+        self.assertEqual("ref-123", resource_policy_info.framework.reference)
+        self.assertEqual("spec-456", resource_policy_info.framework.specification)
+        self.assertEqual(["security", "compliance"], list(resource_policy_info.tags))
+        self.assertEqual("Fix the resource", resource_policy_info.remediation_steps)
+        self.assertEqual("https://example.com/policy", resource_policy_info.url)
+
+        # Check stack policy
+        stack_policy_info = next(p for p in result.policies if p.name == "stack-policy")
+        self.assertEqual("Stack policy description", stack_policy_info.description)
+        self.assertEqual(proto.EnforcementLevel.ADVISORY, stack_policy_info.enforcementLevel)
+        self.assertEqual(proto.PolicyType.POLICY_TYPE_STACK, stack_policy_info.policy_type)
+
+    def test_get_analyzer_info_with_config_schema(self):
+        """Test GetAnalyzerInfo includes policy config schema"""
+        config_schema = PolicyConfigSchema(
+            properties={
+                "maxInstances": {"type": "integer", "minimum": 1},
+                "environment": {"type": "string", "enum": ["dev", "prod"]}
+            },
+            required=["environment"]
+        )
+
+        policy = ResourceValidationPolicy(
+            name="schema-policy",
+            description="Policy with config schema",
+            validate=NOP,
+            config_schema=config_schema
+        )
+
+        analyzer = _PolicyAnalyzerServicer(
+            name="schema-pack",
+            version="1.0.0",
+            policies=[policy],
+            enforcement_level=EnforcementLevel.MANDATORY
+        )
+
+        result = analyzer.GetAnalyzerInfo(None, None)
+
+        policy_info = result.policies[0]
+        self.assertIn("maxInstances", policy_info.configSchema.properties)
+        self.assertIn("environment", policy_info.configSchema.properties)
+        self.assertEqual(list(policy_info.configSchema.required), ["environment"])
+
+    def test_get_analyzer_info_empty_optional_fields(self):
+        """Test GetAnalyzerInfo handles None values for optional fields correctly"""
+        policy = ResourceValidationPolicy("test-policy", "Test policy", NOP)
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=[policy],
+            enforcement_level=EnforcementLevel.MANDATORY,
+            description=None,
+            display_name=None,
+            readme=None,
+            provider=None,
+            tags=None,
+            repository=None
+        )
+
+        result = analyzer.GetAnalyzerInfo(None, None)
+
+        # These fields should not be set when None
+        self.assertEqual("", result.description)
+        self.assertEqual("", result.displayName)
+        self.assertEqual("", result.readme)
+        self.assertEqual("", result.provider)
+        self.assertEqual(0, len(result.tags))
+        self.assertEqual("", result.repository)
