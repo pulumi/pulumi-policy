@@ -443,6 +443,13 @@ class ResourceValidationArgs:
         """
         return self.__config
 
+    def not_applicable(self, reason: Optional[str] = None) -> None:
+        """
+        Marks the policy as not applicable.
+        :param Optional[str] reason: An optional reason why the policy is not applicable.
+        """
+        raise _NotApplicableError(reason)
+
     def __init__(self,
                  resource_type: str,
                  props: Mapping[str, Any],
@@ -655,6 +662,9 @@ class ResourceValidationPolicy(Policy):
             for result in awaitable_results:
                 try:
                     await result
+                except (UnknownValueError, _NotApplicableError):
+                    # Let these propagate unchanged
+                    raise
                 except Exception as e:
                     # If any of the validations fail, we should raise an exception.
                     raise RuntimeError(f"Validation failed: {e}") from e
@@ -833,6 +843,13 @@ class StackValidationArgs:
         """
         return self.__config
 
+    def not_applicable(self, reason: Optional[str] = None) -> None:
+        """
+        Marks the policy as not applicable.
+        :param Optional[str] reason: An optional reason why the policy is not applicable.
+        """
+        raise _NotApplicableError(reason)
+
     def __init__(self,
                  resources: List[PolicyResource],
                  config: Optional[Mapping[str, Any]] = None) -> None:
@@ -938,19 +955,27 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
     def Analyze(self, request, _context):
         self._configure_runtime_settings()
 
-        diagnostics: List[proto.AnalyzeDiagnostic] = []
+        response = proto.AnalyzeResponse()
+
         for policy in self.__policies:
             enforcement_level = self._get_enforcement_level(policy)
             if (enforcement_level == EnforcementLevel.DISABLED or
-                    not isinstance(policy, ResourceValidationPolicy) or
-                    not policy.has_validation()):
+                    not isinstance(policy, ResourceValidationPolicy)):
+                continue
+            if not policy.has_validation():
+                # This is a remediation policy only, so report it as not applicable.
+                reason = "Policy does not implement validate"
+                response.not_applicable.append(proto.PolicyNotApplicable(
+                    policy_name=policy.name,
+                    reason=reason,
+                ))
                 continue
             if enforcement_level == EnforcementLevel.REMEDIATE:
                 # If we ran a remediation, but we are still somehow triggering a violation,
                 # "downgrade" the level we report from remediate to mandatory.
                 enforcement_level = EnforcementLevel.MANDATORY
 
-            report_violation = self._create_report_violation(diagnostics, policy.name,
+            report_violation = self._create_report_violation(response, policy.name,
                                                              policy.description, enforcement_level)
 
             deserialized = deserialize_properties(json_format.MessageToDict(request.properties))
@@ -968,7 +993,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     loop.run_until_complete(task)
                     loop.close()
             except UnknownValueError as e:
-                diagnostics.append(proto.AnalyzeDiagnostic(  # type: ignore
+                response.diagnostics.append(proto.AnalyzeDiagnostic(  # type: ignore
                     policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
                     policyPackVersion=self.__policy_pack_version,
@@ -978,13 +1003,19 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     description=policy.description,
                     enforcementLevel=self._map_enforcement_level(EnforcementLevel.ADVISORY),
                 ))
+            except _NotApplicableError as e:
+                response.not_applicable.append(proto.PolicyNotApplicable(
+                    policy_name=policy.name,
+                    reason=e.reason or "",
+                ))
 
-        return proto.AnalyzeResponse(diagnostics=diagnostics)
+        return response
 
     def AnalyzeStack(self, request, _context):
         self._configure_runtime_settings()
 
-        diagnostics: List[proto.AnalyzeDiagnostic] = []
+        response = proto.AnalyzeResponse()
+
         for policy in self.__policies:
             enforcement_level = self._get_enforcement_level(policy)
             if enforcement_level == EnforcementLevel.DISABLED or not isinstance(policy, StackValidationPolicy):
@@ -993,7 +1024,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 # Stack policies cannot be remediated, so treat the level as mandatory.
                 enforcement_level = EnforcementLevel.MANDATORY
 
-            report_violation = self._create_report_violation(diagnostics, policy.name,
+            report_violation = self._create_report_violation(response, policy.name,
                                                              policy.description, enforcement_level)
 
             intermediates: List[_PolicyAnalyzerServicer.IntermediateStackResource] = []
@@ -1048,7 +1079,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     loop.run_until_complete(task)
                     loop.close()
             except UnknownValueError as e:
-                diagnostics.append(proto.AnalyzeDiagnostic(
+                response.diagnostics.append(proto.AnalyzeDiagnostic(
                     policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
                     policyPackVersion=self.__policy_pack_version,
@@ -1058,17 +1089,23 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     description=policy.description,
                     enforcementLevel=self._map_enforcement_level(EnforcementLevel.ADVISORY),
                 ))
+            except _NotApplicableError as e:
+                response.not_applicable.append(proto.PolicyNotApplicable(
+                    policy_name=policy.name,
+                    reason=e.reason or "",
+                ))
 
-        return proto.AnalyzeResponse(diagnostics=diagnostics)
+        return response
 
     def Remediate(self, request, _context):
         self._configure_runtime_settings()
 
-        # Keep track of all remediations applied. The order here matters! The same resource may
-        # be rewritten multiple times by the same policy pack if there are multiple remediations
-        # that are paying attention to it. As such, its state may evolve over time from the first
-        # remediation until the last. Because of this, we unmarshal the request outside the loop.
-        remediations: List[proto.Remediation] = []
+        # Keep track of all remediations applied in response.remediations. The order here matters!
+        # The same resource may be rewritten multiple times by the same policy pack if there are
+        # multiple remediations that are paying attention to it. As such, its state may evolve over
+        # time from the first remediation until the last. Because of this, we unmarshal the request
+        # outside the loop.
+        response = proto.RemediateResponse()
 
         deserialized = deserialize_properties(json_format.MessageToDict(request.properties), True)
         props = unknown_checking_proxy(deserialized)
@@ -1079,8 +1116,15 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         for policy in self.__policies:
             enforcement_level = self._get_enforcement_level(policy)
             if (enforcement_level != EnforcementLevel.REMEDIATE or
-                    not isinstance(policy, ResourceValidationPolicy) or
-                    not policy.has_remediation()):
+                    not isinstance(policy, ResourceValidationPolicy)):
+                continue
+            if not policy.has_remediation():
+                # This is an analyze policy only, so report it as not applicable.
+                reason = "Policy does not implement remediate"
+                response.not_applicable.append(proto.PolicyNotApplicable(
+                    policy_name=policy.name,
+                    reason=reason,
+                ))
                 continue
 
             config = self._get_policy_config(policy.name)
@@ -1110,18 +1154,23 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             except UnknownValueError as e:
                 diagnostic=(f"can't run remediation '{policy.name}' from policy pack "
                             f"'{self.__policy_pack_name}@v{self.__policy_pack_version}' during preview: {e.message}")
+            except _NotApplicableError as e:
+                response.not_applicable.append(proto.PolicyNotApplicable(
+                    policy_name=policy.name,
+                    reason=e.reason or "",
+                ))
 
             if rpc_props or diagnostic:
-                remediations.append(proto.Remediation(
+                response.remediations.append(proto.Remediation(
                     policyName=policy.name,
                     policyPackName=self.__policy_pack_name,
                     policyPackVersion=self.__policy_pack_version,
                     description=policy.description,
                     properties=rpc_props,
-                    diagnostic=diagnostic,
+                    diagnostic=diagnostic or "",
                 ))
 
-        return proto.RemediateResponse(remediations=remediations)
+        return response
 
     def GetAnalyzerInfo(self, _request, _context):
         analyzer_info = proto.AnalyzerInfo(
@@ -1255,7 +1304,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 else self.__policy_pack_enforcement_level)
 
     def _create_report_violation(self,
-                                 diagnostics: List[Any],
+                                 response:proto.AnalyzeResponse,
                                  policy_name: str,
                                  policy_description: str,
                                  enforcement_level: EnforcementLevel) -> ReportViolation:
@@ -1269,7 +1318,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             if message:
                 violation_message += f"\n{message}"
 
-            diagnostics.append(proto.AnalyzeDiagnostic(
+            response.diagnostics.append(proto.AnalyzeDiagnostic(
                 policyName=policy_name,
                 policyPackName=self.__policy_pack_name,
                 policyPackVersion=self.__policy_pack_version,
@@ -1401,3 +1450,14 @@ def _normalize_config(config: Dict[str, Union[EnforcementLevel, Dict[str, Any]]]
         result[key] = _NormalizedConfigValue(enforcement_level, properties)
 
     return result
+
+
+class _NotApplicableError(Exception):
+    """
+    Exception raised to indicate that a policy is not applicable.
+    """
+
+    def __init__(self, reason: Optional[str] = None) -> None:
+        super().__init__()
+        self.reason = reason
+        self.message = reason or "Policy does not apply"
