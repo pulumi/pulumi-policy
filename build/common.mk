@@ -6,7 +6,7 @@
 # The default targets we use are:
 #
 #  - ensure: restores and dependencies needed for the build from
-#            remote sources (e.g dep ensure or yarn install)
+#            remote sources (e.g dep ensure or bun install)
 #
 #  - build: builds a project but does not install it. In the case of
 #           go code, this usually means running go install (which
@@ -15,7 +15,7 @@
 #  - install: copies the bits we plan to ship into a layout in
 #             `PULUMI_ROOT` that looks like what a customer would get
 #             when they download and install Pulumi. For JavaScript
-#             projects, installing also runs yarn link to register
+#             projects, installing also runs bun link to register
 #             this package, so that other projects can depend on it.
 #
 #  - lint: runs relevent linters for the project
@@ -84,7 +84,7 @@
 #
 # The ensure target also provides some default behavior, detecting if
 # there is a Gopkg.toml or package.json file in the current folder and
-# if so calling dep ensure -v or yarn install. This behavior means that
+# if so calling dep ensure -v or bun install. This behavior means that
 # projects will not often need to augment the ensure target.
 #
 # Unlike the other leaf targets, ensure will call the ensure target on
@@ -143,7 +143,7 @@ all:: build install lint test_all
 ensure::
 	$(call STEP_MESSAGE)
 	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; fi
-	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
+	@if [ -e 'package.json' ]; then echo "bun install"; bun install; fi
 
 build::
 	$(call STEP_MESSAGE)
@@ -167,12 +167,12 @@ install::
 	[ ! -e "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" ] || rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	mkdir -p "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	cp -r bin/. "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp yarn.lock "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
+	cp bun.lock "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/node_modules"
 	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
-	yarn install --prefer-offline --production && \
-	(yarn unlink > /dev/null 2>&1 || true) && \
-	yarn link
+	bun install --production && \
+	(bun unlink > /dev/null 2>&1 || true) && \
+	bun link
 endif
 
 only_build:: build install

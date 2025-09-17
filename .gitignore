@@ -5,6 +5,7 @@ vendor/
 **/Pulumi.*.yaml
 **/yarn-error.log
 **/yarn.lock
+**/bun.lock
 .idea
 **/Pipfile.lock
 ci-scripts
