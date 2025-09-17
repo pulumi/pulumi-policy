@@ -424,8 +424,8 @@ export type TypedResourceValidation<TProps> =
  *
  * ```typescript
  * validateResource: validateResourceOfType(aws.s3.Bucket, (bucket, args, reportViolation) => {
- *     for (const bucket of buckets) {
- *         // ...
+ *     if (bucket.acl === "public-read" || bucket.acl === "public-read-write") {
+ *         reportViolation("You cannot set public-read or public-read-write on an S3 bucket.");
  *     }
  * }),
  * ```
