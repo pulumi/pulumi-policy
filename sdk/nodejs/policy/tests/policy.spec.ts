@@ -25,12 +25,6 @@ import {
 
 import { asyncTest, runResourcePolicy, runResourceRemediation, runStackPolicy } from "./util";
 
-function delay(t: number, v: string): Promise<string> {
-    return new Promise((resolve) => {
-        setTimeout(() => resolve(v), t);
-    });
-}
-
 class Foo extends pulumi.Resource {
     constructor(name: string, args: FooArgs) {
         super("my:foo", name, false);
@@ -59,8 +53,8 @@ describe("validateResourceOfType", () => {
             description: "A test policy.",
             enforcementLevel: "mandatory",
             validateResource: validateResourceOfType(Foo, async (_, __, reportViolation) => {
-                const response = await delay(100, "hi");
-                reportViolation(response);
+                await new Promise(resolve => setImmediate(resolve));
+                reportViolation("hi");
             }),
         };
 
@@ -88,7 +82,7 @@ describe("remediateResourceOfType", () => {
             description: "A test remediation.",
             enforcementLevel: "remediate",
             remediateResource: remediateResourceOfType(Foo, async (_, __) => {
-                const response = await delay(100, "hi");
+                await new Promise(resolve => setImmediate(resolve));
                 return { "message": "bonjour" };
             }),
         };
@@ -117,8 +111,8 @@ describe("validateStackResourcesOfType", () => {
             description: "A test policy.",
             enforcementLevel: "mandatory",
             validateStack: validateStackResourcesOfType(Foo, async (_, __, reportViolation) => {
-                const response = await delay(100, "hi");
-                reportViolation(response);
+                await new Promise(resolve => setImmediate(resolve));
+                reportViolation("hi");
             }),
         };
 
