@@ -13,7 +13,7 @@ build::
 	rm -rf bin/
 	yarn run tsc
 	sed -e 's/\$${VERSION}/$(VERSION)/g' < package.json > bin/package.json
-	cp ../../../README.md ../../../LICENSE bin/
+	cp .npmignore ../../../README.md ../../../LICENSE bin/
 	node ../../../scripts/reversion.js bin/version.js ${VERSION}
 
 lint::
