@@ -40,8 +40,8 @@ jobs:
         uses: actions/checkout@v2
       - name: Unshallow clone for tags
         run: git fetch --prune --unshallow --tags
-      - name: Install Yarn
-        run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.13.0
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
       - name: Ensure
         run: |
           make ensure
@@ -91,6 +91,8 @@ jobs:
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet twine
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
       - name: Ensure dependencies
         run: make ensure
       - name: Checkout Scripts Repo

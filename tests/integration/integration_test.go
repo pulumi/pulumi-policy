@@ -101,8 +101,8 @@ func runPolicyPackIntegrationTest(
 	e.CWD = packDir
 
 	// Link @pulumi/policy and get dependencies.
-	e.RunCommand("yarn", "link", "@pulumi/policy")
-	e.RunCommand("yarn", "install")
+	e.RunCommand("bun", "link", "@pulumi/policy")
+	e.RunCommand("bun", "install")
 
 	// Change to the Pulumi program directory.
 	programDir := filepath.Join(e.RootPath, "program")
@@ -116,7 +116,7 @@ func runPolicyPackIntegrationTest(
 	var venvCreated bool
 	switch runtime {
 	case NodeJS:
-		e.RunCommand("yarn", "install")
+		e.RunCommand("bun", "install")
 
 	case Python:
 		e.RunCommand("pipenv", "--python", "3")
