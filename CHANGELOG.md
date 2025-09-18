@@ -1,5 +1,9 @@
 ## HEAD (Unreleased)
 
+---
+
+## 1.18.0 (2025-09-18)
+
 - Node.js: Fix internal serialization logic to handle `undefined` and `null` the same as `@pulumi/pulumi`
   (https://github.com/pulumi/pulumi-policy/pull/400).
 
@@ -15,28 +19,20 @@
 - Python: Support `args.not_applicable(reason)`
   (https://github.com/pulumi/pulumi-policy/pull/411).
 
----
-
 ## 1.17.0 (2025-07-29)
 
 - Relax grpcio dependency constraint
   (https://github.com/pulumi/pulumi-policy/pull/384)
-
----
 
 ## 1.16.0 (2025-06-27)
 
 - Relax protobuf dependency constraint
   (https://github.com/pulumi/pulumi-policy/pull/381)
 
----
-
 ## 1.15.0 (2025-05-09)
 
 - Fix issues with new asyncio versions and setuptools
   (https://github.com/pulumi/pulumi-policy/pull/376)
-
----
 
 ## 1.14.0 (2025-03-19)
 
