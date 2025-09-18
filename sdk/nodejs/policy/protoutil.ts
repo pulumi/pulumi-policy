@@ -217,7 +217,10 @@ export function makeAnalyzerInfo(
  * makeAnalyzeResponse creates a protobuf encoding the given list of diagnostics.
  * @internal
  */
-export function makeAnalyzeResponse(ds: Diagnostic[]) {
+export function makeAnalyzeResponse(
+    ds: Diagnostic[],
+    notApplicable?: analyzerproto.PolicyNotApplicable[],
+): analyzerproto.AnalyzeResponse {
     const resp = new analyzerproto.AnalyzeResponse();
 
     const diagnostics = [];
@@ -236,6 +239,10 @@ export function makeAnalyzeResponse(ds: Diagnostic[]) {
         diagnostics.push(diagnostic);
     }
     resp.setDiagnosticsList(diagnostics);
+
+    if (notApplicable?.length) {
+        resp.setNotApplicableList(notApplicable);
+    }
 
     return resp;
 }
@@ -362,7 +369,10 @@ export interface Remediation {
  * makeRemediateResponse creates a protobuf encoding the returned property bag.
  * @internal
  */
-export function makeRemediateResponse(rs: Remediation[]) {
+export function makeRemediateResponse(
+    rs: Remediation[],
+    notApplicable?: analyzerproto.PolicyNotApplicable[],
+): analyzerproto.RemediateResponse {
     const resp = new analyzerproto.RemediateResponse();
 
     const remediations = [];
@@ -385,6 +395,10 @@ export function makeRemediateResponse(rs: Remediation[]) {
         remediations.push(remediation);
     }
     resp.setRemediationsList(remediations);
+
+    if (notApplicable?.length) {
+        resp.setNotApplicableList(notApplicable);
+    }
 
     return resp;
 }

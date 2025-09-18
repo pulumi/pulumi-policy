@@ -29,6 +29,7 @@
         "tests/pb.spec.ts",
         "tests/policy.spec.ts",
         "tests/proxy.spec.ts",
+        "tests/server.spec.ts",
         "tests/util.ts"
     ]
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,16 @@ class Foo extends pulumi.Resource {
 interface FooArgs {
 }
 
+class Bar extends pulumi.Resource {
+    static __pulumiType = "my:index:Bar";
+    constructor(name: string, args: BarArgs) {
+        super("my:index:Bar", name, false);
+    }
+}
+
+interface BarArgs {
+}
+
 const empytOptions = {
     protect: false,
     ignoreChanges: [],
@@ -62,6 +72,7 @@ describe("validateResourceOfType", () => {
             isType: () => true,  // true so the validation function always runs.
             asType: () => undefined,
             getConfig: <T>() => <T>{},
+            notApplicable: (reason?: string) => { throw new Error("not applicable"); },
             type: "",
             props: {},
             urn: "",
@@ -73,6 +84,13 @@ describe("validateResourceOfType", () => {
 
         assert.deepStrictEqual(violations, [{ message: "hi" }]);
     }));
+
+    it("saves type info when available", () => {
+        const validateResource = validateResourceOfType(Bar, (_, __, reportViolation) => {
+            reportViolation("nope");
+        });
+        assert.strictEqual((validateResource as any).__pulumiType, "my:index:Bar");
+    });
 });
 
 describe("remediateResourceOfType", () => {
@@ -91,6 +109,7 @@ describe("remediateResourceOfType", () => {
             isType: () => true,  // true so the validation function always runs.
             asType: () => undefined,
             getConfig: <T>() => <T>{},
+            notApplicable: (reason?: string) => { throw new Error("not applicable"); },
             type: "",
             props: {},
             urn: "",
@@ -102,6 +121,11 @@ describe("remediateResourceOfType", () => {
 
         assert.deepStrictEqual(remediation, { message: "bonjour" });
     }));
+
+    it("saves type info when available", () => {
+        const validateResource = remediateResourceOfType(Bar, (_, __) => undefined);
+        assert.strictEqual((validateResource as any).__pulumiType, "my:index:Bar");
+    });
 });
 
 describe("validateStackResourcesOfType", () => {
@@ -118,6 +142,7 @@ describe("validateStackResourcesOfType", () => {
 
         const args = {
             getConfig: <T>() => <T>{},
+            notApplicable: (reason?: string) => { throw new Error("not applicable"); },
             resources: [{
                 isType: () => true, // true so the validation function always runs.
                 asType: () => undefined,
@@ -135,4 +160,11 @@ describe("validateStackResourcesOfType", () => {
 
         assert.deepStrictEqual(violations, [{ message: "hi" }]);
     }));
+
+    it("saves type info when available", () => {
+        const validateStack = validateStackResourcesOfType(Bar, (_, __, reportViolation) => {
+            reportViolation("nope");
+        });
+        assert.strictEqual((validateStack as any).__pulumiType, "my:index:Bar");
+    });
 });
