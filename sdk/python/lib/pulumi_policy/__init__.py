@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ The Pulumi Policy SDK for Python.
 from .policy import (
     EnforcementLevel,
     Policy,
+    PolicyComplianceFramework,
     PolicyConfigSchema,
     PolicyCustomTimeouts,
     PolicyPack,
@@ -31,6 +32,7 @@ from .policy import (
     ResourceValidation,
     ResourceValidationArgs,
     ResourceValidationPolicy,
+    Severity,
     StackValidation,
     StackValidationArgs,
     StackValidationPolicy,
@@ -42,6 +44,7 @@ from .secret import (
 __all__ = [
     "EnforcementLevel",
     "Policy",
+    "PolicyComplianceFramework",
     "PolicyConfigSchema",
     "PolicyCustomTimeouts",
     "PolicyPack",
@@ -53,6 +56,7 @@ __all__ = [
     "ResourceValidation",
     "ResourceValidationArgs",
     "ResourceValidationPolicy",
+    "Severity",
     "Secret",
     "StackValidation",
     "StackValidationArgs",
