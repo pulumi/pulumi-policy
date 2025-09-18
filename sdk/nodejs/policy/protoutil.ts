@@ -16,7 +16,14 @@ import * as structproto from "google-protobuf/google/protobuf/struct_pb";
 
 import * as analyzerproto from "@pulumi/pulumi/proto/analyzer_pb";
 
-import { EnforcementLevel, Policies, PolicyPackConfig } from "./policy";
+import {
+    EnforcementLevel,
+    isResourcePolicy,
+    isStackPolicy,
+    PolicyPackArgs,
+    PolicyPackConfig,
+    Severity,
+} from "./policy";
 
 
 /** @internal */
@@ -96,17 +103,43 @@ export function makeAnalyzerInfo(
     policyPackName: string,
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
-    policies: Policies,
+    policyPackArgs: Omit<PolicyPackArgs, "enforcementLevel">,
     initialConfig?: PolicyPackConfig,
-): any {
-    const ai: any = new analyzerproto.AnalyzerInfo();
+): analyzerproto.AnalyzerInfo {
+    const policies = policyPackArgs.policies ?? [];
+
+    const ai = new analyzerproto.AnalyzerInfo();
     ai.setName(policyPackName);
     ai.setVersion(policyPackVersion);
     ai.setSupportsconfig(true);
+    if (policyPackArgs.displayName) {
+        ai.setDisplayname(policyPackArgs.displayName);
+    }
+    if (policyPackArgs.description) {
+        ai.setDescription(policyPackArgs.description);
+    }
+    if (policyPackArgs.readme) {
+        ai.setReadme(policyPackArgs.readme);
+    }
+    if (policyPackArgs.provider) {
+        ai.setProvider(policyPackArgs.provider);
+    }
+    if (policyPackArgs.tags) {
+        ai.setTagsList(policyPackArgs.tags);
+    }
+    if (policyPackArgs.repository) {
+        ai.setRepository(policyPackArgs.repository);
+    }
 
-    const policyInfos: any[] = [];
+    const policyInfos: analyzerproto.PolicyInfo[] = [];
     for (const policy of policies) {
         const policyInfo = new analyzerproto.PolicyInfo();
+        if (isResourcePolicy(policy)) {
+            policyInfo.setPolicyType(analyzerproto.PolicyType.POLICY_TYPE_RESOURCE);
+        } else if (isStackPolicy(policy)) {
+            policyInfo.setPolicyType(analyzerproto.PolicyType.POLICY_TYPE_STACK);
+        }
+
         policyInfo.setName(policy.name);
         policyInfo.setDescription(policy.description);
         policyInfo.setEnforcementlevel(mapEnforcementLevel(policy.enforcementLevel || policyPackEnforcementLevel));
@@ -118,6 +151,38 @@ export function makeAnalyzerInfo(
                 schema.setRequiredList(policy.configSchema.required);
             }
             policyInfo.setConfigschema(schema);
+        }
+
+        if (policy.displayName) {
+            policyInfo.setDisplayname(policy.displayName);
+        }
+        if (policy.severity) {
+            policyInfo.setSeverity(mapSeverity(policy.severity));
+        }
+        if (policy.framework) {
+            const framework = new analyzerproto.PolicyComplianceFramework();
+            if (policy.framework.name) {
+                framework.setName(policy.framework.name);
+            }
+            if (policy.framework.version) {
+                framework.setVersion(policy.framework.version);
+            }
+            if (policy.framework.reference) {
+                framework.setReference(policy.framework.reference);
+            }
+            if (policy.framework.specification) {
+                framework.setSpecification(policy.framework.specification);
+            }
+            policyInfo.setFramework(framework);
+        }
+        if (policy.tags) {
+            policyInfo.setTagsList(policy.tags);
+        }
+        if (policy.remediationSteps) {
+            policyInfo.setRemediationSteps(policy.remediationSteps);
+        }
+        if (policy.url) {
+            policyInfo.setUrl(policy.url);
         }
 
         policyInfos.push(policyInfo);
@@ -204,6 +269,21 @@ export function convertEnforcementLevel(el: number): EnforcementLevel {
             return "disabled";
         default:
             throw new Error(`Unknown enforcement level ${el}.`);
+    }
+}
+
+function mapSeverity(s: Severity): analyzerproto.PolicySeverity {
+    switch (s) {
+        case "low":
+            return analyzerproto.PolicySeverity.POLICY_SEVERITY_LOW;
+        case "medium":
+            return analyzerproto.PolicySeverity.POLICY_SEVERITY_MEDIUM;
+        case "high":
+            return analyzerproto.PolicySeverity.POLICY_SEVERITY_HIGH;
+        case "critical":
+            return analyzerproto.PolicySeverity.POLICY_SEVERITY_CRITICAL;
+        default:
+            return analyzerproto.PolicySeverity.POLICY_SEVERITY_UNSPECIFIED;
     }
 }
 

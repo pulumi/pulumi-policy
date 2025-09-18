@@ -27,17 +27,17 @@ import { deserializeProperties, serializeProperties } from "./deserialize";
 import {
     EnforcementLevel,
     Policies,
-    Policy,
     PolicyCustomTimeouts,
+    PolicyPackArgs,
     PolicyPackConfig,
     PolicyProviderResource,
     PolicyResource,
     PolicyResourceOptions,
     ReportViolation,
     ResourceValidationArgs,
-    ResourceValidationPolicy,
     StackValidationArgs,
-    StackValidationPolicy,
+    isResourcePolicy,
+    isStackPolicy,
 } from "./policy";
 import {
     asGrpcError,
@@ -87,7 +87,7 @@ export function serve(
     policyPackName: string,
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
-    policies: Policies,
+    policyPackArgs: Omit<PolicyPackArgs, "enforcementLevel">,
     initialConfig?: PolicyPackConfig,
 ): void {
     if (!policyPackName || !policyPackName.match(packNameRE)) {
@@ -95,7 +95,9 @@ export function serve(
         process.exit(1);
     }
 
-    for (const policy of (policies || [])) {
+    const policies = policyPackArgs.policies ?? [];
+
+    for (const policy of policies) {
         if (policy.name === "all") {
             console.error("Invalid policy name \"all\". \"all\" is a reserved name.");
             process.exit(1);
@@ -130,7 +132,7 @@ export function serve(
         analyze: makeAnalyzeRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         analyzeStack: makeAnalyzeStackRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
         remediate: makeRemediateRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies),
-        getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies, initialConfig),
+        getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policyPackArgs, initialConfig),
         getPluginInfo: getPluginInfoRpc,
         configure: configure,
     });
@@ -151,12 +153,12 @@ function makeGetAnalyzerInfoRpcFun(
     policyPackName: string,
     policyPackVersion: string,
     policyPackEnforcementLevel: EnforcementLevel,
-    policies: Policies,
+    policyPackArgs: Omit<PolicyPackArgs, "enforcementLevel">,
     initialConfig?: PolicyPackConfig,
 ) {
     return async function (call: any, callback: any): Promise<void> {
         try {
-            callback(undefined, makeAnalyzerInfo(policyPackName, policyPackVersion, policyPackEnforcementLevel, policies, initialConfig));
+            callback(undefined, makeAnalyzerInfo(policyPackName, policyPackVersion, policyPackEnforcementLevel, policyPackArgs, initialConfig));
         } catch (e) {
             callback(asGrpcError(e), undefined);
         }
@@ -559,36 +561,6 @@ function getPropertyDependencies(r: any): Record<string, string[]> {
         }
     }
     return result;
-}
-
-// Type guard used to determine if the `Policy` is a `ResourceValidationPolicy`.
-function isResourcePolicy(p: Policy): p is ResourceValidationPolicy {
-    // If the policy has a validate routine, it is a resource policy:
-    const validation = (p as ResourceValidationPolicy).validateResource;
-    if (typeof validation === "function") {
-        return true;
-    }
-    if (Array.isArray(validation)) {
-        for (const v of validation) {
-            if (typeof v !== "function") {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // Alternatively, if the policy has a remediation routine, it is also a resource policy.
-    const remediation = (p as ResourceValidationPolicy).remediateResource;
-    if (typeof remediation === "function") {
-        return true;
-    }
-
-    return false;
-}
-
-// Type guard used to determine if the `Policy` is a `StackValidationPolicy`.
-function isStackPolicy(p: Policy): p is StackValidationPolicy {
-    return typeof (p as StackValidationPolicy).validateStack === "function";
 }
 
 // Helper to check if `type` is the type of `resourceClass`.
