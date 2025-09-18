@@ -12,6 +12,9 @@
 - Python: Add support for new metadata fields for policy packs and policies
   (https://github.com/pulumi/pulumi-policy/pull/410).
 
+- Python: Support `args.not_applicable(reason)`
+  (https://github.com/pulumi/pulumi-policy/pull/411).
+
 ---
 
 ## 1.17.0 (2025-07-29)

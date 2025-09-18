@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -529,3 +529,99 @@ class GetAnalyzerInfoTests(unittest.TestCase):
         self.assertEqual("", result.provider)
         self.assertEqual(0, len(result.tags))
         self.assertEqual("", result.repository)
+
+
+class AnalyzeTests(unittest.TestCase):
+    def test_analyze_not_applicable(self):
+        async def validate(args, report_violation: ReportViolation):
+            args.not_applicable("just because")
+
+        policies = [ResourceValidationPolicy("test-policy", "Test policy description", validate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.MANDATORY
+        )
+
+        request = proto.AnalyzeRequest()
+        result = analyzer.Analyze(request, None)
+        self.assertEqual(1, len(result.not_applicable))
+        self.assertEqual("test-policy", result.not_applicable[0].policy_name)
+        self.assertEqual("just because", result.not_applicable[0].reason)
+
+    def test_analyze_only_remediate_not_applicable(self):
+        async def remediate(args):
+            return None
+
+        policies = [ResourceValidationPolicy("test-policy", "Test policy description", remediate=remediate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.MANDATORY
+        )
+
+        request = proto.AnalyzeRequest()
+        result = analyzer.Analyze(request, None)
+        self.assertEqual(1, len(result.not_applicable))
+        self.assertEqual("test-policy", result.not_applicable[0].policy_name)
+        self.assertEqual("Policy does not implement validate", result.not_applicable[0].reason)
+
+
+class RemediateTests(unittest.TestCase):
+    def test_remediate_not_applicable(self):
+        async def remediate(args):
+            args.not_applicable("just because")
+
+        policies = [ResourceValidationPolicy("test-policy", "Test policy description", remediate=remediate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.REMEDIATE
+        )
+
+        request = proto.AnalyzeRequest()
+        result = analyzer.Remediate(request, None)
+        self.assertEqual(1, len(result.not_applicable))
+        self.assertEqual("test-policy", result.not_applicable[0].policy_name)
+        self.assertEqual("just because", result.not_applicable[0].reason)
+
+    def test_remediate_only_analyze_not_applicable(self):
+        async def validate(args, report_violation: ReportViolation):
+            return None
+
+        policies = [ResourceValidationPolicy("test-policy", "Test policy description", validate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.REMEDIATE
+        )
+
+        request = proto.AnalyzeRequest()
+        result = analyzer.Remediate(request, None)
+        self.assertEqual(1, len(result.not_applicable))
+        self.assertEqual("test-policy", result.not_applicable[0].policy_name)
+        self.assertEqual("Policy does not implement remediate", result.not_applicable[0].reason)
+
+
+class AnalyzeStackTests(unittest.TestCase):
+    def test_analyze_stack_not_applicable(self):
+        async def validate(args, report_violation: ReportViolation):
+            args.not_applicable("just because")
+
+        policies = [StackValidationPolicy("test-policy", "Test policy description", validate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.MANDATORY
+        )
+
+        request = proto.AnalyzeStackRequest()
+        result = analyzer.AnalyzeStack(request, None)
+        self.assertEqual(1, len(result.not_applicable))
+        self.assertEqual("test-policy", result.not_applicable[0].policy_name)
+        self.assertEqual("just because", result.not_applicable[0].reason)
