@@ -2,6 +2,11 @@
 
 ---
 
+## 1.18.1 (2025-09-22)
+
+- Python: Bump required dependencies for the PyPi package
+  (https://github.com/pulumi/pulumi-policy/pull/417).
+
 ## 1.18.0 (2025-09-18)
 
 - Node.js: Fix internal serialization logic to handle `undefined` and `null` the same as `@pulumi/pulumi`
