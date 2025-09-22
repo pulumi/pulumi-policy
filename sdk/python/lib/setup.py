@@ -39,10 +39,11 @@ setup(name='pulumi_policy',
               'pulumi-plugin.json'
           ]
       },
+      # Keep this list in sync with Pipfile
       install_requires=[
-          'pulumi>=3.157.0,<4.0.0',
-          'protobuf>=4.21,<5.30',
-          'grpcio>=1.66.2,<2.0.0',
+          'pulumi>=3.196.0,<4.0.0',
+          'protobuf~=5.29.5',
+          'grpcio~=1.71',
           'setuptools>=61.0'
       ],
       zip_safe=False)

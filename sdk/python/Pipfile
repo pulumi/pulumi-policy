@@ -3,6 +3,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+# Keep this list in sync with setup.py
 [packages]
 pulumi = ">=3.196.0,<4.0.0"
 protobuf = "~=5.29.5"
