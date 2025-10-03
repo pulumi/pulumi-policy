@@ -63,6 +63,18 @@ func runPolicyPackIntegrationTest(
 	t *testing.T, testDirName string, runtime Runtime,
 	initialConfig map[string]string, scenarios []policyTestScenario,
 ) {
+	runPolicyPackIntegrationTestWithStackTags(t, testDirName, runtime, initialConfig, scenarios, nil)
+}
+
+// runPolicyPackIntegrationTest creates a new Pulumi stack and then runs through
+// a sequence of test scenarios where a configuration value is set and then
+// the stack is updated or previewed, confirming the expected result, with additional
+// support for specifying stack tags.
+func runPolicyPackIntegrationTestWithStackTags(
+	t *testing.T, testDirName string, runtime Runtime,
+	initialConfig map[string]string, scenarios []policyTestScenario,
+	stackTags map[string]string,
+) {
 	t.Logf("Running Policy Pack Integration Test from directory %q", testDirName)
 
 	// Get the directory for the policy pack to run.
@@ -101,16 +113,43 @@ func runPolicyPackIntegrationTest(
 	e.CWD = packDir
 
 	// Link @pulumi/policy and get dependencies.
-	e.RunCommand("bun", "link", "@pulumi/policy")
 	e.RunCommand("bun", "install")
+	e.RunCommand("bun", "link", "@pulumi/policy")
 
 	// Change to the Pulumi program directory.
 	programDir := filepath.Join(e.RootPath, "program")
 	e.CWD = programDir
 
-	// Login to the local environment directory and create the stack.
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	if len(stackTags) > 0 {
+		// TODO until https://github.com/pulumi/pulumi/pull/19882 is completed, only
+		// the cloud backend supports stack tags.
+
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Skip("skipping test: PULUMI_ACCESS_TOKEN not set")
+		}
+		if os.Getenv("PULUMI_API") == "" {
+			t.Skip("skipping test: PULUMI_API not set")
+		}
+		if os.Getenv("PULUMI_TEST_OWNER") == "" {
+			t.Skip("skipping test: PULUMI_TEST_OWNER not set")
+		}
+
+		// Augment the stack name with the the owner.
+		stackName = fmt.Sprintf("%s/%s", os.Getenv("PULUMI_TEST_OWNER"), stackName)
+
+		// Login to the Pulumi Cloud and create the stack with tags.
+		e.RunCommand("pulumi", "login", "--cloud-url", os.Getenv("PULUMI_API"))
+		e.RunCommand("pulumi", "stack", "init", stackName)
+
+		// Set the stack tags.
+		for k, v := range stackTags {
+			e.RunCommand("pulumi", "stack", "tag", "set", k, v)
+		}
+	} else {
+		// Login to the local environment directory and create the stack.
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", stackName)
+	}
 
 	// Get dependencies.
 	var venvCreated bool
@@ -892,4 +931,15 @@ func TestPythonDoesNotTryToInstallPlugin(t *testing.T) {
 	// Pulumi should not try to install a plugin for pulumi_policy.
 	// This command will fail if it tries to install the non-existent pulumi_policy plugin.
 	e.RunCommand("pulumi", "install")
+}
+
+// Test stack tags are available to the Policy Pack.
+func TestStackTags(t *testing.T) {
+	t.Parallel()
+
+	runPolicyPackIntegrationTestWithStackTags(t, "stack_tags", NodeJS, nil, []policyTestScenario{{WantErrors: nil}},
+		map[string]string{
+			"foo":   "bar",
+			"hello": "world",
+		})
 }

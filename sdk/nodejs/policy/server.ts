@@ -74,6 +74,11 @@ const maxRPCMessageSize = 1024 * 1024 * 400;
 let policyPackConfig: Record<string, any> = {};
 
 /**
+ * Stack tags are tags for the stack, initially empty, and set via the `configureStack` RPC call.
+ */
+let stackTags = freezeMap(new Map<string, string>());
+
+/**
   * Starts the gRPC server to communicate with the Pulumi CLI client for analyzing resources.
   *
   * Only one gRPC server can be running at a time, and the port the server is running on will
@@ -137,6 +142,7 @@ export function serve(
         getAnalyzerInfo: makeGetAnalyzerInfoRpcFun(policyPackName, policyPackVersion, policyPackEnforcementLevel, policyPackArgs, initialConfig),
         getPluginInfo: getPluginInfoRpc,
         configure: configure,
+        configureStack: configureStack,
     });
     server.bindAsync("127.0.0.1:0", grpc.ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
@@ -149,6 +155,38 @@ export function serve(
         // We explicitly convert the number to a string so that Node doesn't colorize the output.
         console.log(port.toString());
     });
+}
+
+function configureStack(
+    call: grpc.ServerUnaryCall<analyzerproto.AnalyzerStackConfigureRequest, analyzerproto.AnalyzerStackConfigureResponse>,
+    callback: grpc.sendUnaryData<analyzerproto.AnalyzerStackConfigureResponse>,
+) {
+    try {
+        const tags = call.request.getTagsMap();
+        const map = new Map<string, string>();
+        tags.forEach((v, k) => map.set(k, v));
+        stackTags = freezeMap(map);
+
+        callback(null, new analyzerproto.AnalyzerStackConfigureResponse());
+    } catch (e) {
+        callback(asGrpcError(e));
+    }
+}
+
+/**
+ * Returns a read-only wrapper around the provided map.
+ */
+function freezeMap<K, V>(map: Map<K, V>): ReadonlyMap<K, V> {
+    return Object.freeze({
+        entries: map.entries.bind(map),
+        forEach: map.forEach.bind(map),
+        get: map.get.bind(map),
+        has: map.has.bind(map),
+        keys: map.keys.bind(map),
+        size: map.size,
+        values: map.values.bind(map),
+        [Symbol.iterator]: map[Symbol.iterator].bind(map),
+    }) as ReadonlyMap<K, V>;
 }
 
 function makeGetAnalyzerInfoRpcFun(
@@ -280,6 +318,7 @@ export function makeAnalyzeRpcFun(
                             urn: req.getUrn(),
                             name: req.getName(),
                             opts: getResourceOptions(req),
+                            stackTags,
 
                             isType: function <TResource extends Resource>(
                                 resourceClass: { new(...rest: any[]): TResource },
@@ -491,6 +530,7 @@ export function makeAnalyzeStackRpcFun(
                     const args: StackValidationArgs = {
                         resources: intermediates.map(r => r.resource),
                         getConfig: makeGetConfigFun(p.name),
+                        stackTags,
                         notApplicable: throwNotApplicable,
                     };
 
@@ -679,7 +719,7 @@ export function makeRemediateRpcFun(
                 }
 
                 const args: ResourceValidationArgs = {
-                    urn, name, type, opts, props,
+                    urn, name, type, opts, props, stackTags,
                     getConfig: makeGetConfigFun(p.name),
                     isType: function <TResource extends Resource>(
                         resourceClass: { new(...rest: any[]): TResource },

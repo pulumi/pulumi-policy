@@ -1,5 +1,8 @@
 ## HEAD (Unreleased)
 
+- Add stack tags to validation args
+  (https://github.com/pulumi/pulumi-policy/pull/420).
+
 ---
 
 ## 1.18.1 (2025-09-22)

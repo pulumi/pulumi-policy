@@ -78,6 +78,7 @@ describe("validateResourceOfType", () => {
             urn: "",
             name: "",
             opts: empytOptions,
+            stackTags: new Map<string, string>(),
         };
 
         const violations = await runResourcePolicy(policy, args);
@@ -115,6 +116,7 @@ describe("remediateResourceOfType", () => {
             urn: "",
             name: "",
             opts: empytOptions,
+            stackTags: new Map<string, string>(),
         };
 
         const remediation = await runResourceRemediation(policy, args);
@@ -154,6 +156,7 @@ describe("validateStackResourcesOfType", () => {
                 dependencies: [],
                 propertyDependencies: {},
             }],
+            stackTags: new Map<string, string>(),
         };
 
         const violations = await runStackPolicy(policy, args);

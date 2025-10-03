@@ -343,6 +343,11 @@ export interface ResourceValidationArgs {
     provider?: PolicyProviderResource;
 
     /**
+     * Tags associated with the stack.
+     */
+    stackTags: ReadonlyMap<string, string>;
+
+    /**
      * Returns true if the type of this resource is the same as `resourceClass`.
      *
      * For example:
@@ -644,6 +649,11 @@ export interface StackValidationArgs {
      * The resources in the stack.
      */
     resources: PolicyResource[];
+
+    /**
+     * Tags associated with the stack.
+     */
+    stackTags: ReadonlyMap<string, string>;
 
     /**
      * Returns configuration for the policy.

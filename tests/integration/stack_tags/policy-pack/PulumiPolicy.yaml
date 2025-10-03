@@ -1,0 +1,2 @@
+description: A Policy Pack to test that stack tags are available to Policy Packs.
+runtime: nodejs
