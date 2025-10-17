@@ -1,0 +1,4 @@
+name: stack_tags
+runtime: nodejs
+description: >
+    A test program that creates an empty resource to test that policies can access stack tags.

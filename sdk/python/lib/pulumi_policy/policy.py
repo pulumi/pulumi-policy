@@ -21,6 +21,7 @@ import time
 
 from enum import Enum
 from inspect import isawaitable, signature
+from types import MappingProxyType
 from typing import Any, Awaitable, Callable, Dict, Mapping, List, NamedTuple, Optional, Union, cast
 from abc import ABC
 
@@ -432,6 +433,11 @@ class ResourceValidationArgs:
     The provider of the resource.
     """
 
+    stack_tags: Mapping[str, str]
+    """
+    Tags associated with the stack.
+    """
+
     __config: Mapping[str, Any]
     """
     Private field holding the configuration for this policy.
@@ -457,7 +463,8 @@ class ResourceValidationArgs:
                  name: str,
                  opts: 'PolicyResourceOptions',
                  provider: Optional['PolicyProviderResource'],
-                 config: Optional[Mapping[str, Any]] = None) -> None:
+                 config: Optional[Mapping[str, Any]] = None,
+                 stack_tags: Optional[Mapping[str, str]] = None) -> None:
         self.resource_type = resource_type
         self.props = props
         self.urn = urn
@@ -465,6 +472,7 @@ class ResourceValidationArgs:
         self.opts = opts
         self.provider = provider
         self.__config = config if config is not None else {}
+        self.stack_tags = stack_tags if stack_tags is not None else {}
 
 
 class PolicyResourceOptions:
@@ -832,6 +840,11 @@ class StackValidationArgs:
     The resources in the stack.
     """
 
+    stack_tags: Mapping[str, str]
+    """
+    Tags associated with the stack.
+    """
+
     __config: Mapping[str, Any]
     """
     Private field holding the configuration for this policy.
@@ -852,9 +865,11 @@ class StackValidationArgs:
 
     def __init__(self,
                  resources: List[PolicyResource],
-                 config: Optional[Mapping[str, Any]] = None) -> None:
+                 config: Optional[Mapping[str, Any]] = None,
+                 stack_tags: Optional[Mapping[str, str]] = None) -> None:
         self.resources = resources
         self.__config = config if config is not None else {}
+        self.stack_tags = stack_tags if stack_tags is not None else {}
 
 
 StackValidation = Callable[[StackValidationArgs, ReportViolation], Optional[Awaitable]]
@@ -945,6 +960,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
     __policy_pack_provider: Optional[str]
     __policy_pack_tags: Optional[List[str]]
     __policy_pack_repository: Optional[str]
+    __stack_tags: Mapping[str, str]
 
     class IntermediateStackResource(NamedTuple):
         resource: PolicyResource
@@ -983,7 +999,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             opts = self._get_resource_options(request)
             provider = self._get_provider_resource(request)
             config = self._get_policy_config(policy.name)
-            args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider, config)
+            args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider, config,
+                                          self.__stack_tags)
 
             try:
                 result = policy.validate(args, report_violation)
@@ -1069,7 +1086,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
             for i in intermediates:
                 resources.append(i.resource)
             config = self._get_policy_config(policy.name)
-            args = StackValidationArgs(resources, config)
+            args = StackValidationArgs(resources, config, self.__stack_tags)
 
             try:
                 result = policy.validate(args, report_violation)
@@ -1128,7 +1145,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 continue
 
             config = self._get_policy_config(policy.name)
-            args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider, config)
+            args = ResourceValidationArgs(request.type, props, request.urn, request.name, opts, provider, config,
+                                          self.__stack_tags)
 
             rpc_props = None
             diagnostic = None
@@ -1264,6 +1282,10 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         self.__policy_pack_config_enforcement_level = config_enforcement_level
         return empty_pb2.Empty()
 
+    def ConfigureStack(self, request: proto.AnalyzerStackConfigureRequest, _context):
+        self.__stack_tags = MappingProxyType(dict(request.tags))
+        return proto.AnalyzerStackConfigureResponse()
+
     def __init__(self,
                  name: str,
                  version: str,
@@ -1295,6 +1317,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         self.__policy_pack_provider = provider
         self.__policy_pack_tags = tags
         self.__policy_pack_repository = repository
+        self.__stack_tags = MappingProxyType({})
 
     def _get_enforcement_level(self, policy: Policy) -> EnforcementLevel:
         if policy.name in self.__policy_pack_config_enforcement_level:

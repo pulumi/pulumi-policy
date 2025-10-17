@@ -4,6 +4,7 @@ env:
   GO111MODULE: "on"
   PROVIDER: policy
   PULUMI_API: https://api.pulumi-staging.io
+  PULUMI_TEST_OWNER: moolumi
   PR_COMMIT_SHA: ${{ github.event.client_payload.pull_request.head.sha }}
   ESC_ACTION_OIDC_AUTH: true
   ESC_ACTION_OIDC_ORGANIZATION: pulumi

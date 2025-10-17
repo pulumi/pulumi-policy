@@ -5,6 +5,7 @@ env:
   GO111MODULE: "on"
   PROVIDER: policy
   PULUMI_API: https://api.pulumi-staging.io
+  PULUMI_TEST_OWNER: moolumi
   PYPI_USERNAME: __token__
   VERSION: ${{ github.event.client_payload.ref }}
   ESC_ACTION_OIDC_AUTH: true
