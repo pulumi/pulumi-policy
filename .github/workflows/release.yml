@@ -1,21 +1,25 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
 env:
   AWS_REGION: us-west-2
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: "on"
-  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   PROVIDER: policy
-  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
   PULUMI_API: https://api.pulumi-staging.io
-  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
   PYPI_USERNAME: __token__
-  PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
   VERSION: ${{ github.event.client_payload.ref }}
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: NODE_AUTH_TOKEN=NPM_TOKEN,NPM_TOKEN,PULUMI_ACCESS_TOKEN=PULUMI_ACCESS_TOKEN_STAGING,SLACK_WEBHOOK_URL,PYPI_PASSWORD=PYPI_API_TOKEN
 jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v4
         with:
@@ -62,6 +66,9 @@ jobs:
     name: Build, Test, and Publish
     runs-on: ubuntu-latest
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - name: Checkout Repo
         uses: actions/checkout@v5
         with:
@@ -115,7 +122,7 @@ jobs:
           ./ci-scripts/ci/build-package-docs.sh "policy"
         env:
           TRAVIS: true
-          PULUMI_BOT_GITHUB_API_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          PULUMI_BOT_GITHUB_API_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
           TRAVIS_TAG: ${{ env.VERSION }}
     strategy:
       fail-fast: true
