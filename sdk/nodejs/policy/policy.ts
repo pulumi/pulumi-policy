@@ -798,9 +798,26 @@ export function validateStackResourcesOfType<TResource extends Resource>(
 }
 
 /**
+ * The set of arguments used to report a policy violation.
+ *
+ * @internal
+ */
+export interface ReportViolationArgs {
+    message: string;
+    urn?: string;
+    name?: string;
+    description?: string;
+    enforcementLevel?: EnforcementLevel;
+}
+
+/**
  * ReportViolation is the callback signature used to report policy violations.
  */
-export type ReportViolation = (message: string, urn?: string) => void;
+export type ReportViolation  = {
+    (message: string, urn?: string): void;
+    // Future support for passing args object
+    // (args: ReportViolationArgs): void;
+};
 
 /**
  * Secret allows values to be marked as sensitive, such that the Pulumi engine will encrypt them

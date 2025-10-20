@@ -35,6 +35,7 @@ import {
     PolicyResource,
     PolicyResourceOptions,
     ReportViolation,
+    ReportViolationArgs,
     ResourceValidationArgs,
     StackValidationArgs,
     getPulumiType,
@@ -287,22 +288,14 @@ export function makeAnalyzeRpcFun(
                     }
                 }
 
-                const reportViolation: ReportViolation = (message, urn) => {
-                    let violationMessage = p.description;
-                    if (message) {
-                        violationMessage += `\n${message}`;
-                    }
-
-                    ds.push({
-                        policyName: p.name,
-                        policyPackName,
-                        policyPackVersion,
-                        message: violationMessage,
-                        urn,
-                        description: p.description,
-                        enforcementLevel,
-                    });
-                };
+                const reportViolation = makeReportViolationFun(
+                    p.name,
+                    policyPackName,
+                    policyPackVersion,
+                    p.description,
+                    enforcementLevel,
+                    ds,
+                );
 
                 const validations = Array.isArray(p.validateResource)
                     ? p.validateResource
@@ -436,22 +429,14 @@ export function makeAnalyzeStackRpcFun(
                     }
                 }
 
-                const reportViolation: ReportViolation = (message, urn) => {
-                    let violationMessage = p.description;
-                    if (message) {
-                        violationMessage += `\n${message}`;
-                    }
-
-                    ds.push({
-                        policyName: p.name,
-                        policyPackName,
-                        policyPackVersion,
-                        message: violationMessage,
-                        urn,
-                        description: p.description,
-                        enforcementLevel,
-                    });
-                };
+                const reportViolation = makeReportViolationFun(
+                    p.name,
+                    policyPackName,
+                    policyPackVersion,
+                    p.description,
+                    enforcementLevel,
+                    ds,
+                );
 
                 try {
                     const intermediates: IntermediateStackResource[] = [];
@@ -818,4 +803,46 @@ function pushNotApplicable(
     }
     notApplicable.push(na);
     return notApplicable;
+}
+
+/**
+ * Helper for creating a reportViolation function.
+ */
+function makeReportViolationFun(
+    policyName: string,
+    policyPackName: string,
+    policyPackVersion: string,
+    description: string,
+    enforcementLevel: EnforcementLevel,
+    ds: Diagnostic[],
+): ReportViolation {
+    return (message, urn?) => {
+        if (typeof message === "object") {
+            const policyInfo: ReportViolationArgs = message;
+            ds.push({
+                policyName: policyInfo.name || policyName,
+                policyPackName,
+                policyPackVersion,
+                message: policyInfo.message || policyInfo.description || description,
+                urn: policyInfo.urn,
+                description: policyInfo.description || description,
+                enforcementLevel: policyInfo.enforcementLevel || enforcementLevel,
+            });
+        } else {
+            let violationMessage = description;
+            if (message) {
+                violationMessage += `\n${message}`;
+            }
+
+            ds.push({
+                policyName,
+                policyPackName,
+                policyPackVersion,
+                message: violationMessage,
+                urn,
+                description,
+                enforcementLevel,
+            });
+        }
+    };
 }
