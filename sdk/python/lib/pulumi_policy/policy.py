@@ -992,7 +992,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 enforcement_level = EnforcementLevel.MANDATORY
 
             report_violation = self._create_report_violation(response, policy.name,
-                                                             policy.description, enforcement_level)
+                                                             policy.description, enforcement_level, policy.severity)
 
             deserialized = deserialize_properties(json_format.MessageToDict(request.properties))
             props = unknown_checking_proxy(deserialized)
@@ -1042,7 +1042,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 enforcement_level = EnforcementLevel.MANDATORY
 
             report_violation = self._create_report_violation(response, policy.name,
-                                                             policy.description, enforcement_level)
+                                                             policy.description, enforcement_level, policy.severity)
 
             intermediates: List[_PolicyAnalyzerServicer.IntermediateStackResource] = []
             for r in request.resources:
@@ -1330,7 +1330,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                                  response:proto.AnalyzeResponse,
                                  policy_name: str,
                                  policy_description: str,
-                                 enforcement_level: EnforcementLevel) -> ReportViolation:
+                                 enforcement_level: EnforcementLevel,
+                                 severity: Optional[Severity] = None) -> ReportViolation:
         def report_violation(message: str, urn: Optional[str] = None) -> None:
             if message and not isinstance(message, str):
                 raise TypeError("Expected message to be a string")
@@ -1349,6 +1350,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 urn=urn if urn else "",
                 description=policy_description,
                 enforcementLevel=self._map_enforcement_level(enforcement_level),
+                severity=self._map_severity(severity),
             ))
         return report_violation
 

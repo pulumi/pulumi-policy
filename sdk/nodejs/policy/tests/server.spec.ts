@@ -476,12 +476,59 @@ describe("makeAnalyzeRpcFun", () => {
         }));
     });
 
+    describe("policy with severity", () => {
+        it("reports the policy's severity", asyncTest(async () => {
+            const policy: ResourceValidationPolicy = {
+                name: "test-policy",
+                description: "A test policy",
+                enforcementLevel: "advisory",
+                severity: "high",
+                validateResource: validateResourceOfType(Foo, (_, __, reportViolation) => {
+                    reportViolation("hello world");
+                }),
+            };
+
+            const analyze = makeAnalyzeRpcFun(
+                "test-pack",
+                "0.0.1",
+                "advisory",
+                [policy],
+            );
+
+            const request = new analyzerproto.AnalyzeRequest();
+            request.setType("my:index:Foo");
+            request.setUrn("urn:pulumi:stack::project::my:index:Foo::my-foo");
+            request.setProperties(new structproto.Struct());
+            request.setOptions(new analyzerproto.AnalyzerResourceOptions());
+
+            let response: analyzerproto.AnalyzeResponse | undefined = undefined;
+            const callback = (err?: Error, resp?: analyzerproto.AnalyzeResponse) => {
+                assert.equal(err, undefined);
+                response = resp;
+            };
+
+            await analyze({ request }, callback);
+
+            assert.notEqual(response, undefined);
+            assert.equal(response!.getDiagnosticsList().length, 1);
+            const diagnostic = response!.getDiagnosticsList()[0];
+            assert.equal(diagnostic.getPolicypackname(), "test-pack");
+            assert.equal(diagnostic.getPolicypackversion(), "0.0.1");
+            assert.equal(diagnostic.getPolicyname(), "test-policy");
+            assert.equal(diagnostic.getMessage(), "A test policy\nhello world");
+            assert.equal(diagnostic.getDescription(), "A test policy");
+            assert.equal(diagnostic.getEnforcementlevel(), analyzerproto.EnforcementLevel.ADVISORY);
+            assert.equal(diagnostic.getSeverity(), analyzerproto.PolicySeverity.POLICY_SEVERITY_HIGH);
+        }));
+    });
+
     describe("ReportViolation with object argument", () => {
         it("reports violation with object argument in resource validation", asyncTest(async () => {
             const policy: ResourceValidationPolicy = {
                 name: "test-policy",
                 description: "A test policy.",
                 enforcementLevel: "advisory",
+                severity: "medium",
                 validateResource: validateResourceOfType(Foo, (_, __, reportViolation) => {
                     reportViolation({
                         message: "This is a dynamic policy violation",
@@ -489,6 +536,7 @@ describe("makeAnalyzeRpcFun", () => {
                         name: "dynamic-policy",
                         description: "This is a dynamic policy violation",
                         enforcementLevel: "mandatory",
+                        severity: "critical",
                     } as ReportViolationArgs as any);
                 }),
             };
@@ -524,6 +572,7 @@ describe("makeAnalyzeRpcFun", () => {
             assert.equal(diagnostic.getUrn(), "urn:pulumi:stack::project::my:index:Foo::my-foo");
             assert.equal(diagnostic.getDescription(), "This is a dynamic policy violation");
             assert.equal(diagnostic.getEnforcementlevel(), analyzerproto.EnforcementLevel.MANDATORY);
+            assert.equal(diagnostic.getSeverity(), analyzerproto.PolicySeverity.POLICY_SEVERITY_CRITICAL);
         }));
     });
 });
@@ -1162,12 +1211,62 @@ describe("makeAnalyzeStackRpcFun", () => {
         }));
     });
 
+    describe("policy with severity", () => {
+        it("reports the policy's severity", asyncTest(async () => {
+            const policy: StackValidationPolicy = {
+                name: "test-policy",
+                description: "A test policy",
+                enforcementLevel: "advisory",
+                severity: "medium",
+                validateStack: validateStackResourcesOfType(Foo, (_, __, reportViolation) => {
+                    reportViolation("violation message");
+                }),
+            };
+
+            const analyzeStack = makeAnalyzeStackRpcFun(
+                "test-pack",
+                "0.0.1",
+                "advisory",
+                [policy],
+            );
+
+            const resource = new analyzerproto.AnalyzerResource();
+            resource.setType("my:index:Foo");
+            resource.setUrn("urn:pulumi:stack::project::my:index:Foo::my-foo");
+            resource.setProperties(new structproto.Struct());
+            resource.setOptions(new analyzerproto.AnalyzerResourceOptions());
+
+            const request = new analyzerproto.AnalyzeStackRequest();
+            request.setResourcesList([resource]);
+
+            let response: analyzerproto.AnalyzeResponse | undefined = undefined;
+            const callback = (err?: Error, resp?: analyzerproto.AnalyzeResponse) => {
+                assert.equal(err, undefined);
+                response = resp;
+            };
+
+            await analyzeStack({ request }, callback);
+
+            assert.notEqual(response, undefined);
+            assert.equal(response!.getDiagnosticsList().length, 1);
+            const diagnostic = response!.getDiagnosticsList()[0];
+            assert.equal(diagnostic.getPolicypackname(), "test-pack");
+            assert.equal(diagnostic.getPolicypackversion(), "0.0.1");
+            assert.equal(diagnostic.getPolicyname(), "test-policy");
+            assert.equal(diagnostic.getMessage(), "A test policy\nviolation message");
+            assert.equal(diagnostic.getDescription(), "A test policy");
+            assert.equal(diagnostic.getEnforcementlevel(), analyzerproto.EnforcementLevel.ADVISORY);
+            assert.equal(diagnostic.getSeverity(), analyzerproto.PolicySeverity.POLICY_SEVERITY_MEDIUM);
+        }));
+    });
+
     describe("ReportViolation with object argument", () => {
         it("reports violation with object argument in stack validation", asyncTest(async () => {
             const policy: StackValidationPolicy = {
                 name: "test-policy",
                 description: "A test policy.",
                 enforcementLevel: "advisory",
+                severity: "low",
                 validateStack: validateStackResourcesOfType(Foo, (_, __, reportViolation) => {
                     reportViolation({
                         message: "Stack policy violation with custom fields",
@@ -1175,6 +1274,7 @@ describe("makeAnalyzeStackRpcFun", () => {
                         name: "stack-dynamic-policy",
                         description: "Stack policy violation with custom fields",
                         enforcementLevel: "mandatory",
+                        severity: "high",
                     } as ReportViolationArgs as any);
                 }),
             };
@@ -1213,6 +1313,7 @@ describe("makeAnalyzeStackRpcFun", () => {
             assert.equal(diagnostic.getUrn(), "urn:pulumi:stack::project::my:index:Foo::my-foo");
             assert.equal(diagnostic.getDescription(), "Stack policy violation with custom fields");
             assert.equal(diagnostic.getEnforcementlevel(), analyzerproto.EnforcementLevel.MANDATORY);
+            assert.equal(diagnostic.getSeverity(), analyzerproto.PolicySeverity.POLICY_SEVERITY_HIGH);
         }));
     });
 });

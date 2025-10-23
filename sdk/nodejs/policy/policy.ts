@@ -808,6 +808,7 @@ export interface ReportViolationArgs {
     name?: string;
     description?: string;
     enforcementLevel?: EnforcementLevel;
+    severity?: Severity;
 }
 
 /**

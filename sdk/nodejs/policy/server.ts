@@ -37,6 +37,7 @@ import {
     ReportViolation,
     ReportViolationArgs,
     ResourceValidationArgs,
+    Severity,
     StackValidationArgs,
     getPulumiType,
     isResourcePolicy,
@@ -295,6 +296,7 @@ export function makeAnalyzeRpcFun(
                     p.description,
                     enforcementLevel,
                     ds,
+                    p.severity,
                 );
 
                 const validations = Array.isArray(p.validateResource)
@@ -436,6 +438,7 @@ export function makeAnalyzeStackRpcFun(
                     p.description,
                     enforcementLevel,
                     ds,
+                    p.severity,
                 );
 
                 try {
@@ -815,6 +818,7 @@ function makeReportViolationFun(
     description: string,
     enforcementLevel: EnforcementLevel,
     ds: Diagnostic[],
+    severity?: Severity,
 ): ReportViolation {
     return (message, urn?) => {
         if (typeof message === "object") {
@@ -827,6 +831,7 @@ function makeReportViolationFun(
                 urn: policyInfo.urn,
                 description: policyInfo.description || description,
                 enforcementLevel: policyInfo.enforcementLevel || enforcementLevel,
+                severity: policyInfo.severity || severity,
             });
         } else {
             let violationMessage = description;
@@ -842,6 +847,7 @@ function makeReportViolationFun(
                 urn,
                 description,
                 enforcementLevel,
+                severity,
             });
         }
     };
