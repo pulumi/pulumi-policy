@@ -89,6 +89,11 @@ export interface Diagnostic {
      * The URN of the resource that has the policy violation.
      */
     urn?: string;
+
+    /**
+     * The severity of the policy violation.
+     */
+    severity?: Severity;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -234,6 +239,9 @@ export function makeAnalyzeResponse(
         diagnostic.setEnforcementlevel(mapEnforcementLevel(d.enforcementLevel));
         if (d.urn) {
             diagnostic.setUrn(d.urn);
+        }
+        if (d.severity) {
+            diagnostic.setSeverity(mapSeverity(d.severity));
         }
 
         diagnostics.push(diagnostic);

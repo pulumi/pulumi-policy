@@ -2,6 +2,11 @@
 
 ---
 
+## 1.20.0 (2025-10-23)
+
+- Propagate the severity in violation diagnostics
+  (https://github.com/pulumi/pulumi-policy/pull/427).
+
 ## 1.19.0 (2025-10-20)
 
 - Add stack tags to validation args
