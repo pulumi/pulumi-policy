@@ -34,10 +34,7 @@ Looking for examples? Please refer to the [examples repo](https://github.com/pul
 
 Policies can be written in TypeScript/JavaScript (Node.js) or Python and can be applied to Pulumi stacks written in any language.
 
-|    | Language | Status |
-| -- | -------- | ------ |
-| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable      |
-| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable      |
-| <img src="https://www.pulumi.com/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Preview     |
-| <img src="https://www.pulumi.com/logos/tech/dotnet.png" height=38 />      | .NET                       | Coming Soon |
-| <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | Go                         | Coming Soon |
+- **[TypeScript/JavaScript](https://www.pulumi.com/docs/reference/pkg/nodejs/pulumi/policy/)** - Stable
+- **[Python](https://www.pulumi.com/docs/reference/pkg/python/pulumi_policy/)** - Stable
+- **.NET** - [Future](https://github.com/pulumi/pulumi-policy/issues/229)
+- **Go** - [Future](https://github.com/pulumi/pulumi-policy/issues/230)
