@@ -108,6 +108,8 @@ jobs:
           GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
         with:
           pulumi-version-file: .pulumi.version
+      - name: Print Pulumi version
+        run: pulumi version
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
