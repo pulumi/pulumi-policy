@@ -103,7 +103,7 @@ jobs:
         with:
           repo: pulumi/pulumictl
       - name: Install Pulumi CLI
-        uses: pulumi/actions@525918db394796bd81e11d44b6fc6ef5cab2bc9f
+        uses: pulumi/actions@0b8be5ddf4bff884fd52a151e1888be8640312f5
         env:
           GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
         with:
