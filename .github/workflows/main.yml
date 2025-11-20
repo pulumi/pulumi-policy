@@ -85,6 +85,8 @@ jobs:
           repo: pulumi/pulumictl
       - name: Install Pulumi CLI
         uses: pulumi/actions@525918db394796bd81e11d44b6fc6ef5cab2bc9f
+        env:
+          GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
         with:
           pulumi-version-file: .pulumi.version
       - name: Setup Node
