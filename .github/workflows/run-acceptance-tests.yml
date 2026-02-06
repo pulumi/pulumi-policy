@@ -103,9 +103,9 @@ jobs:
         with:
           repo: pulumi/pulumictl
       - name: Install Pulumi CLI
-        uses: pulumi/actions@v6
+        uses: pulumi/actions@85a185baea80a1ab120237e362612233003f2e29
         with:
-          pulumi-version: dev
+          pulumi-version: pr#21684
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
