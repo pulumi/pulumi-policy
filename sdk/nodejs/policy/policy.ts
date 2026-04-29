@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Resource, Unwrap } from "@pulumi/pulumi";
-import * as q from "@pulumi/pulumi/queryable";
+// Type-only imports: erased at compile time so this module emits no
+// `require("@pulumi/pulumi")` and never triggers its top-level runtime
+// side-effects (output, resource graph, settings, gRPC, …).
+import type { Resource, Unwrap } from "@pulumi/pulumi";
+import type * as q from "@pulumi/pulumi/queryable";
 
 import { PolicyConfigJSONSchema } from "./schema";
 import { serve } from "./server";
