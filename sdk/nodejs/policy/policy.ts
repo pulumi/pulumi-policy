@@ -431,6 +431,17 @@ export interface PolicyResourceOptions {
      * An optional parent that this resource belongs to.
      */
     parent?: string;
+
+    /**
+     * Resource annotations keyed by `"{source}/{kind}"` (e.g. `"user:api/tags"`,
+     * `"agent:neo/cost"`). Reads include all sources. Mutations to keys with
+     * source `user:api` are diffed by the SDK and serialized back to the engine
+     * after the validate callback returns; mutations under other sources are
+     * dropped with a warning, since the engine only accepts policy writes from
+     * `user:api`. Removing a `user:api/*` key is a no-op in this POC — the
+     * engine does not yet support annotation deletes.
+     */
+    annotations: { [key: string]: Record<string, any> };
 }
 
 /**

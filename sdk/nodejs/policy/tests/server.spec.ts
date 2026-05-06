@@ -1317,3 +1317,176 @@ describe("makeAnalyzeStackRpcFun", () => {
         }));
     });
 });
+
+describe("annotation read/write", () => {
+    // Helper: build an AnalyzeRequest with annotations preset on options.
+    function makeAnalyzeRequestWithAnnotations(
+        urn: string,
+        annotations: { [key: string]: Record<string, any> },
+    ): analyzerproto.AnalyzeRequest {
+        const opts = new analyzerproto.AnalyzerResourceOptions();
+        const map = opts.getAnnotationsMap();
+        for (const k of Object.keys(annotations)) {
+            map.set(k, structproto.Struct.fromJavaScript(annotations[k]));
+        }
+        const req = new analyzerproto.AnalyzeRequest();
+        req.setType("my:index:Foo");
+        req.setUrn(urn);
+        req.setProperties(new structproto.Struct());
+        req.setOptions(opts);
+        return req;
+    }
+
+    function makeStackResourceWithAnnotations(
+        urn: string,
+        annotations: { [key: string]: Record<string, any> },
+    ): analyzerproto.AnalyzerResource {
+        const opts = new analyzerproto.AnalyzerResourceOptions();
+        const map = opts.getAnnotationsMap();
+        for (const k of Object.keys(annotations)) {
+            map.set(k, structproto.Struct.fromJavaScript(annotations[k]));
+        }
+        const r = new analyzerproto.AnalyzerResource();
+        r.setType("my:index:Foo");
+        r.setUrn(urn);
+        r.setProperties(new structproto.Struct());
+        r.setOptions(opts);
+        return r;
+    }
+
+    it("Analyze exposes seeded annotations on args.opts.annotations", asyncTest(async () => {
+        let observed: { [key: string]: Record<string, any> } | undefined;
+        const policy: ResourceValidationPolicy = {
+            name: "read",
+            description: "reads annotations",
+            enforcementLevel: "advisory",
+            validateResource: (args, _reportViolation) => {
+                observed = args.opts.annotations;
+            },
+        };
+
+        const analyze = makeAnalyzeRpcFun("test-pack", "0.0.1", "advisory", [policy]);
+        const request = makeAnalyzeRequestWithAnnotations(
+            "urn:pulumi:stack::project::my:index:Foo::my-foo",
+            { "user:api/tags": { env: "prod" }, "agent:neo/cost": { monthly: 42 } },
+        );
+        let response: analyzerproto.AnalyzeResponse | undefined;
+        await analyze({ request }, (_err: Error, resp: analyzerproto.AnalyzeResponse) => {
+            response = resp;
+        });
+
+        assert.notEqual(observed, undefined);
+        assert.deepEqual(observed!["user:api/tags"], { env: "prod" });
+        assert.deepEqual(observed!["agent:neo/cost"], { monthly: 42 });
+        // No mutations were made, so the response should not include any annotation changes.
+        assert.equal(response!.getAnnotationsList().length, 0);
+    }));
+
+    it("Analyze emits AnalyzeAnnotationChange for new user:api/* keys", asyncTest(async () => {
+        const policy: ResourceValidationPolicy = {
+            name: "write",
+            description: "writes annotations",
+            enforcementLevel: "advisory",
+            validateResource: (args, _reportViolation) => {
+                args.opts.annotations["user:api/cost"] = { monthly: 50 };
+            },
+        };
+
+        const analyze = makeAnalyzeRpcFun("test-pack", "0.0.1", "advisory", [policy]);
+        const urn = "urn:pulumi:stack::project::my:index:Foo::my-foo";
+        const request = makeAnalyzeRequestWithAnnotations(urn, {});
+        let response: analyzerproto.AnalyzeResponse | undefined;
+        await analyze({ request }, (_err: Error, resp: analyzerproto.AnalyzeResponse) => {
+            response = resp;
+        });
+
+        const changes = response!.getAnnotationsList();
+        assert.equal(changes.length, 1);
+        assert.equal(changes[0].getUrn(), urn);
+        assert.equal(changes[0].getKey(), "user:api/cost");
+        assert.deepEqual(changes[0].getData()!.toJavaScript(), { monthly: 50 });
+    }));
+
+    it("Analyze does not emit changes for keys that are unchanged", asyncTest(async () => {
+        const policy: ResourceValidationPolicy = {
+            name: "noop",
+            description: "reads but does not mutate",
+            enforcementLevel: "advisory",
+            validateResource: (args, _reportViolation) => {
+                // Read-only access; do not mutate.
+                const _v = args.opts.annotations["user:api/tags"];
+            },
+        };
+
+        const analyze = makeAnalyzeRpcFun("test-pack", "0.0.1", "advisory", [policy]);
+        const request = makeAnalyzeRequestWithAnnotations(
+            "urn:pulumi:stack::project::my:index:Foo::my-foo",
+            { "user:api/tags": { env: "prod" } },
+        );
+        let response: analyzerproto.AnalyzeResponse | undefined;
+        await analyze({ request }, (_err: Error, resp: analyzerproto.AnalyzeResponse) => {
+            response = resp;
+        });
+
+        assert.equal(response!.getAnnotationsList().length, 0);
+    }));
+
+    it("Analyze drops mutations whose source is not user:api", asyncTest(async () => {
+        const policy: ResourceValidationPolicy = {
+            name: "bad-source",
+            description: "writes a non-user:api key",
+            enforcementLevel: "advisory",
+            validateResource: (args, _reportViolation) => {
+                args.opts.annotations["agent:neo/foo"] = { x: 1 };
+            },
+        };
+
+        const analyze = makeAnalyzeRpcFun("test-pack", "0.0.1", "advisory", [policy]);
+        const request = makeAnalyzeRequestWithAnnotations(
+            "urn:pulumi:stack::project::my:index:Foo::my-foo",
+            {},
+        );
+        let response: analyzerproto.AnalyzeResponse | undefined;
+        await analyze({ request }, (_err: Error, resp: analyzerproto.AnalyzeResponse) => {
+            response = resp;
+        });
+
+        assert.equal(response!.getAnnotationsList().length, 0);
+    }));
+
+    it("AnalyzeStack emits annotation changes for mutations on each resource", asyncTest(async () => {
+        const urnA = "urn:pulumi:stack::project::my:index:Foo::a";
+        const urnB = "urn:pulumi:stack::project::my:index:Foo::b";
+
+        const policy: StackValidationPolicy = {
+            name: "stack-write",
+            description: "stamps compliance on every resource",
+            enforcementLevel: "advisory",
+            validateStack: (args, _reportViolation) => {
+                for (const r of args.resources) {
+                    r.opts.annotations["user:api/compliance"] = { reviewed: true };
+                }
+            },
+        };
+
+        const analyzeStack = makeAnalyzeStackRpcFun("test-pack", "0.0.1", "advisory", [policy]);
+        const request = new analyzerproto.AnalyzeStackRequest();
+        request.setResourcesList([
+            makeStackResourceWithAnnotations(urnA, {}),
+            makeStackResourceWithAnnotations(urnB, { "user:api/compliance": { reviewed: true } }),
+        ]);
+
+        let response: analyzerproto.AnalyzeResponse | undefined;
+        await analyzeStack({ request }, (_err: Error, resp: analyzerproto.AnalyzeResponse) => {
+            response = resp;
+        });
+
+        // urnA had no annotation; the policy added one. urnB already had the same value, so no
+        // change should be emitted for it.
+        const changes = response!.getAnnotationsList();
+        assert.equal(changes.length, 1);
+        assert.equal(changes[0].getUrn(), urnA);
+        assert.equal(changes[0].getKey(), "user:api/compliance");
+        assert.deepEqual(changes[0].getData()!.toJavaScript(), { reviewed: true });
+    }));
+});

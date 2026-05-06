@@ -45,6 +45,7 @@ import {
 } from "./policy";
 import {
     asGrpcError,
+    buildAnalyzeAnnotationChange,
     convertEnforcementLevel,
     Diagnostic,
     makeAnalyzeResponse,
@@ -258,6 +259,7 @@ export function makeAnalyzeRpcFun(
         // Run the analysis for every analyzer in the global list, tracking any diagnostics.
         const ds: Diagnostic[] = [];
         let notApplicable: analyzerproto.PolicyNotApplicable[] | undefined = undefined;
+        const annotationChanges: analyzerproto.AnalyzeAnnotationChange[] = [];
         try {
             for (const p of policies) {
                 let enforcementLevel: EnforcementLevel =
@@ -338,10 +340,20 @@ export function makeAnalyzeRpcFun(
                             args.provider = provider;
                         }
 
+                        // Snapshot the annotations map before the policy runs so we can diff
+                        // any policy-side mutations into AnalyzeAnnotationChange entries below.
+                        const annotationsBefore = cloneAnnotations(args.opts.annotations);
+
                         // Pass the result of the validate call to Promise.resolve.
                         // If the value is a promise, that promise is returned; otherwise
                         // the returned promise will be fulfilled with the value.
                         await Promise.resolve(validation(args, reportViolation));
+
+                        // Diff the post-callback annotations against the snapshot.
+                        const changes = diffAnnotationChanges(args.urn, annotationsBefore, args.opts.annotations);
+                        for (const c of changes) {
+                            annotationChanges.push(c);
+                        }
                     } catch (e) {
                         const policyPack = `'${policyPackName}@v${policyPackVersion}'`;
                         const policyFrom = `policy '${p.name}' from policy pack ${policyPack}`;
@@ -370,7 +382,7 @@ export function makeAnalyzeRpcFun(
         }
 
         // Now marshal the results into a resulting diagnostics list, and invoke the callback to finish.
-        callback(undefined, makeAnalyzeResponse(ds, notApplicable));
+        callback(undefined, makeAnalyzeResponse(ds, notApplicable, annotationChanges));
     };
 }
 
@@ -407,6 +419,7 @@ export function makeAnalyzeStackRpcFun(
         // Run the analysis for every analyzer in the global list, tracking any diagnostics.
         const ds: Diagnostic[] = [];
         let notApplicable: analyzerproto.PolicyNotApplicable[] | undefined = undefined;
+        const annotationChanges: analyzerproto.AnalyzeAnnotationChange[] = [];
         try {
             for (const p of policies) {
                 let enforcementLevel: EnforcementLevel =
@@ -522,10 +535,26 @@ export function makeAnalyzeStackRpcFun(
                         notApplicable: throwNotApplicable,
                     };
 
+                    // Snapshot per-resource annotations before the policy runs so we can diff
+                    // any policy-side mutations into AnalyzeAnnotationChange entries below.
+                    const annotationsBefore = new Map<string, { [key: string]: Record<string, any> }>();
+                    for (const r of args.resources) {
+                        annotationsBefore.set(r.urn, cloneAnnotations(r.opts.annotations));
+                    }
+
                     // Pass the result of the validate call to Promise.resolve.
                     // If the value is a promise, that promise is returned; otherwise
                     // the returned promise will be fulfilled with the value.
                     await Promise.resolve(p.validateStack(args, reportViolation));
+
+                    // Diff the post-callback annotations on each resource against its snapshot.
+                    for (const r of args.resources) {
+                        const before = annotationsBefore.get(r.urn) ?? {};
+                        const changes = diffAnnotationChanges(r.urn, before, r.opts.annotations);
+                        for (const c of changes) {
+                            annotationChanges.push(c);
+                        }
+                    }
                 } catch (e) {
                     const policyPack = `'${policyPackName}@v${policyPackVersion}'`;
                     const policyFrom = `policy '${p.name}' from policy pack ${policyPack}`;
@@ -553,7 +582,7 @@ export function makeAnalyzeStackRpcFun(
         }
 
         // Now marshal the results into a resulting diagnostics list, and invoke the callback to finish.
-        callback(undefined, makeAnalyzeResponse(ds, notApplicable));
+        callback(undefined, makeAnalyzeResponse(ds, notApplicable, annotationChanges));
     };
 }
 
@@ -588,6 +617,7 @@ function getResourceOptions(r: any): PolicyResourceOptions {
         aliases: opts.getAliasesList(),
         customTimeouts: getCustomTimeouts(opts),
         additionalSecretOutputs: opts.getAdditionalsecretoutputsList(),
+        annotations: getAnnotations(opts),
     };
     if (opts.getDeletebeforereplacedefined()) {
         result.deleteBeforeReplace = opts.getDeletebeforereplace();
@@ -596,6 +626,103 @@ function getResourceOptions(r: any): PolicyResourceOptions {
         result.parent = opts.getParent();
     }
     return result;
+}
+
+// Extracts the annotations map from an AnalyzerResourceOptions proto. Older engines that don't
+// populate the field return an empty map (defaulting to `{}` keeps policy code null-check free).
+function getAnnotations(opts: any): { [key: string]: Record<string, any> } {
+    const result: { [key: string]: Record<string, any> } = {};
+    // The proto map is exposed via `getAnnotationsMap()` and yields a jspb.Map of <string, Struct>.
+    const map = typeof opts.getAnnotationsMap === "function" ? opts.getAnnotationsMap() : undefined;
+    if (!map) {
+        return result;
+    }
+    map.forEach((v: any, k: string) => {
+        if (v && typeof v.toJavaScript === "function") {
+            result[k] = v.toJavaScript();
+        }
+    });
+    return result;
+}
+
+// Regex for valid policy-writable annotation keys: source must be `user:api`, kind must be a
+// short, lower-case identifier. Mirrors the engine-side validation in the Pulumi CLI so we don't
+// emit writes the engine will reject anyway.
+const userApiAnnotationKeyRE = /^user:api\/[a-z0-9._-]{1,128}$/;
+
+// Diffs the post-callback annotation map against a pre-callback snapshot and produces a list
+// of `AnalyzeAnnotationChange` for keys that were added or modified under the `user:api/*`
+// source. Mutations under any other source are dropped with a warning. Removals under
+// `user:api/*` are dropped with a debug log — the engine does not yet support deletes.
+function diffAnnotationChanges(
+    urn: string,
+    before: { [key: string]: Record<string, any> },
+    after: { [key: string]: Record<string, any> },
+): analyzerproto.AnalyzeAnnotationChange[] {
+    const changes: analyzerproto.AnalyzeAnnotationChange[] = [];
+    if (!after) {
+        return changes;
+    }
+    for (const key of Object.keys(after)) {
+        const val = after[key];
+        if (!userApiAnnotationKeyRE.test(key)) {
+            // Allow unmodified non-user:api entries to pass through silently (they came from the
+            // engine's seed). Only warn when the policy actually mutated or added them.
+            if (!(key in before) || !deepEqualJSON(before[key], val)) {
+                console.warn(
+                    `policy annotation write under non-user:api key ${JSON.stringify(key)} on ` +
+                    `${urn} ignored; only user:api/<kind> writes are supported`);
+            }
+            continue;
+        }
+        if (key in before && deepEqualJSON(before[key], val)) {
+            continue; // unchanged
+        }
+        if (val === undefined || val === null) {
+            continue; // engine does not yet accept deletes
+        }
+        changes.push(buildAnalyzeAnnotationChange(urn, key, val));
+    }
+    return changes;
+}
+
+// Deep clone of an annotations map. Each value is a JSON-serializable object so JSON.stringify
+// round-tripping is safe. Used to snapshot state before invoking a validate callback.
+function cloneAnnotations(
+    src: { [key: string]: Record<string, any> } | undefined,
+): { [key: string]: Record<string, any> } {
+    if (!src) {
+        return {};
+    }
+    const out: { [key: string]: Record<string, any> } = {};
+    for (const k of Object.keys(src)) {
+        out[k] = JSON.parse(JSON.stringify(src[k]));
+    }
+    return out;
+}
+
+// Deep structural equality for plain JSON values (objects, arrays, primitives, null).
+// Annotation values are required to be JSON-serializable so this is sufficient.
+function deepEqualJSON(a: any, b: any): boolean {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== typeof b) return false;
+    if (typeof a !== "object") return false;
+    if (Array.isArray(a)) {
+        if (!Array.isArray(b) || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (!deepEqualJSON(a[i], b[i])) return false;
+        }
+        return true;
+    }
+    if (Array.isArray(b)) return false;
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    for (const k of aKeys) {
+        if (!Object.prototype.hasOwnProperty.call(b, k)) return false;
+        if (!deepEqualJSON(a[k], b[k])) return false;
+    }
+    return true;
 }
 
 // Creates a CustomTimeouts object from the GRPC request.
