@@ -122,15 +122,10 @@ jobs:
         uses: oven-sh/setup-bun@v2
       - name: Ensure dependencies
         run: make ensure
-      - name: Checkout Scripts Repo
-        uses: actions/checkout@v2
-        with:
-          path: ci-scripts
-          repository: pulumi/scripts
       - name: Build SDK
         run: make only_build
       - name: Check worktree clean
-        run: ./ci-scripts/ci/check-worktree-is-clean
+        uses: pulumi/git-status-check-action@v1
       - name: Run Unit Tests
         run: make only_test_fast
       - name: Run Integration Tests

@@ -103,11 +103,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
       - name: Ensure dependencies
         run: make ensure
-      - name: Checkout Scripts Repo
-        uses: actions/checkout@v2
-        with:
-          path: ci-scripts
-          repository: pulumi/scripts
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -120,20 +115,13 @@ jobs:
       - name: Build SDK
         run: make only_build
       - name: Check worktree clean
-        run: ./ci-scripts/ci/check-worktree-is-clean
+        uses: pulumi/git-status-check-action@v1
       - name: Run Unit Tests
         run: make only_test_fast
       - name: Run Integration Tests
         run: make test_all
       - name: Publish
         run: make publish_packages
-      - name: Trigger Docs Build
-        run: |
-          ./ci-scripts/ci/build-package-docs.sh "policy"
-        env:
-          TRAVIS: true
-          PULUMI_BOT_GITHUB_API_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
-          TRAVIS_TAG: ${{ env.VERSION }}
     strategy:
       fail-fast: true
       matrix:
