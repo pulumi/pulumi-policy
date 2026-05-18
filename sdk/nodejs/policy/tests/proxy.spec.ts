@@ -154,4 +154,40 @@ describe("proxy", () => {
             ["foo", "1"],
         );
     });
+
+    it("supports Array.prototype.filter on proxied arrays", () => {
+        // Regression test: Array.prototype.filter internally uses ArraySpeciesCreate,
+        // which looks up `.constructor[Symbol.species]` and then accesses `.prototype`
+        // on the resulting (proxied) constructor. `Array.prototype` is a non-configurable,
+        // non-writable data property; the Proxy invariant requires the get trap to
+        // return the exact same value. Without the descriptor bypass in proxyHelper,
+        // this throws a V8 TypeError.
+        const props: any = unknownCheckingProxy({
+            logs: [{ enabled: true }, { enabled: false }, { enabled: true }],
+        });
+        const enabled = props.logs.filter((l: any) => l.enabled);
+        assert.strictEqual(enabled.length, 2);
+    });
+
+    it("supports Array.prototype.map on proxied arrays", () => {
+        const props: any = unknownCheckingProxy({
+            logs: [{ enabled: true }, { enabled: false }],
+        });
+        const flags = props.logs.map((l: any) => l.enabled);
+        assert.deepStrictEqual(flags, [true, false]);
+    });
+
+    it("supports chained .filter().map() on proxied arrays", () => {
+        const props: any = unknownCheckingProxy({
+            logs: [
+                { enabled: true, category: "AuditLogs" },
+                { enabled: false, category: "RequestLogs" },
+                { enabled: true, category: "GatewayLogs" },
+            ],
+        });
+        const enabledCategories = props.logs
+            .filter((l: any) => l.enabled)
+            .map((l: any) => l.category);
+        assert.deepStrictEqual(enabledCategories, ["AuditLogs", "GatewayLogs"]);
+    });
 });
