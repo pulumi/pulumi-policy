@@ -13,3 +13,4 @@
 // limitations under the License.
 
 export * from "./policy";
+export { unknownCheckingProxy, UnknownValueError } from "./proxy";
