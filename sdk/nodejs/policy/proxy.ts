@@ -61,6 +61,17 @@ function proxyHelper<T>(toProxy: any, propsAcc: (keyof T)[]): any {
             if (isUnknown(field)) {
                 throw new UnknownValueError<T>(field, newProps);
             }
+            // Honor the V8 Proxy invariant: for an own data property that is both
+            // non-configurable and non-writable, the get trap must return the exact
+            // same value as the target. Wrapping such a property in another proxy
+            // (as proxyHelper does for everything else) triggers a TypeError. This
+            // matters because Array.prototype.filter (and other species-creating
+            // methods) internally accesses `.prototype` on the proxied Array
+            // constructor — a property that is {configurable: false, writable: false}.
+            const desc = Object.getOwnPropertyDescriptor(obj, prop);
+            if (desc && "value" in desc && desc.configurable === false && desc.writable === false) {
+                return field;
+            }
             return proxyHelper(field, newProps);
         },
     });

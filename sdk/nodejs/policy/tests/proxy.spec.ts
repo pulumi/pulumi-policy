@@ -154,4 +154,84 @@ describe("proxy", () => {
             ["foo", "1"],
         );
     });
+
+    it("supports Array.prototype.filter on proxied arrays", () => {
+        // Regression test: Array.prototype.filter internally uses ArraySpeciesCreate,
+        // which looks up `.constructor[Symbol.species]` and then accesses `.prototype`
+        // on the resulting (proxied) constructor. `Array.prototype` is a non-configurable,
+        // non-writable data property; the Proxy invariant requires the get trap to
+        // return the exact same value. Without the descriptor bypass in proxyHelper,
+        // this throws a V8 TypeError.
+        const props: any = unknownCheckingProxy({
+            logs: [{ enabled: true }, { enabled: false }, { enabled: true }],
+        });
+        const enabled = props.logs.filter((l: any) => l.enabled);
+        assert.strictEqual(enabled.length, 2);
+    });
+
+    it("supports Array.prototype.map on proxied arrays", () => {
+        const props: any = unknownCheckingProxy({
+            logs: [{ enabled: true }, { enabled: false }],
+        });
+        const flags = props.logs.map((l: any) => l.enabled);
+        assert.deepStrictEqual(flags, [true, false]);
+    });
+
+    it("supports chained .filter().map() on proxied arrays", () => {
+        const props: any = unknownCheckingProxy({
+            logs: [
+                { enabled: true, category: "AuditLogs" },
+                { enabled: false, category: "RequestLogs" },
+                { enabled: true, category: "GatewayLogs" },
+            ],
+        });
+        const enabledCategories = props.logs
+            .filter((l: any) => l.enabled)
+            .map((l: any) => l.category);
+        assert.deepStrictEqual(enabledCategories, ["AuditLogs", "GatewayLogs"]);
+    });
+
+    it("throws when .filter encounters an unknown array element", () => {
+        // Sibling to the existing forEach test: the descriptor bypass must not
+        // disable unknown-value detection during iteration. The first read of an
+        // unknown element should still throw UnknownValueError with the correct path.
+        assertThrowsUnknownValue(
+            () => {
+                const props: any = unknownCheckingProxy({ foo: [true, unknownBooleanValue, false] });
+                return props.foo.filter((x: any) => x);
+            },
+            unknownBooleanValue,
+            ["foo", "1"],
+        );
+    });
+
+    it("throws when .map encounters an unknown array element", () => {
+        assertThrowsUnknownValue(
+            () => {
+                const props: any = unknownCheckingProxy({ foo: [true, unknownBooleanValue, false] });
+                return props.foo.map((x: any) => x);
+            },
+            unknownBooleanValue,
+            ["foo", "1"],
+        );
+    });
+
+    it("throws when .filter callback reads an unknown nested property", () => {
+        // Array elements themselves are known objects, but a field inside one is unknown.
+        // The callback's `.enabled` access on the proxied object must still throw.
+        assertThrowsUnknownValue(
+            () => {
+                const props: any = unknownCheckingProxy({
+                    logs: [
+                        { enabled: true },
+                        { enabled: unknownBooleanValue },
+                        { enabled: false },
+                    ],
+                });
+                return props.logs.filter((l: any) => l.enabled);
+            },
+            unknownBooleanValue,
+            ["logs", "1", "enabled"],
+        );
+    });
 });
