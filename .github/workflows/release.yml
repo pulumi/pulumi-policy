@@ -103,28 +103,57 @@ jobs:
         uses: oven-sh/setup-bun@v2
       - name: Ensure dependencies
         run: make ensure
-      - name: Checkout Scripts Repo
-        uses: actions/checkout@v2
-        with:
-          path: ci-scripts
-          repository: pulumi/scripts
       - name: Build SDK
         run: make only_build
       - name: Check worktree clean
-        run: ./ci-scripts/ci/check-worktree-is-clean
+        uses: pulumi/git-status-check-action@v1
       - name: Run Unit Tests
         run: make only_test_fast
       - name: Run Integration Tests
         run: make test_all
       - name: Publish
         run: make publish_packages
-      - name: Trigger Docs Build
-        run: |
-          ./ci-scripts/ci/build-package-docs.sh "policy"
+      - name: Trigger Python SDK docs build
+        id: dispatch-python-docs
+        continue-on-error: true
         env:
-          TRAVIS: true
-          PULUMI_BOT_GITHUB_API_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
-          TRAVIS_TAG: ${{ env.VERSION }}
+          GH_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh workflow run pulumi-policy-sdk-python-docs.yml \
+            --repo pulumi/docs \
+            -f version="$VERSION"
+      - name: Trigger TypeScript SDK docs build
+        id: dispatch-typescript-docs
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh workflow run pulumi-policy-sdk-typescript-docs.yml \
+            --repo pulumi/docs \
+            -f version="$VERSION"
+      - name: Notify #docs-ops on docs dispatch failure
+        if: steps.dispatch-python-docs.outcome == 'failure' || steps.dispatch-typescript-docs.outcome == 'failure'
+        uses: docker://sholung/action-slack-notify:v2.3.0
+        env:
+          SLACK_CHANNEL: docs-ops
+          SLACK_COLOR: "#F54242"
+          SLACK_TITLE: "pulumi-policy: SDK docs dispatch failed for ${{ github.ref_name }}"
+          SLACK_MESSAGE: |
+            Failed to dispatch one or both SDK docs workflows in pulumi/docs for ${{ github.ref_name }}.
+            Python dispatch: ${{ steps.dispatch-python-docs.outcome }}
+            TypeScript dispatch: ${{ steps.dispatch-typescript-docs.outcome }}
+
+            The SDK release itself succeeded. Trigger the docs workflows manually:
+            - https://github.com/pulumi/docs/actions/workflows/pulumi-policy-sdk-python-docs.yml
+            - https://github.com/pulumi/docs/actions/workflows/pulumi-policy-sdk-typescript-docs.yml
+            Use version: ${{ github.ref_name }} (without the leading "v").
+
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLACK_USERNAME: pulumi-policy-release
+          SLACK_WEBHOOK: ${{ steps.esc-secrets.outputs.SLACK_WEBHOOK_URL }}
+          SLACK_ICON: https://www.pulumi.com/logos/brand/avatar-on-white.png
     strategy:
       fail-fast: true
       matrix:
