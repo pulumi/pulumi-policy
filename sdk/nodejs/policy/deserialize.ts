@@ -89,7 +89,14 @@ function deserializeProperty(prop: any, proxySecrets: boolean): any {
                         );
                     }
                 case specialArchiveSig:
-                    if (prop["assets"]) {
+                    // Give "path" and "uri" precedence over "assets", matching the engine's
+                    // archive semantics: the engine may serialize a path- or uri-based archive
+                    // with an empty "assets" map alongside the path or uri.
+                    if (prop["path"]) {
+                        return new asset.FileArchive(<string>prop["path"]);
+                    } else if (prop["uri"]) {
+                        return new asset.RemoteArchive(<string>prop["uri"]);
+                    } else if (prop["assets"]) {
                         const assets: asset.AssetMap = {};
                         for (const name of Object.keys(prop["assets"])) {
                             const a = deserializeProperty(prop["assets"][name], proxySecrets);
@@ -101,10 +108,6 @@ function deserializeProperty(prop: any, proxySecrets: boolean): any {
                             assets[name] = a;
                         }
                         return new asset.AssetArchive(assets);
-                    } else if (prop["path"]) {
-                        return new asset.FileArchive(<string>prop["path"]);
-                    } else if (prop["uri"]) {
-                        return new asset.RemoteArchive(<string>prop["uri"]);
                     } else {
                         throw new Error(
                             "Invalid archive encountered when unmarshaling resource property",

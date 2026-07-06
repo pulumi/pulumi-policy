@@ -1,5 +1,8 @@
 ## HEAD (Unreleased)
 
+- Node.js, Python: Deserialize archives that carry a `path` or `uri` as `FileArchive`/`RemoteArchive` even when an empty `assets` map is also present, matching the engine's archive semantics. Newer engine versions serialize path- and uri-based archives with an empty `assets` map, which previously caused them to deserialize as empty `AssetArchive`s.
+  (https://github.com/pulumi/pulumi-policy/pull/451).
+
 ## 1.21.0 (2026-05-20)
 
 - Node.js: Fix `TypeError: 'get' on proxy: property 'prototype' is a read-only and non-configurable data property…` thrown when a policy calls `Array.prototype.filter` (or `.map`, `.slice`, `.concat`, or any other method that uses `ArraySpeciesCreate`) on a resource field reached through `unknownCheckingProxy`. The proxy's `get` trap now honors V8's invariant for non-configurable + non-writable own data properties, scoped narrowly enough to leave unknown-value detection during preview fully intact.
