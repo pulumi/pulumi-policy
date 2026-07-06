@@ -16,7 +16,7 @@ import { strict as assert } from "assert";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 
-import { asset, Inputs, runtime, secret } from "@pulumi/pulumi";
+import { Inputs, runtime, secret } from "@pulumi/pulumi";
 import { specialSecretSig, specialSigKey } from "@pulumi/pulumi/runtime/rpc";
 
 import { deserializeProperties, serializeProperties } from "../deserialize";
@@ -129,25 +129,6 @@ describe("runtime", () => {
     });
 
     describe("deserializeProperty", () => {
-        it(
-            "deserializes a path archive with an empty assets map as a FileArchive",
-            asyncTest(async () => {
-                const props = gstruct.Struct.fromJavaScript({
-                    archive: {
-                        [runtime.specialSigKey]: runtime.specialArchiveSig,
-                        assets: {},
-                        path: "a/path",
-                    },
-                });
-
-                for (const proxySecrets of [false, true]) {
-                    const result = deserializeProperties(props, proxySecrets);
-                    assert.ok(asset.FileArchive.isInstance(result.archive));
-                }
-                const unproxied = deserializeProperties(props, false);
-                assert.equal(await unproxied.archive.path, "a/path");
-            }),
-        );
         it("fails on unsupported secret values", () => {
             assert.throws(() =>
                 runtime.deserializeProperty({

@@ -100,28 +100,6 @@ class PolicyPackTests(unittest.TestCase):
 
         self.unmarshalls_fully(file_archive_value, assertObj)
 
-    def test_unmarshalls_file_archive_with_empty_assets(self):
-        file_archive_value = {
-            deserialize.SPECIAL_SIG_KEY: deserialize.SPECIAL_ARCHIVE_SIG,
-            "assets": {},
-            "path": "a/path",
-        }
-
-        for proxy_secrets in [False, True]:
-            result = deserialize.deserialize_properties({"archive": file_archive_value}, proxy_secrets)
-            obj = result["archive"]
-            self.assertIsInstance(obj, pulumi.FileArchive)
-            self.assertEqual(obj.path, "a/path")
-
-            # Re-serializing normalizes away the empty "assets" map.
-            m_result = deserialize.serialize_properties(result)
-            self.assertEqual({
-                "archive": {
-                    deserialize.SPECIAL_SIG_KEY: deserialize.SPECIAL_ARCHIVE_SIG,
-                    "path": "a/path",
-                },
-            }, m_result)
-
     def test_unmarshalls_remote_archive(self):
         remote_archive_value = {
             deserialize.SPECIAL_SIG_KEY: deserialize.SPECIAL_ARCHIVE_SIG,

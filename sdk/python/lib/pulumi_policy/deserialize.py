@@ -84,13 +84,6 @@ def _deserialize_asset(prop: Dict[str, Any]) -> pulumi.Asset:
     raise AssertionError("Invalid asset encountered when unmarshaling resource property")
 
 def _deserialize_archive(prop: Dict[str, Any], proxy_secrets: bool) -> pulumi.Archive:
-    # Give "path" and "uri" precedence over "assets", matching the engine's archive
-    # semantics: the engine may serialize a path- or uri-based archive with an empty
-    # "assets" map alongside the path or uri.
-    if "path" in prop:
-        return pulumi.FileArchive(prop["path"])
-    if "uri" in prop:
-        return pulumi.RemoteArchive(prop["uri"])
     if "assets" in prop:
         assets: Dict[str, Union[pulumi.Asset, pulumi.Archive]] = {}
         for key in prop["assets"]:
@@ -99,6 +92,10 @@ def _deserialize_archive(prop: Dict[str, Any], proxy_secrets: bool) -> pulumi.Ar
                 raise AssertionError("Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects")
             assets[key] = a
         return pulumi.AssetArchive(assets)
+    if "path" in prop:
+        return pulumi.FileArchive(prop["path"])
+    if "uri" in prop:
+        return pulumi.RemoteArchive(prop["uri"])
     raise AssertionError("Invalid archive encountered when unmarshaling resource property")
 
 def serialize_properties(props: Mapping[str, Any]) -> Mapping[str, Any]:
