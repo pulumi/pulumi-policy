@@ -355,7 +355,7 @@ func TestValidateResource(t *testing.T) {
 		// Test scenario 7: violates the fourth policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  randomuuid-no-keepers  (random:index/randomUuid:RandomUuid: r1)",
+				"[mandatory]  randomuuid-no-keepers  (random:index:RandomUuid: r1)",
 				"Prohibits creating a RandomUuid without any 'keepers'.",
 				"RandomUuid must not have an empty 'keepers'.",
 			},
@@ -393,7 +393,7 @@ func TestValidatePythonResource(t *testing.T) {
 		// Test scenario 1: violates the policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  randomuuid-no-keepers  (random:index/randomUuid:RandomUuid: r1)",
+				"[mandatory]  randomuuid-no-keepers  (random:index:RandomUuid: r1)",
 				"Prohibits creating a RandomUuid without any 'keepers'.",
 				"RandomUuid must not have an empty 'keepers'.",
 			},
@@ -401,7 +401,7 @@ func TestValidatePythonResource(t *testing.T) {
 		// Test scenario 2: violates the policy.
 		{
 			WantErrors: []string{
-				"[mandatory]  randomuuid-no-keepers  (random:index/randomUuid:RandomUuid: r2)",
+				"[mandatory]  randomuuid-no-keepers  (random:index:RandomUuid: r2)",
 				"Prohibits creating a RandomUuid without any 'keepers'.",
 				"RandomUuid must not have an empty 'keepers'.",
 			},
@@ -495,7 +495,7 @@ func TestUnknownValues(t *testing.T) {
 		{
 			WantErrors: []string{
 				"unknown-values-policy@v0.0.1",
-				"[advisory]  unknown-values-resource-validation  (random:index/randomPet:RandomPet: pet)",
+				"[advisory]  unknown-values-resource-validation  (random:index:RandomPet: pet)",
 				"can't run policy 'unknown-values-resource-validation' from policy pack 'unknown-values-policy@v0.0.1' during preview: string value at .prefix can't be known during preview",
 				"[advisory]  unknown-values-stack-validation",
 				"can't run policy 'unknown-values-stack-validation' from policy pack 'unknown-values-policy@v0.0.1' during preview: string value at .prefix can't be known during preview",
@@ -551,7 +551,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 1: Policy Pack: advisory; Policy: advisory.
 		{
 			WantErrors: []string{
-				"[advisory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[advisory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  validate-stack",
@@ -567,7 +567,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 3: Policy Pack: advisory; Policy: mandatory.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[mandatory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  validate-stack",
@@ -578,7 +578,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 4: Policy Pack: advisory; Policy: not set.
 		{
 			WantErrors: []string{
-				"[advisory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[advisory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  validate-stack",
@@ -590,7 +590,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 5: Policy Pack: disabled; Policy: advisory.
 		{
 			WantErrors: []string{
-				"[advisory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[advisory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  validate-stack",
@@ -606,7 +606,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 7: Policy Pack: disabled; Policy: mandatory.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[mandatory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  validate-stack",
@@ -621,7 +621,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 9: Policy Pack: mandatory; Policy: advisory.
 		{
 			WantErrors: []string{
-				"[advisory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[advisory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  validate-stack",
@@ -637,7 +637,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 11: Policy Pack: mandatory; Policy: mandatory.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[mandatory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  validate-stack",
@@ -648,7 +648,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 12: Policy Pack: mandatory; Policy: not set.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[mandatory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  validate-stack",
@@ -659,7 +659,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 13: Policy Pack: not set; Policy: advisory.
 		{
 			WantErrors: []string{
-				"[advisory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[advisory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  validate-stack",
@@ -675,7 +675,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 15: Policy Pack: not set; Policy: mandatory.
 		{
 			WantErrors: []string{
-				"[mandatory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[mandatory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[mandatory]  validate-stack",
@@ -686,7 +686,7 @@ func TestEnforcementLevel(t *testing.T) {
 		// Test scenario 16: Policy Pack: not set; Policy: not set.
 		{
 			WantErrors: []string{
-				"[advisory]  validate-resource  (random:index/randomString:RandomString: str)",
+				"[advisory]  validate-resource  (random:index:RandomString: str)",
 				"Always reports a resource violation.",
 				"validate-resource-violation-message",
 				"[advisory]  validate-stack",
@@ -897,7 +897,7 @@ func TestRemoteComponent(t *testing.T) {
 		{
 			WantErrors: []string{
 				"remote-component-policy@v0.0.1",
-				"[advisory]  resource-validation  (random:index/randomString:RandomString: innerRandom)",
+				"[advisory]  resource-validation  (random:index:RandomString: innerRandom)",
 				"can't run policy 'resource-validation' from policy pack 'remote-component-policy@v0.0.1' during preview: string value at .keepers.hi can't be known during preview",
 			},
 			Advisory: true,
