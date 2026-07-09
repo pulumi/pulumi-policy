@@ -65,6 +65,23 @@ export interface PolicyPackArgs {
      * A URL to the repository where the policy pack is defined.
      */
     repository?: string;
+
+    /**
+     * The version of the policy pack. If unset, the version is read from the
+     * package.json file in the current working directory. Set this explicitly
+     * when the pack runs where no package.json is present, such as when it is
+     * compiled into a standalone binary:
+     *
+     * ```typescript
+     * import pkg from "./package.json";
+     *
+     * new PolicyPack("my-pack", {
+     *     version: pkg.version,
+     *     policies: [...],
+     * });
+     * ```
+     */
+    version?: string;
 }
 
 /**
@@ -96,17 +113,38 @@ export class PolicyPack {
     constructor(private name: string, args: PolicyPackArgs, initialConfig?: PolicyPackConfig) {
         this.policies = args.policies;
 
-        // Get package version from the package.json file.
-        const cwd = process.cwd();
-        const pkg = require(`${cwd}/package.json`);
-        const version = pkg.version;
-        if (!version || version === "") {
-            throw new Error("Version must be defined in the package.json file.");
-        }
+        const version = determinePolicyPackVersion(args.version);
 
         const enforcementLevel = args.enforcementLevel || defaultEnforcementLevel;
         serve(this.name, version, enforcementLevel, args, initialConfig);
     }
+}
+
+/**
+ * Resolves the policy pack version from the explicitly provided value, falling back to
+ * the package.json file in the current working directory.
+ *
+ * @internal
+ */
+export function determinePolicyPackVersion(explicitVersion?: string): string {
+    let version = explicitVersion;
+    if (!version) {
+        let pkg;
+        try {
+            pkg = require(`${process.cwd()}/package.json`);
+        } catch {
+            throw new Error(
+                "Could not determine the policy pack version: no `version` was set in " +
+                    "PolicyPackArgs and no package.json exists in the current working directory. " +
+                    "Policy packs compiled to standalone binaries must set `version` explicitly.",
+            );
+        }
+        version = pkg.version;
+    }
+    if (!version || version === "") {
+        throw new Error("Version must be defined in the package.json file or in PolicyPackArgs.");
+    }
+    return version;
 }
 
 /**
