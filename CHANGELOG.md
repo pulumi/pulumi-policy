@@ -3,6 +3,7 @@
 - Node.js: Add an optional `version` to `PolicyPackArgs` so packs that run without a
   package.json on disk — e.g. compiled into standalone binaries with `bun build --compile` —
   can provide their version explicitly instead of requiring `${cwd}/package.json` at startup.
+  (https://github.com/pulumi/pulumi-policy/pull/452).
 
 ## 1.21.0 (2026-05-20)
 
