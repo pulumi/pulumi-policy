@@ -13,9 +13,13 @@
 // limitations under the License.
 
 import * as assert from "assert";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 import * as pulumi from "@pulumi/pulumi";
 import {
+    determinePolicyPackVersion,
     remediateResourceOfType,
     ResourceValidationPolicy,
     StackValidationPolicy,
@@ -55,6 +59,50 @@ const empytOptions = {
     },
     additionalSecretOutputs: [],
 };
+
+describe("determinePolicyPackVersion", () => {
+    function inTempCwd(files: Record<string, string>, fn: () => void) {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "policy-version-test-"));
+        const prevCwd = process.cwd();
+        try {
+            for (const [name, contents] of Object.entries(files)) {
+                fs.writeFileSync(path.join(dir, name), contents);
+            }
+            process.chdir(dir);
+            fn();
+        } finally {
+            process.chdir(prevCwd);
+            for (const name of Object.keys(files)) {
+                fs.unlinkSync(path.join(dir, name));
+            }
+            fs.rmdirSync(dir);
+        }
+    }
+
+    it("prefers an explicitly provided version", () => {
+        inTempCwd({}, () => {
+            assert.strictEqual(determinePolicyPackVersion("1.2.3"), "1.2.3");
+        });
+    });
+
+    it("falls back to package.json in the working directory", () => {
+        inTempCwd({ "package.json": "{\"name\":\"p\",\"version\":\"4.5.6\"}" }, () => {
+            assert.strictEqual(determinePolicyPackVersion(undefined), "4.5.6");
+        });
+    });
+
+    it("fails clearly when no version is available", () => {
+        inTempCwd({}, () => {
+            assert.throws(() => determinePolicyPackVersion(undefined), /standalone binaries/);
+        });
+    });
+
+    it("fails when package.json has no version", () => {
+        inTempCwd({ "package.json": "{\"name\":\"p\"}" }, () => {
+            assert.throws(() => determinePolicyPackVersion(undefined), /Version must be defined/);
+        });
+    });
+});
 
 describe("validateResourceOfType", () => {
     it("works as expected with async policies", asyncTest(async () => {

@@ -1,5 +1,10 @@
 ## HEAD (Unreleased)
 
+- Node.js: Add an optional `version` to `PolicyPackArgs` so packs that run without a
+  package.json on disk — e.g. compiled into standalone binaries with `bun build --compile` —
+  can provide their version explicitly instead of requiring `${cwd}/package.json` at startup.
+  (https://github.com/pulumi/pulumi-policy/pull/452).
+
 ## 1.21.0 (2026-05-20)
 
 - Node.js: Fix `TypeError: 'get' on proxy: property 'prototype' is a read-only and non-configurable data property…` thrown when a policy calls `Array.prototype.filter` (or `.map`, `.slice`, `.concat`, or any other method that uses `ArraySpeciesCreate`) on a resource field reached through `unknownCheckingProxy`. The proxy's `get` trap now honors V8's invariant for non-configurable + non-writable own data properties, scoped narrowly enough to leave unknown-value detection during preview fully intact.
