@@ -18,11 +18,15 @@ import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
 import * as grpc from "@grpc/grpc-js";
 
-import { Resource, Unwrap } from "@pulumi/pulumi";
+// Type-only imports for `Resource`, `Unwrap`, and the queryable namespace
+// — erased at compile time so this module never `require`s `@pulumi/pulumi`'s
+// top-level entry. The proto subpath imports below stay as value imports
+// because the gRPC server genuinely needs them at runtime.
+import type { Resource, Unwrap } from "@pulumi/pulumi";
+import type * as q from "@pulumi/pulumi/queryable";
 import * as analyzerproto from "@pulumi/pulumi/proto/analyzer_pb";
 import * as analyzerrpc from "@pulumi/pulumi/proto/analyzer_grpc_pb";
 import * as plugproto from "@pulumi/pulumi/proto/plugin_pb";
-import * as q from "@pulumi/pulumi/queryable";
 
 import { deserializeProperties, serializeProperties } from "./deserialize";
 import {

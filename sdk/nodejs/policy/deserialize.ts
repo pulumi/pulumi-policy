@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { asset, Output } from "@pulumi/pulumi";
+import * as asset from "@pulumi/pulumi/asset";
 import {
     specialArchiveSig,
     specialAssetSig,
     specialSecretSig,
     specialSigKey,
-} from "@pulumi/pulumi/runtime/rpc";
+} from "@pulumi/pulumi/runtime/sigs";
 
 import { Secret } from "./policy";
 import { isSpecialProxy, getSpecialProxyTarget } from "./proxy";
@@ -202,8 +202,14 @@ async function serializeProperty(prop: any): Promise<any> {
         };
     }
 
-    // Unsupported types:
-    if (Output.isInstance(prop)) {
+    // Unsupported types: reject Output values defensively. Equivalent to
+    // `Output.isInstance(prop)` (see `@pulumi/pulumi/output.ts` — the class
+    // is a thin wrapper around the same `__pulumiOutput` RTTI marker), but
+    // inlined to avoid importing `Output`. Pulling in `Output` re-introduces
+    // its dependency on the `Resource` graph, which transitively drags in
+    // `runtime/{settings,state,callbacks}`, `@grpc/grpc-js`, and the engine
+    // proto bindings — ~15 MB of transitive deps a policy pack never needs.
+    if (prop && typeof prop === "object" && (prop as any).__pulumiOutput === true) {
         throw new Error("Serializing output values not supported from within a policy pack");
     }
 
