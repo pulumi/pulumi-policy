@@ -54,6 +54,7 @@ const empytOptions = {
         deleteSeconds: 0,
     },
     additionalSecretOutputs: [],
+    annotations: {},
 };
 
 describe("validateResourceOfType", () => {

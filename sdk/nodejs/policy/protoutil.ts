@@ -219,12 +219,15 @@ export function makeAnalyzerInfo(
 }
 
 /**
- * makeAnalyzeResponse creates a protobuf encoding the given list of diagnostics.
+ * makeAnalyzeResponse creates a protobuf encoding the given list of diagnostics, optional
+ * not-applicable entries, and optional annotation changes (policy-side mutations to
+ * `args.opts.annotations` discovered via diff).
  * @internal
  */
 export function makeAnalyzeResponse(
     ds: Diagnostic[],
     notApplicable?: analyzerproto.PolicyNotApplicable[],
+    annotations?: analyzerproto.AnalyzeAnnotationChange[],
 ): analyzerproto.AnalyzeResponse {
     const resp = new analyzerproto.AnalyzeResponse();
 
@@ -252,7 +255,27 @@ export function makeAnalyzeResponse(
         resp.setNotApplicableList(notApplicable);
     }
 
+    if (annotations?.length) {
+        resp.setAnnotationsList(annotations);
+    }
+
     return resp;
+}
+
+/**
+ * Builds an `AnalyzeAnnotationChange` protobuf message for a single annotation write.
+ * @internal
+ */
+export function buildAnalyzeAnnotationChange(
+    urn: string,
+    key: string,
+    data: Record<string, any>,
+): analyzerproto.AnalyzeAnnotationChange {
+    const change = new analyzerproto.AnalyzeAnnotationChange();
+    change.setUrn(urn);
+    change.setKey(key);
+    change.setData(structproto.Struct.fromJavaScript(data));
+    return change;
 }
 
 /** @internal */
