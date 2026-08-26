@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import time
+import traceback
 
 from enum import Enum
 from inspect import isawaitable, signature
@@ -968,7 +969,7 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
         dependencies: List[str]
         property_dependencies: Dict[str, List[str]]
 
-    def Analyze(self, request, _context):
+    def Analyze(self, request, context):
         self._configure_runtime_settings()
 
         response = proto.AnalyzeResponse()
@@ -1025,10 +1026,12 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     policy_name=policy.name,
                     reason=e.reason or "",
                 ))
+            except Exception:
+                self._abort_with_traceback(context, "validating resource", policy.name)
 
         return response
 
-    def AnalyzeStack(self, request, _context):
+    def AnalyzeStack(self, request, context):
         self._configure_runtime_settings()
 
         response = proto.AnalyzeResponse()
@@ -1111,10 +1114,12 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     policy_name=policy.name,
                     reason=e.reason or "",
                 ))
+            except Exception:
+                self._abort_with_traceback(context, "validating stack", policy.name)
 
         return response
 
-    def Remediate(self, request, _context):
+    def Remediate(self, request, context):
         self._configure_runtime_settings()
 
         # Keep track of all remediations applied in response.remediations. The order here matters!
@@ -1177,6 +1182,8 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                     policy_name=policy.name,
                     reason=e.reason or "",
                 ))
+            except Exception:
+                self._abort_with_traceback(context, "remediating resource", policy.name)
 
             if rpc_props or diagnostic:
                 response.remediations.append(proto.Remediation(
@@ -1353,6 +1360,12 @@ class _PolicyAnalyzerServicer(proto.AnalyzerServicer):
                 severity=self._map_severity(severity),
             ))
         return report_violation
+
+    def _abort_with_traceback(self, context, action: str, policy_name: str) -> None:
+        context.abort(
+            grpc.StatusCode.UNKNOWN,
+            f"Error {action} with policy '{policy_name}' from policy pack "
+            f"'{self.__policy_pack_name}@v{self.__policy_pack_version}':\n{traceback.format_exc()}")
 
     def _map_enforcement_level(self, enforcement_level: EnforcementLevel) -> proto.EnforcementLevel.ValueType:
         if enforcement_level == EnforcementLevel.ADVISORY:

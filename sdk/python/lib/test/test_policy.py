@@ -17,6 +17,8 @@ from inspect import isawaitable
 from typing import Any, List, Mapping, Optional, Union
 import unittest
 
+import grpc
+
 from pulumi_policy import (
     EnforcementLevel,
     PolicyConfigSchema,
@@ -665,3 +667,118 @@ class AnalyzeStackTests(unittest.TestCase):
         self.assertEqual("test-policy", result.diagnostics[0].policyName)
         self.assertEqual("test policy description\nviolation message", result.diagnostics[0].message)
         self.assertEqual(proto.PolicySeverity.POLICY_SEVERITY_LOW, result.diagnostics[0].severity)
+
+
+class FakeContextAbort(Exception):
+    pass
+
+
+class FakeContext:
+    def __init__(self):
+        self.code = None
+        self.details = None
+
+    def abort(self, code, details):
+        self.code = code
+        self.details = details
+        raise FakeContextAbort()
+
+
+class PolicyErrorStackTraceTests(unittest.TestCase):
+    def test_analyze_error_includes_stack_trace(self):
+        def validate(args, report_violation: ReportViolation):
+            raise ValueError("oops")
+
+        policies = [ResourceValidationPolicy("test-policy", "Test policy description", validate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.MANDATORY
+        )
+
+        context = FakeContext()
+        with self.assertRaises(FakeContextAbort):
+            analyzer.Analyze(proto.AnalyzeRequest(), context)
+        self.assertEqual(grpc.StatusCode.UNKNOWN, context.code)
+        self.assertRegex(
+            context.details,
+            r"\AError validating resource with policy 'test-policy' from policy pack 'test-pack@v1\.0\.0':\n"
+            r"Traceback \(most recent call last\):\n"
+            r"(?:  .+\n)+"
+            r"ValueError: oops\n\Z")
+
+    def test_analyze_async_error_includes_stack_trace(self):
+        async def validate(args, report_violation: ReportViolation):
+            raise KeyError("Resource")
+
+        policies = [ResourceValidationPolicy("test-policy", "Test policy description", validate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.MANDATORY
+        )
+
+        context = FakeContext()
+        with self.assertRaises(FakeContextAbort):
+            analyzer.Analyze(proto.AnalyzeRequest(), context)
+        self.assertEqual(grpc.StatusCode.UNKNOWN, context.code)
+        self.assertRegex(
+            context.details,
+            r"\AError validating resource with policy 'test-policy' from policy pack 'test-pack@v1\.0\.0':\n"
+            r"Traceback \(most recent call last\):\n"
+            r"(?:  .+\n)+"
+            r"KeyError: 'Resource'\n"
+            r"\n"
+            r"The above exception was the direct cause of the following exception:\n"
+            r"\n"
+            r"Traceback \(most recent call last\):\n"
+            r"(?:  .+\n)+"
+            r"RuntimeError: Validation failed: 'Resource'\n\Z")
+
+    def test_analyze_stack_error_includes_stack_trace(self):
+        def validate(args, report_violation: ReportViolation):
+            raise ValueError("oops")
+
+        policies = [StackValidationPolicy("test-policy", "Test policy description", validate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.MANDATORY
+        )
+
+        context = FakeContext()
+        with self.assertRaises(FakeContextAbort):
+            analyzer.AnalyzeStack(proto.AnalyzeStackRequest(), context)
+        self.assertEqual(grpc.StatusCode.UNKNOWN, context.code)
+        self.assertRegex(
+            context.details,
+            r"\AError validating stack with policy 'test-policy' from policy pack 'test-pack@v1\.0\.0':\n"
+            r"Traceback \(most recent call last\):\n"
+            r"(?:  .+\n)+"
+            r"ValueError: oops\n\Z")
+
+    def test_remediate_error_includes_stack_trace(self):
+        def remediate(args):
+            raise ValueError("oops")
+
+        policies = [ResourceValidationPolicy("test-policy", "Test policy description", remediate=remediate)]
+        analyzer = _PolicyAnalyzerServicer(
+            name="test-pack",
+            version="1.0.0",
+            policies=policies,
+            enforcement_level=EnforcementLevel.REMEDIATE
+        )
+
+        context = FakeContext()
+        with self.assertRaises(FakeContextAbort):
+            analyzer.Remediate(proto.AnalyzeRequest(), context)
+        self.assertEqual(grpc.StatusCode.UNKNOWN, context.code)
+        self.assertRegex(
+            context.details,
+            r"\AError remediating resource with policy 'test-policy' from policy pack 'test-pack@v1\.0\.0':\n"
+            r"Traceback \(most recent call last\):\n"
+            r"(?:  .+\n)+"
+            r"ValueError: oops\n\Z")

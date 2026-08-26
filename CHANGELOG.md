@@ -1,6 +1,7 @@
 ## HEAD (Unreleased)
 
 - Python: Support protobuf v6.x
+- Python: Return exceptions correctly
 
 ## 1.21.0 (2026-05-20)
 
